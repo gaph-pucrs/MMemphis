@@ -74,34 +74,40 @@ void pe::comb_assignments(){
 	irq.write((((irq_status.read() & irq_mask_reg.read()) != 0x00)) ? 1  : 0 );
 	dmni_mem_data_read.write(mem_data_read.read());
 	write_enable.write(((cpu_mem_write_byte_enable_reg.read() != 0)) ? 1  : 0 );
-	cpu_enable_ram.write(((cpu_mem_address.read()(30,28 ) == 0)) ? 1  : 0 );
+	cpu_enable_ram.write(1);
+	dmni_enable_internal_ram.write(1);
 	end_sim_reg.write((((cpu_mem_address_reg.read() == END_SIM) && (write_enable.read() == 1))) ? 0x00000000 : 0x00000001);
 
-	//Interruption status
+	//------------ Interruption status-----------------
+	//Network
 	for(int i=0; i<SUBNETS_NUMBER; i++){
 		l_irq_status[i+4] = dmni_intr.read().range(i,i);
 	}
+	//CS req
 	l_irq_status[3] = ( req_in_reg.read() != 0) ? 1 : 0;
+	//Slack time updater
 	l_irq_status[2] = ( (dmni_send_active.read() == 0) && slack_update_timer.read() == 1) ? 1  : 0;
+	//Pending services
 	l_irq_status[1] = ( (dmni_send_active.read() == 0) && pending_service.read()) ? 1 : 0;
+	//Scheduler
 	l_irq_status[0] = (time_slice.read() == 1) ? 1  : 0;
 
 	irq_status.write(l_irq_status);
 
 	//Router config
 	if (write_enable.read() == 1 && (cpu_mem_address_reg.read() == CONFIG_VALID_NET)){
-		config_router_inport.write(cpu_mem_data_write_reg.read().range(15,13));
-		config_router_outport.write(cpu_mem_data_write_reg.read().range(12,10));
+		config_r_cpu_inport.write(cpu_mem_data_write_reg.read().range(15,13));
+		config_r_cpu_outport.write(cpu_mem_data_write_reg.read().range(12,10));
 	} else {
-		config_router_inport.write(config_inport_subconfig);
-		config_router_outport.write(config_outport_subconfig);
+		config_r_cpu_inport.write(config_inport_subconfig);
+		config_r_cpu_outport.write(config_outport_subconfig);
 	}
 	for (int i=0; i<CS_SUBNETS_NUMBER; i++){
 		int j = i+1;
 		if (write_enable.read() == 1 && cpu_mem_address_reg.read() == CONFIG_VALID_NET){
-			config_router_valid[i].write(cpu_mem_data_write_reg.read().range(j,j));
+			config_r_cpu_valid[i].write(cpu_mem_data_write_reg.read().range(j,j));
 		} else {
-			config_router_valid[i].write(config_valid_subconfig.read().range(i,i) );
+			config_r_cpu_valid[i].write(config_valid_subconfig.read().range(i,i) );
 		}
 	}
 	dmni_rec_en.write( !( (data_in_dmni_ps.read().range(16,16) && config_wait_header.read()) || config_en.read() ) );
@@ -135,6 +141,7 @@ void pe::comb_assignments(){
 
 }
 
+/*
 void pe::memory_mux(){
 	if (reset.read() == 1) {
 		dmni_enable_internal_ram.write(1);
@@ -146,6 +153,7 @@ void pe::memory_mux(){
 		}
 	}
 }
+*/
 
 void pe::reset_n_attr(){
 	reset_n.write(!reset.read());

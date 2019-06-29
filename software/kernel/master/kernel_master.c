@@ -791,6 +791,7 @@ void initialize_slaves(){
 
 				p->service = INITIALIZE_SLAVE;
 
+				puts("Initializing Slave "); puts(itoh(proc_address)); puts("\n");
 				send_packet(p, 0, 0);
 
 				index_counter++;

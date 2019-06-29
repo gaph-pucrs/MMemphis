@@ -126,12 +126,12 @@ package standards is
 -------------------------------------------------------
 -- DMNI QOS CONFIG CODE
 ---------------------------------------------------------
-	constant CODE_CS_NET: std_logic_vector(2 downto 0)		:="001";
-    constant CODE_MEM_ADDR: std_logic_vector(2 downto 0)	:="010";
-    constant CODE_MEM_SIZE: std_logic_vector(2 downto 0)	:="011";
-    constant CODE_MEM_ADDR2: std_logic_vector(2 downto 0)	:="100";
-    constant CODE_MEM_SIZE2: std_logic_vector(2 downto 0)	:="101";
-    constant CODE_OP: std_logic_vector(2 downto 0)			:="110";
+	constant CODE_CS_NET: std_logic_vector(2 downto 0)		:="001"; --1
+    constant CODE_MEM_ADDR: std_logic_vector(2 downto 0)	:="010"; --2
+    constant CODE_MEM_SIZE: std_logic_vector(2 downto 0)	:="011"; --3
+    constant CODE_MEM_ADDR2: std_logic_vector(2 downto 0)	:="100"; --4
+    constant CODE_MEM_SIZE2: std_logic_vector(2 downto 0)	:="101"; --5
+    constant CODE_OP: std_logic_vector(2 downto 0)			:="110"; --6
     
 ---------------------------------------------------------
 -- SUBTIPOS, TIPOS E FUNCOES

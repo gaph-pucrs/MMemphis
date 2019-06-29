@@ -397,8 +397,8 @@ end	generate;
     cpu_mem_pause           <= '0';
     irq                     <= '1' when (irq_status and irq_mask_reg) /= 0 else '0';
     dmni_mem_data_read      <= mem_data_read;
-    cpu_enable_ram          <= '1' when cpu_mem_address(30 downto 28) = "000" else '0';
-    --dmni_enable_internal_ram <= '1' when dmni_mem_address(30 downto 28) = "000" else '0';
+    cpu_enable_ram          <= '1';
+    dmni_enable_internal_ram <= '1';
     end_sim_reg             <= x"00000000" when cpu_mem_address_reg = END_SIM and write_enable = '1' else x"00000001";
    	write_enable 			<= '1' when cpu_mem_write_byte_enable_reg /= "0000" else '0';
    	
@@ -441,19 +441,6 @@ end	generate;
 		end if;
 	end process cs_request;
 	
-	
-	memory_mux : process (clock, reset) is
-    begin
-    	if reset = '1' then
-    		dmni_enable_internal_ram <= '1';
-    	elsif rising_edge(clock) then
-    		if dmni_mem_address(30 downto 28) = "000" then
-    			dmni_enable_internal_ram <= '1';
-    		else
-    			dmni_enable_internal_ram <= '0';
-    		end if;
-    	end if;
-    end process memory_mux;
 
     sequential_attr: process(clock, reset)
     begin            

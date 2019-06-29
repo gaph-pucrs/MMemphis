@@ -164,16 +164,15 @@ begin
 	end generate bitwise_update;
 	
 
-
 ----------- Dynamic TDM implementation for 3 subnets ---------------------------------
-	TDM_mux3: if SUBNETS_NUMBER = 3 generate
-		s_next_count <= 2 when s_ready((s_next + 2) mod SUBNETS_NUMBER) = '1' else		
-					    1;																
-																							    																--
-		r_next_count <= 1 when r_ready((r_curr + 1) mod SUBNETS_NUMBER) = '1' else		
-					    2 when r_ready((r_curr + 2) mod SUBNETS_NUMBER) = '1' else		
-					    0;		
-	end generate TDM_mux3;			    														
+TDM_mux3: if SUBNETS_NUMBER = 3 generate
+	s_next_count <= 2 when s_ready((s_next + 2) mod SUBNETS_NUMBER) = '1' else		
+				    1;																
+																						    																--
+	r_next_count <= 1 when r_ready((r_curr + 1) mod SUBNETS_NUMBER) = '1' else		
+				    2 when r_ready((r_curr + 2) mod SUBNETS_NUMBER) = '1' else		
+				    0;		
+end generate TDM_mux3;			    														
 --------------------------------------------------------------------------------------
 	
 ----------- Dynamic TDM implementation for 4 subnets ---------------------------------

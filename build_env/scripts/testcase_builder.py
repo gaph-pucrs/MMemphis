@@ -84,8 +84,6 @@ def main():
     #Calls the memphis-wave_gen script if
     generate_wave(TESTCASE_PATH, yaml_reader)
     
-    exit()
-    
     #Compile the hw and kernel by calling hw_builder and kernel_builder    
     exit_status = os.system("make all -C "+TESTCASE_PATH)
     
@@ -184,14 +182,14 @@ def copy_makefiles(memphis_path, testcase_path, page_size_KB, memory_size_KB, sy
         
         sim_do_path = testcase_path+"/base_scenario/sim.do"
         sim_file = open(sim_do_path, "a")
-        sim_file.write("\nwhen -label end_of_simulation { Memphis/PE0x0/end_sim_reg == x\"00000000\" } {echo \"End of simulation\" ; quit ;}")
+        sim_file.write("\nwhen -label end_of_simulation { /test_bench/Memphis/PE0x0/end_sim_reg == x\"00000000\" } {echo \"End of simulation\" ; quit ;}")
         sim_file.close()
     
     elif system_model_description == "vhdl":
         
         sim_do_path = testcase_path+"/base_scenario/sim.do"
         sim_file = open(sim_do_path, "a")
-        sim_file.write("\nwhen -label end_of_simulation { Memphis/proc(0)/PE/end_sim_reg == x\"00000000\" } {echo \"End of simulation\" ; quit ;}")
+        sim_file.write("\nwhen -label end_of_simulation { /test_bench/Memphis/proc(0)/PE/end_sim_reg == x\"00000000\" } {echo \"End of simulation\" ; quit ;}")
         sim_file.close()
         
         

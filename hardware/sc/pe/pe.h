@@ -58,9 +58,9 @@ SC_MODULE(pe) {
 	sc_signal < bool > 			cpu_mem_pause;
 	sc_signal < bool > 			cpu_enable_ram;
 	//Router config
-	sc_signal<sc_uint<3> > 		config_router_inport;
-	sc_signal<sc_uint<3> > 		config_router_outport;
-	sc_signal<bool > 			config_router_valid[CS_SUBNETS_NUMBER];
+	sc_signal<sc_uint<3> > 		config_r_cpu_inport;
+	sc_signal<sc_uint<3> > 		config_r_cpu_outport;
+	sc_signal<bool > 			config_r_cpu_valid[CS_SUBNETS_NUMBER];
 
 	//CS config
 	sc_signal <bool > 			config_en;
@@ -154,7 +154,7 @@ SC_MODULE(pe) {
 	//logfilegen *log;
 	
 	void sequential_attr();
-	void memory_mux();
+	//void memory_mux();
 	void log_process();
 	void comb_assignments();
 	void mem_mapped_registers();
@@ -262,9 +262,9 @@ SC_MODULE(pe) {
 			//CS Router <-> CPU Internal assignment
 			cs_router[c]->req_out[LOCAL]	(req_in_local[c]);
 			cs_router[c]->req_in[LOCAL]		(req_out_local[c]);
-			cs_router[c]->config_inport		(config_router_inport);
-			cs_router[c]->config_outport	(config_router_outport);
-			cs_router[c]->config_valid		(config_router_valid[c]);
+			cs_router[c]->config_inport		(config_r_cpu_inport);
+			cs_router[c]->config_outport	(config_r_cpu_outport);
+			cs_router[c]->config_valid		(config_r_cpu_valid[c]);
 		}
 
 		//PS router assignment
@@ -338,9 +338,9 @@ SC_MODULE(pe) {
 		SC_METHOD(clock_stop);
 		sensitive << clock << reset.pos();	
 		
-		SC_METHOD(memory_mux);
+		/*SC_METHOD(memory_mux);
 		sensitive << clock.pos();
-		sensitive << reset;
+		sensitive << reset;*/
 
 	}
 	
