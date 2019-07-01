@@ -25,62 +25,8 @@ class RepoLine:
         self.hex_string = hex_string
         self.commentary = commentary
 
-#Python class used for store Cluste's information. 
-class Cluster:
-    def __init__(self, master_x, master_y, leftbottom_x, leftbottom_y, topright_x, topright_y):
-        self.master_x = master_x
-        self.master_y = master_y
-        self.leftbottom_x = leftbottom_x
-        self.leftbottom_y = leftbottom_y
-        self.topright_x = topright_x
-        self.topright_y = topright_y 
 
 #Functions -------------------------------------------------
-
-def create_cluster_list(x_mpsoc_dim, y_mpsoc_dim, x_cluster_dim, y_cluster_dim, master_location):
-   
-    if  ( x_mpsoc_dim % x_cluster_dim ) != 0 or (y_mpsoc_dim % y_cluster_dim ) != 0:
-        sys.exit('Error in YAML noc_dimension OR cluster_dimension - you must provide a compatible dimension')
-        
-    x_clusters_number = x_mpsoc_dim / x_cluster_dim;
-    y_clusters_number = y_mpsoc_dim / y_cluster_dim;
-    
-    cluster_list = []
-    
-    for y in range(0, y_clusters_number):
-        for x in range(0, x_clusters_number):
-            
-            leftbottom_x =   x  * x_cluster_dim
-            leftbottom_y =   y  * y_cluster_dim
-            topright_x   =   ( (x+1) *  x_cluster_dim ) - 1
-            topright_y   =   ( (y+1) *  y_cluster_dim ) - 1
-            
-            if master_location == "LB":
-               
-                master_x =   x * x_cluster_dim
-                master_y =   y * y_cluster_dim
-                
-            elif master_location == "RB":
-                
-                master_x =   ( (x+1) *  x_cluster_dim ) - 1
-                master_y =   y * y_cluster_dim
-                
-            elif master_location == "LT":
-                
-                master_x =   x * x_cluster_dim
-                master_y =   ( (y+1) *  y_cluster_dim ) - 1
-                
-            elif master_location == "RT":
-                
-                master_x =   ( (x+1) *  x_cluster_dim ) - 1
-                master_y =   ( (y+1) *  y_cluster_dim ) - 1
-                
-            else:
-                sys.exit("Error in YAML master_location - you must provide a compatible master position: [LB | RB | LT | RT]")
-            
-            cluster_list.append(Cluster(master_x, master_y, leftbottom_x, leftbottom_y, topright_x, topright_y))
-    
-    return cluster_list
 
 def writes_file_into_testcase(file_path, file_lines):
     

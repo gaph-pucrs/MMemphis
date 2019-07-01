@@ -16,7 +16,7 @@
 #include <stdlib.h>
 #define BUF_SIZE (1024*1024)
 
-void vhd_ram_parametrized(unsigned int* code, int count, unsigned int ram_size, char *type)
+void vhd_ram_parametrized(unsigned int* code, int count, unsigned int ram_size)
 {
     unsigned char init[128][32];
     unsigned char mask;
@@ -46,7 +46,7 @@ void vhd_ram_parametrized(unsigned int* code, int count, unsigned int ram_size, 
 
 	//printf("%d, %d", max_loop, max_mem);
 
-	printf("entity ram_%s is\n",type);
+	printf("entity ram is\n");
 	printf("	port(clk             : in  std_logic;\n");        
 	printf("        address_a       : in  std_logic_vector(31 downto 2);\n");
 	printf("        enable_a        : in  std_logic;\n");
@@ -61,7 +61,7 @@ void vhd_ram_parametrized(unsigned int* code, int count, unsigned int ram_size, 
 	printf("        data_read_b     : out std_logic_vector(31 downto 0));\n");
 	printf("end; --entity ram     \n\n");
 
-	printf("architecture ram_%s of ram_%s is\n",type,type);
+	printf("architecture ram of ram is\n");
 	if(ram_size == 64)
 		printf("begin\n");
 
@@ -582,7 +582,7 @@ void vhd_ram_parametrized(unsigned int* code, int count, unsigned int ram_size, 
 }
 
 
-void fill_c_model(unsigned int *code, unsigned int code_size, unsigned int ram_size, char *type) {
+void fill_c_model(unsigned int *code, unsigned int code_size, unsigned int ram_size) {
 
 	unsigned int i;
 
@@ -592,7 +592,7 @@ void fill_c_model(unsigned int *code, unsigned int code_size, unsigned int ram_s
 
 	printf("#define RAM_SIZE\t%d*1024\n\n",ram_size);
 
-	printf("SC_MODULE(ram_%s) {\n\n",type);
+	printf("SC_MODULE(ram) {\n\n");
 
 	printf("\tsc_in< bool >\t\t\tclk;\n");
 
@@ -612,7 +612,7 @@ void fill_c_model(unsigned int *code, unsigned int code_size, unsigned int ram_s
 	printf("\tunsigned long byte[4];\n");
 	printf("\tunsigned long half_word[2];\n\n");
 
-	printf("\tSC_CTOR(ram_%s) {\n\n",type);
+	printf("\tSC_CTOR(ram) {\n\n");
 
 	printf("\t\tSC_METHOD(read_a);\n");
 	printf("\t\tsensitive << clk.pos();\n\n");
@@ -694,32 +694,20 @@ int main(int argc, char* argv[]){
 		}
 
 			if (strcmp(argv[2],"-rtl") == 0){
-				if (strcmp(argv[3],"kernel_master.txt") == 0){
-					vhd_ram_parametrized(code, size, i, "master");
-				}
-				else if(strcmp(argv[3],"kernel_local.txt") == 0){
-					vhd_ram_parametrized(code, size, i, "local");
-				}
-				else if(strcmp(argv[3],"kernel_mblite.txt") == 0){
-					vhd_ram_parametrized(code, size, i, "mblite");
-				}
-				else if(strcmp(argv[3],"kernel_slave.txt") == 0){
-					vhd_ram_parametrized(code, size, i, "slave");
+
+				if(strcmp(argv[3],"kernel.txt") == 0){
+					vhd_ram_parametrized(code, size, i);
+				} else {
+					printf("ERROR: ram generator doesnt recognize %s\n", argv[3]);
 				}
 			}
 			else if(strcmp(argv[2],"-h") == 0){
-				if (strcmp(argv[3],"kernel_master.txt") == 0){
-					fill_c_model(code, size, i, "master");
+				if(strcmp(argv[3],"kernel.txt") == 0){
+					fill_c_model(code, size, i);
+				} else {
+					printf("ERROR: ram generator doesnt recognize %s\n", argv[3]);
 				}
-				else if(strcmp(argv[3],"kernel_local.txt") == 0){
-					fill_c_model(code, size, i, "local");
-				}
-				else if(strcmp(argv[3],"kernel_mblite.txt") == 0){
-					fill_c_model(code, size, i, "mblite");
-				}
-				else if(strcmp(argv[3],"kernel_slave.txt") == 0){
-					fill_c_model(code, size, i, "slave");
-				}
+
 			}
 		else{
 			usage();

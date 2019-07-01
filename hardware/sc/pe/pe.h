@@ -180,7 +180,7 @@ SC_MODULE(pe) {
 		cpu->mem_pause(cpu_mem_pause);
 		cpu->current_page(current_page);
 		
-		mem = new ram("ram", (unsigned int) router_address);
+		mem = new ram("ram");
 		mem->clk(clock);
 		mem->enable_a(cpu_enable_ram);
 		mem->wbe_a(cpu_mem_write_byte_enable);

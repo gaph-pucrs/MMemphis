@@ -38,7 +38,7 @@ SC_MODULE(ram) {
 	void load_ram();
 
 	SC_HAS_PROCESS(ram);
-	ram(sc_module_name name_, unsigned int address_ = 0) : sc_module(name_), router_address(address_) {
+	ram(sc_module_name name_) : sc_module(name_) {
 
 		load_ram();
 

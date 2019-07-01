@@ -54,12 +54,6 @@ def get_cluster_x_dim(yaml_reader):
 def get_cluster_y_dim(yaml_reader):
     return yaml_reader["hw"]["cluster_dimension"][1]
 
-def get_master_location(yaml_reader):
-    try:
-        return yaml_reader["hw"]["master_location"]
-    except:
-        return "LB"
-
 def get_subnet_number(yaml_reader):
     try:
         return yaml_reader["hw"]["subnets"]

@@ -20,8 +20,7 @@ entity pe is
     generic 
     (
         log_file            : string := "output.txt";
-        router_address      : adress_width:= (others=>'0');
-        kernel_type			: kernel_str
+        router_address      : adress_width:= (others=>'0')
     );
     port 
     (  
@@ -169,9 +168,7 @@ begin
 			current_page => current_page
 		);
 
-
-master: if kernel_type = "mas" generate
-	mem : entity work.ram_master
+	mem : entity work.ram
 		port map(
 			clk          => clock,
 			enable_a     => cpu_enable_ram,
@@ -185,24 +182,6 @@ master: if kernel_type = "mas" generate
 			data_write_b => dmni_mem_data_write,
 			data_read_b  => mem_data_read
 		);
-end	generate;
-		
-slave: if kernel_type = "sla" generate
-	mem : entity work.ram_slave
-		port map(
-			clk          => clock,
-			enable_a     => cpu_enable_ram,
-			wbe_a        => cpu_mem_write_byte_enable,
-			address_a    => addr_a,
-			data_write_a => cpu_mem_data_write,
-			data_read_a  => data_read_ram,
-			enable_b     => dmni_enable_internal_ram,
-			wbe_b        => dmni_mem_write_byte_enable,
-			address_b    => addr_b,
-			data_write_b => dmni_mem_data_write,
-			data_read_b  => mem_data_read
-		);
-end	generate;
 	
 	PS_router : entity work.RouterCC
 		generic map(address => router_address)

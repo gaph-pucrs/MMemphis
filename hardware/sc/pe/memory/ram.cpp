@@ -24,7 +24,7 @@ void ram::load_ram(){
 	int i = 0;
 
 	char ram_path[20];
-	sprintf(ram_path, "ram_pe/ram%dx%d.txt", (router_address >> 8), (router_address & 0xFF));
+	sprintf(ram_path, "ram_pe/ram.txt");
 	ifstream repo_file (ram_path);
 
 	if (repo_file.is_open()) {

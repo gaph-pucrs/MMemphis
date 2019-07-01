@@ -82,7 +82,6 @@ architecture Memphis of Memphis is
                 PE: entity work.pe
                 generic map (
                         router_address    	=> RouterAddress(i),
-                        kernel_type			=> pe_type(i),
                         log_file            => log_filename(i)
                         )
                 port map(
