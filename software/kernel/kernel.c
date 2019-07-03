@@ -679,8 +679,18 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 		break;
 
+		case IOSEND:
 
+			if(is_send_active(PS_SUBNET))
+				return 0;
 
+			msg_address_src = (unsigned int *) (current->offset | arg0);
+
+			DMNI_send_data(msg_address_src, arg1, PS_SUBNET);
+
+			while(is_send_active(PS_SUBNET));
+
+			return 1;
 
 		/************************* SERVICE API FUNCTIONS **************************/
 		case REQSERVICEMODE:
@@ -792,6 +802,19 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 		case INCOMINGPACKET:
 			return (MemoryRead(IRQ_STATUS) >= IRQ_INIT_NOC);
 
+		case GETNETADDRESS:
+			return net_address;
+		case ADDTASKLOCATION:
+			add_task_location(arg0, arg1);
+			//puts("Added task id "); puts(itoa(arg0)); puts(" at loc "); puts(itoh(arg1)); puts("\n");
+			break;
+		case REMOVETASKLOCATION:
+			remove_task_location(arg0);
+			break;
+		case SETMYID:
+			current->id = arg0;
+			putsv("Task id changed to: ", current->id);
+			break;
 	}
 
 	return 0;
@@ -983,13 +1006,16 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 		MemoryWrite(DMNI_MEM_ADDR, tcb_ptr->offset);
 		MemoryWrite(DMNI_MEM_SIZE, code_lenght);
 
-		tcb_ptr->scheduling_ptr->status = BLOCKED;
+		if ((tcb_ptr->id >> 8) == 0){//Task of APP 0 (mapping) dont need to be released to start its execution
+			tcb_ptr->scheduling_ptr->status = READY;
+		} else { //For others task
+			tcb_ptr->scheduling_ptr->status = BLOCKED;
+			send_task_allocated(tcb_ptr);
+		}
 
-		send_task_allocated(tcb_ptr);
-
-		/*if (current == &idle_tcb){
+		if (current == &idle_tcb){
 			need_scheduling = 1;
-		}*/
+		}
 
 		break;
 

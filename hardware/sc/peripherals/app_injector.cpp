@@ -19,6 +19,144 @@ void app_injector::credit_out_update(){
 	credit_out.write(sig_credit_out.read());
 }
 
+/**Converst an app ID to an app name by searching in app_start.txt file
+ *
+ */
+string app_injector::get_app_repo_path(unsigned int app_id){
+	string line;
+	string path = "appstart.txt";
+	ifstream repo_file (path.c_str());
+	string app_name;
+	unsigned int task_number;
+
+	if (repo_file.is_open()) {
+
+		for(unsigned int app_count = 0; app_count < app_id; app_count++){
+
+			/*Each descriptor in app_start start always with 4 information*/
+			for(int i=0; i<4; i++){
+				getline (repo_file,line);
+			}
+			sscanf( line.substr(0, 8).c_str(), "%x", &task_number);
+
+			/*Skips the number of tasks*/
+			for(unsigned int i=0; i<task_number; i++){
+				getline (repo_file,line);
+			}
+
+		}
+
+		getline (repo_file,line);
+		return ("../applications/" + line + "/repository.txt");
+	}
+
+	cout << "ERROR: app path not found\n" << endl;
+	return NULL;
+
+}
+
+/**Assembles the packet that load the a generic task to the system
+ */
+void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned int master_ID, unsigned int allocated_proc){
+
+	string line, path;
+	unsigned int  task_number, code_size, task_line, code_line, current_line;
+	int ptr_index = 0;
+	unsigned int app_id, task_id;
+
+	app_id = full_task_id >> 8;
+	task_id = full_task_id & 0xFF;
+
+	path = get_app_repo_path(app_id);
+
+	//cout << "Task allocation loader - app path: " << path << endl;
+
+	ifstream repo_file (path.c_str());
+
+	if (repo_file.is_open()) {
+
+		getline (repo_file,line);
+		sscanf( line.substr(0, 8).c_str(), "%x", &task_number);
+
+		if (task_id+1 > task_number)
+			throw std::invalid_argument("ERROR[1] - task_id is out of range");
+
+		task_line = (TASK_DESCRIPTOR_SIZE * task_id);
+		/*Skips TASK_DESCRIPTOR_SIZE lines - TASK_DESCRIPTOR_SIZE is the size of each task description in repository.txt for each app*/
+		for (unsigned int i=0; i < task_line; i++)
+			getline (repo_file,line);
+
+		getline (repo_file,line); /*Task ID*/
+		getline (repo_file,line); /*static mapped PE*/
+		getline (repo_file,line); /*code size*/
+		sscanf( line.substr(0, 8).c_str(), "%x", &code_size);
+		getline (repo_file,line); /*data size*/
+		getline (repo_file,line); /*bss size*/
+		getline (repo_file,line); /*initial_address*/
+		sscanf( line.substr(0, 8).c_str(), "%x", &code_line);
+
+		code_line = code_line / 4; /*Divided by 4 because memory has 4 byte words*/
+
+		current_line = task_line + TASK_DESCRIPTOR_SIZE + 1; /*Finds the current line by sum the number of task by the task decription size*/
+
+		//cout << "Current line: " << current_line << endl;
+		/*Points the reader to the beging of task code*/
+		while(current_line < code_line){
+			getline (repo_file,line);
+			current_line++;
+		}
+		//cout << "Task ID " << task_id << " code size " << code_size << " code_line " << code_line << endl;
+
+		packet_size = code_size+CONSTANT_PACKET_SIZE;
+
+		packet = new unsigned int[packet_size];
+
+		packet[ptr_index++] = allocated_proc; //Packet service
+		packet[ptr_index++] = packet_size-2; //Packet service
+		packet[ptr_index++] = TASK_ALLOCATION; //Packet service
+		packet[ptr_index++] = full_task_id;
+		packet[ptr_index++] = master_ID; //Master ID
+		ptr_index 			= ptr_index + 5; //Jumps to code_size field on ServiceHeader
+		packet[ptr_index++] = code_size; //Code size
+		ptr_index 			= ptr_index + 2; //Jumps to the end of ServiceHeader
+
+		//Assembles txt
+		for(unsigned int i=0; i<code_size; i++){
+			getline (repo_file,line);
+			sscanf( line.substr(0, 8).c_str(), "%x", &packet[ptr_index++]);
+			//cout << line << endl;
+		}
+
+	}
+}
+
+void app_injector::bootloader(){
+	if (reset.read() == 1)  {
+		EA_bootloader = INITIALIZE;
+
+	} else if (clock.posedge()){
+
+		switch (EA_bootloader) {
+
+			/*Sends the Global Mapper App to PE 0 */
+			case INITIALIZE:
+				/*Load the boot task in the packet array*/
+				task_allocation_loader(0,0,0);
+				/*This state signals to send_packet to start transmission*/
+				EA_bootloader = WAIT_SEND_BOOT;
+				break;
+			case WAIT_SEND_BOOT:
+				/*Waits ends of boot packet transmission*/
+				if (EA_send_packet == SEND_FINISHED)
+					EA_bootloader = BOOTLOADER_FINISHED;
+				break;
+			case BOOTLOADER_FINISHED:
+				break;
+		}
+	}
+}
+
+
 /**
  * Monitors the file appstart.txt looking for a new app to inject on the system
  *
@@ -26,7 +164,7 @@ void app_injector::credit_out_update(){
  * - app_name
  * - app_start_time
  * - app_task_number
- * - app_cluster_id (statically mapped cluster address)
+ * - req_app_cluster_id (statically mapped cluster address)
  *
  * WAITING_TIME: Waits the simulation reach the time to fires a NEW_APP_REQ to the global manager
  * The appsstart.txt file had the applications sorted by its time to entry on the system.
@@ -36,17 +174,16 @@ void app_injector::credit_out_update(){
  * EA_receive_packet and EA_send_packet
  */
 void app_injector::monitor_new_app(){
-	string line;
-	static unsigned int line_counter = 0;
+	string line, req_app_name;
 	ifstream appstart_file;
 
 	if (reset.read() == 1)  {
 		EA_new_app_monitor = MONITORING;
 		current_time = 0;
-		app_name = "";
-		app_start_time = 0;
-		app_task_number = 0;
-		app_cluster_id = 0;
+		req_app_start_time = 0;
+		req_app_task_number = 0;
+		req_app_cluster_id = 0;
+		line_counter = 6; //6 is the number of lines after MAN_app_application
 
 	} else if (clock.posedge()){
 
@@ -63,32 +200,32 @@ void app_injector::monitor_new_app(){
 						getline (appstart_file,line);
 
 					//Reads the next line of the file. Supposed to be the application name
-					getline (appstart_file,app_name);
+					getline (appstart_file,req_app_name);
 
-					if (app_name != "deadc0de"){
+					if (req_app_name != "deadc0de"){
 
 						//Gets the application start time
 						getline (appstart_file,line);
-						sscanf( line.substr(0, 8).c_str(), "%u", &app_start_time ); //Start time is in milliseconds
+						sscanf( line.substr(0, 8).c_str(), "%u", &req_app_start_time ); //Start time is in milliseconds
 
 						//Gets the application cluster
 						getline (appstart_file,line);
-						sscanf( line.substr(0, 8).c_str(), "%d", &app_cluster_id );
+						sscanf( line.substr(0, 8).c_str(), "%d", &req_app_cluster_id );
 
 						//Gets the application task number
 						getline (appstart_file,line);
-						sscanf( line.substr(0, 8).c_str(), "%u", &app_task_number );
+						sscanf( line.substr(0, 8).c_str(), "%u", &req_app_task_number );
 
 						line_counter = line_counter + 4;
 
-						task_static_mapping = new int[app_task_number];
+						task_static_mapping = new int[req_app_task_number];
 
-						//cout << "App name: " << app_name << endl;
-						//cout << "app_cluster_id: " << app_cluster_id << endl;
-						//cout << "app_task_number: " << app_task_number << endl;
+						cout << "App name: " << req_app_name << endl;
+						cout << "req_app_cluster_id: " << req_app_cluster_id << endl;
+						cout << "app_task_number: " << req_app_task_number << endl;
 
 						//Gets the allocated processor for each task, useful for static task mapping
-						for(unsigned int i=0; i<app_task_number; i++){
+						for(unsigned int i=0; i<req_app_task_number; i++){
 							//Gets the application task number
 							getline (appstart_file,line);
 							sscanf( line.substr(0, 8).c_str(), "%d", &task_static_mapping[i]);
@@ -96,7 +233,7 @@ void app_injector::monitor_new_app(){
 							line_counter++;
 						}
 
-						cout << "App Injector requesting app " << app_name << endl;
+						cout << "App Injector requesting app " << req_app_name << endl;
 
 						EA_new_app_monitor = WAITING_TIME;
 					}
@@ -111,18 +248,29 @@ void app_injector::monitor_new_app(){
 
 			case WAITING_TIME: //Test when the current time reach the application start time
 
-				if ( (app_start_time * 100000) <= current_time ){
+				if (EA_receive_packet == HEADER && EA_bootloader == BOOTLOADER_FINISHED && (req_app_start_time * 100000) <= current_time){
 
-					packet_size = CONSTANT_PACKET_SIZE;
+					packet_size = CONSTANT_PACKET_SIZE+3;
 
-					packet = new unsigned int[CONSTANT_PACKET_SIZE];
+					packet = new unsigned int[packet_size];
 
-					//Asembles the packet
+
 					packet[0] = MPE_ADDR;
+					packet[1] = packet_size - 2;
+					packet[2] = SERVICE_TASK_MESSAGE;
+					packet[4] = 0; //Task Global Mapper
+					packet[8] = 3; //Payload lenght
+					packet[CONSTANT_PACKET_SIZE] = NEW_APP_REQ;
+					packet[CONSTANT_PACKET_SIZE+1] = req_app_cluster_id;
+					packet[CONSTANT_PACKET_SIZE+2] = req_app_task_number;
+					cout << "NEW_APP_SENT" << endl;
+
+					//Assembles the packet
+					/*packet[0] = MPE_ADDR;
 					packet[1] = CONSTANT_PACKET_SIZE-2;
 					packet[2] = NEW_APP_REQ;
-					packet[4] = app_cluster_id;
-					packet[8] = app_task_number;
+					packet[4] = req_app_cluster_id;
+					packet[8] = req_app_task_number;*/
 
 					EA_new_app_monitor = WAITING_SEND_APP_REQ;
 				}
@@ -137,8 +285,8 @@ void app_injector::monitor_new_app(){
 				break;
 			case IDLE_MONITOR:
 
-				//Waits until the last task allocation packet be sent before to continue monitoring
-				if (EA_receive_packet == WAITING_SEND_TASK_ALLOCATION && EA_send_packet == SEND_FINISHED)
+				//Waits until the master sends the app ack
+				if (EA_receive_packet == WAITING_SEND_NEW_APP && EA_send_packet == SEND_FINISHED)
 					EA_new_app_monitor = MONITORING;
 
 				break;
@@ -146,82 +294,6 @@ void app_injector::monitor_new_app(){
 
 		current_time++;
 	}
-}
-
-/**Reads application repository and fills the packet variable to sent it through the NoC.
- * Assembles a set of TASK_ALLOCATION packet according to the number of application's tasks
- * and the informations of tasks_info pointer. tasks_info pointer is filled during the manipulation
- * of a APP_ALLOCATION packet inside the receive_packet function.
- * After finish this function the receive_packet function signals to the send_packet function to start
- * the packet transmition through the NoC.
- * This function MODIFIES the following global variables:
- * - *packet = receives a pointer to the allocated memory block
- * - packet_size = receives the packet size
- *
- * This function USES the following global variables:
- * - app_name = used to form the application repository's path
- * - app_task_number = used to compute the repository's size
- * - tasks_info = used to gather information about application tasks (information provided during APP_ALLOCATION)
- * - cluster_address = address of the task manager (information provided during RECEIVE_APP_ACK)
- */
-void app_injector::task_allocation_loader(){
-	string line;
-	string path = "../applications/" + app_name + "/repository.txt";
-	ifstream repo_file (path.c_str());
-	int ptr_index;
-	int descriptor_size;
-	unsigned int id, allocated_proc, code_size;
-
-	if (repo_file.is_open()) {
-
-		descriptor_size = (TASK_DESCRIPTOR_SIZE * app_task_number) + 1;
-
-		//cout << "\n\n------ Task allocation loader ---- \nDescriptor size: " << descriptor_size << endl;
-
-		for(int i=0; i<descriptor_size; i++)
-			getline (repo_file,line); //Jumps app descriptor
-
-		packet_size = 0;
-		for(unsigned int i = 0; i < app_task_number; i++)
-			packet_size += CONSTANT_PACKET_SIZE +  tasks_info[3+(i*4)]; //Gets code size for each task
-
-		packet = new unsigned int[packet_size];
-
-		ptr_index = 0;
-		for(unsigned int task_id = 0; task_id<app_task_number; task_id++){
-
-			id 				= tasks_info[0+(task_id*4)]; //Gets task id
-			allocated_proc 	= tasks_info[1+(task_id*4)]; //Gets task allocated proc
-			//address  		= tasks_info[2+(task_id*4)]; //Gets task txt address
-			code_size 		= tasks_info[3+(task_id*4)]; //Gets task txt size
-
-			/*cout << "\n\n****************\nNew task id: " << id << endl;
-			cout << "allocated_proc: " << allocated_proc << endl;
-			cout << "address: " << address << endl;
-			cout << "code_size: " << code_size << endl;*/
-
-			//Assembles ServiceHeader
-			packet[ptr_index++] = allocated_proc; //Header <- Gets allocated proc
-			packet[ptr_index++] = (CONSTANT_PACKET_SIZE - 2) + code_size; //Assemble payload size
-			packet[ptr_index++] = TASK_ALLOCATION; //Packet service
-			packet[ptr_index++] = id;
-			packet[ptr_index++] = cluster_address; //Master ID
-			ptr_index 			= ptr_index + 5; //Jumps to code_size field on ServiceHeader
-			packet[ptr_index++] = code_size; //Code size
-			ptr_index 			= ptr_index + 2; //Jumps to the end of ServiceHeader
-
-			//Assembles txt
-			for(unsigned int i=0; i<code_size; i++){
-				getline (repo_file,line);
-				sscanf( line.substr(0, 8).c_str(), "%x", &packet[ptr_index++]);
-			}
-		}
-
-		repo_file.close();
-	} else {
-		cout << "Unable to open file " << path << endl;
-	}
-
 }
 
 /* Reads application repository and fills the packet variable to sent it through the NoC
@@ -236,7 +308,7 @@ void app_injector::task_allocation_loader(){
 void app_injector::app_descriptor_loader(){
 
 	string line;
-	string path = "../applications/" + app_name + "/repository.txt";
+	string path = "../applications/" + req_app_name + "/repository.txt";
 	ifstream repo_file (path.c_str());
 	int file_length;
 	int ptr_index;
@@ -248,7 +320,7 @@ void app_injector::app_descriptor_loader(){
 
 	if (repo_file.is_open()) {
 
-		file_length = (TASK_DESCRIPTOR_SIZE * app_task_number) + 1; //Plus one because the descriptors stores the information of task number at the firt line
+		file_length = (TASK_DESCRIPTOR_SIZE * req_app_task_number) + 1; //Plus one because the descriptors stores the information of task number at the firt line
 
 		// Points to the begging of file
 		repo_file.clear();
@@ -264,7 +336,7 @@ void app_injector::app_descriptor_loader(){
 		packet[0] = cluster_address; // Manager address
 		packet[1] = packet_size - 2; // Packet payload
 		packet[2] = NEW_APP; //Packet service
-		packet[3] = app_id; //Packet service
+		packet[3] = ack_app_id; //Packet service
 		packet[8] = file_length; // App descriptor size
 
 		ptr_index = CONSTANT_PACKET_SIZE; //ptr_index starts after ServiceHeader
@@ -304,13 +376,13 @@ void app_injector::app_descriptor_loader(){
  * PAYLOAD_SIZE - Reads packet payload size and goes to SERVICE
  *
  * SERVICE - Verifies the service tipe. If service is APP_REQ_ACK, goes to RECEIVE_APP_ACK state.
- * If service is APP_ALLOCATION_REQUEST goes to RECEIVE_APP_ALLOCATION state.
+ * If service is APP_ALLOCATION_REQUEST goes to RECEIVE_ALLOCATION_REQ state.
 
  * RECEIVE_APP_ACK - Extracts the manager address where the application was mapped, in sequence, loads the application description
  * from repository file by calling function "app_descriptor_loader". Such function creates a block of memory that store all relevant
  * information about the application and that need to be sent to the manager (which the application was mapped) through a NEW_APP packet.
  *
- * RECEIVE_APP_ALLOCATION - Extracts the application task number and 4 relevant information about the application task, which are
+ * RECEIVE_ALLOCATION_REQ - Extracts the application task number and 4 relevant information about the application task, which are
  * embedded in the incoming packet. These information are (for each app task):
  *   ___________________________________________
  *  | id | repoaddr | code_size | allocatedproc |
@@ -326,30 +398,33 @@ void app_injector::app_descriptor_loader(){
  */
 void app_injector::receive_packet(){
 
-	/*static unsigned int payload_size = 0;
-	static unsigned int flit_counter = 0;*/
-	//static unsigned int task_info_index = 0;
-	static unsigned int task_info_size = 0;
-
 	if (reset.read() == 1)  {
 		EA_receive_packet = HEADER;
-		task_info_size = 0;
-		task_info_index = 0;
+		req_task_id = 0;
+		req_task_allocated_proc = 0;
+		req_task_master_ID = 0;
 		sig_credit_out.write(1);
 	} else {
+
+		/*Credit out update*/
+		if (EA_receive_packet == WAITING_SEND_NEW_APP || EA_receive_packet == WAITING_SEND_TASK_ALLOCATION || EA_new_app_monitor == WAITING_SEND_APP_REQ)
+			sig_credit_out.write(0);
+		else
+			sig_credit_out.write(1);
+
 
 		switch (EA_receive_packet) {
 
 			case HEADER:
 
-				if (rx.read() == 1)
+				if (rx.read() == 1 && sig_credit_out.read() == 1)
 					EA_receive_packet = PAYLOAD_SIZE;
 
 				break;
 
 			case PAYLOAD_SIZE:
 
-				if (rx.read() == 1){
+				if (rx.read() == 1 && sig_credit_out.read() == 1){
 					payload_size = data_in.read();
 					flit_counter = 2;
 					EA_receive_packet = SERVICE;
@@ -358,73 +433,63 @@ void app_injector::receive_packet(){
 				break;
 			case SERVICE:
 
-				if (rx.read() == 1){
+				if (rx.read() == 1 && sig_credit_out.read() == 1){
 					if (data_in.read() == APP_REQ_ACK)
 						EA_receive_packet = RECEIVE_APP_ACK;
 					else if (data_in.read() == APP_ALLOCATION_REQUEST)
-						EA_receive_packet = RECEIVE_APP_ALLOCATION;
+						EA_receive_packet = RECEIVE_ALLOCATION_REQ;
 				}
 
 				break;
 
 			case RECEIVE_APP_ACK: //APP_REQ_ACK:
 
-				if (rx.read() == 1){
+				if (rx.read() == 1 && sig_credit_out.read() == 1){
 
-					if(flit_counter == 4){ //Reads app_ID flit from ServiceHeader
-
-						app_id = data_in.read();
-
-					} else if (flit_counter == 5){///Reads cluster_ID flit from ServiceHeader
-
-						cluster_address = data_in.read();
-
-						cout << "Manager sent ACK" << endl;
-						//Loads app descriptor to the pointer * packet (used in send_packet function)
-						app_descriptor_loader();
-
+					switch (flit_counter) {
+						case 4:
+							ack_app_id = data_in.read();
+							break;
+						case 5:
+							cluster_address = data_in.read();
+							cout << "Manager sent ACK" << endl;
+							break;
+						default:
+							break;
 					}
 
-					if (payload_size == 0)
+					if (payload_size == 0){
+						//Loads app descriptor to the pointer * packet (used in send_packet function)
+						app_descriptor_loader();
 						EA_receive_packet = WAITING_SEND_NEW_APP;
+					}
 				}
 
 				break;
 
-			case RECEIVE_APP_ALLOCATION:
+			case RECEIVE_ALLOCATION_REQ:
 
-				if (rx.read() == 1){
+				if (rx.read() == 1 && sig_credit_out.read() == 1){
 
-					if (flit_counter == 9){// Gets task number from flit 9
+					switch (flit_counter) {
+						case 4:
+							req_task_id = data_in.read();
+							cout << "Received allocation req to task " << req_task_id << endl;
+							break;
+						case 5:
+							req_task_master_ID = data_in.read();
+							break;
+						case 6:
+							req_task_allocated_proc = data_in.read();
+							cout << "Received allocated proc " << req_task_allocated_proc << endl;
 
-						//Vezes 4 porque o mestre envia 4 informações de cada tarefa
-						task_info_size = data_in.read() * 4;
-
-						//cout << "Received task number " << task_info_size/4 << endl;
-
-						tasks_info = new unsigned int[task_info_size];
-
-						task_info_index = 0;
-
-						if (tasks_info == NULL)
-							cout << "ERROR: tasks_info is NULL" << endl;
-
-					} else if (flit_counter > CONSTANT_PACKET_SIZE){ //Reads task's info from packet
-
-						tasks_info[task_info_index++] = data_in.read();
-
-						if (task_info_size == 0 && payload_size != 0)
-							cout << "\nERROR: Packet APP_ALLOCATION is bigger than expected\n" << endl;
-						else
-							task_info_size--;
+							break;
+						default:
+							break;
 					}
 
 					if (payload_size == 0){
-
-						task_allocation_loader();
-
-						delete[] tasks_info;
-
+						task_allocation_loader(req_task_id, req_task_master_ID, req_task_allocated_proc);
 						EA_receive_packet = WAITING_SEND_TASK_ALLOCATION;
 					}
 				}
@@ -432,19 +497,13 @@ void app_injector::receive_packet(){
 				break;
 
 			case WAITING_SEND_NEW_APP:
-				if (EA_send_packet == SEND_FINISHED){
+				if (EA_send_packet == SEND_FINISHED)
 					EA_receive_packet = HEADER;
-					sig_credit_out.write(1);
-				} else
-					sig_credit_out.write(0);
 				break;
 
 			case WAITING_SEND_TASK_ALLOCATION:
-				if (EA_send_packet == SEND_FINISHED){
+				if (EA_send_packet == SEND_FINISHED)
 					EA_receive_packet = HEADER;
-					sig_credit_out.write(1);
-				} else
-					sig_credit_out.write(0);
 				break;
 		}//end switch
 
@@ -470,7 +529,12 @@ void app_injector::send_packet(){
 		switch (EA_send_packet) {
 
 			case IDLE:
-				if (EA_new_app_monitor == WAITING_SEND_APP_REQ || EA_receive_packet == WAITING_SEND_NEW_APP || EA_receive_packet == WAITING_SEND_TASK_ALLOCATION) {
+				if (EA_new_app_monitor == WAITING_SEND_APP_REQ ||
+					EA_receive_packet == WAITING_SEND_NEW_APP ||
+					EA_receive_packet == WAITING_SEND_TASK_ALLOCATION ||
+					EA_bootloader == WAIT_SEND_BOOT
+					) {
+
 					if (packet != NULL) {
 						EA_send_packet = SEND_PACKET;
 						p_index = 0;

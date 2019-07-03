@@ -5,13 +5,13 @@
  *      Author: mruaro
  */
 #include <api.h>
-#include "../MAN_Control_SDN/communication.h"
-#include "../MAN_Control_SDN/connection_request.h"
-#include "../MAN_Control_SDN/global_connection_request_queue.h"
-#include "../MAN_Control_SDN/local_connection_request_queue.h"
-#include "../MAN_Control_SDN/print_path.h"
-#include "../MAN_Control_SDN/token_queue.h"
-#include "../MAN_SDN/noc_manager.h"
+#include "communication.h"
+#include "connection_request.h"
+#include "global_connection_request_queue.h"
+#include "local_connection_request_queue.h"
+#include "print_path.h"
+#include "token_queue.h"
+#include "noc_manager.h"
 
 #define CLUSTER_ID 0
 

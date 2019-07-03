@@ -9,13 +9,17 @@
 #define _SERVICE_API_H_
 
 //These macros must be a continuation of macros present into api.h
-#define	REQSERVICEMODE	7
-#define WRITESERVICE   	8
-#define READSERVICE     9
-#define	PUTS			10
-#define CFGROUTER		11
-#define NOCSENDFREE		12
-#define INCOMINGPACKET	13
+#define	REQSERVICEMODE	9
+#define WRITESERVICE   	10
+#define READSERVICE     11
+#define	PUTS			12
+#define CFGROUTER		13
+#define NOCSENDFREE		14
+#define INCOMINGPACKET	15
+#define	GETNETADDRESS	16
+#define	ADDTASKLOCATION	17
+#define REMOVETASKLOCATION 18
+#define SETMYID		 	19
 
 //Services definition
 #define	PATH_CONNECTION_REQUEST		1000
@@ -30,11 +34,26 @@
 extern int SystemCall();
 
 #define RequestServiceMode()				SystemCall(REQSERVICEMODE, 0, 0, 0)
-#define SendService(target, msg, uint_size) while(!SystemCall(WRITESERVICE, target, (unsigned int *)msg, uint_size, 0))
+#define SendService(target, msg, uint_size) while(!SystemCall(WRITESERVICE, target, (unsigned int *)msg, uint_size))
 #define ReceiveService(msg)					while(!SystemCall(READSERVICE, 	(unsigned int *)msg, 0, 0))
+//#define ReceiveIO(target, msg, uint_size)
 #define Puts(str) 							while(!SystemCall(PUTS, 		(char*)str,			0, 0))
 #define ConfigRouter(target, ports, subnet)	while(!SystemCall(CFGROUTER, 	target, ports, subnet))
 #define	NoCSendFree()						SystemCall(NOCSENDFREE, 	0, 0, 0)
 #define IncomingPacket()					SystemCall(INCOMINGPACKET, 	0, 0, 0)
+#define GetNetAddress()						SystemCall(GETNETADDRESS, 	0, 0, 0)
+#define AddTaskLocation(task_id, location)	SystemCall(ADDTASKLOCATION, task_id, location, 0)
+#define RemoveTaskLocation(task_id)			SystemCall(REMOVETASKLOCATION, task_id, 0, 0)
+#define SetMyID(new_id)						SystemCall(SETMYID, new_id, 0, 0)
+
+typedef struct {
+	unsigned int task_id;
+	unsigned int task_address;
+	unsigned int service;
+	unsigned int msg_size;
+	unsigned int * msg;
+} ServiceMessage;
+
+
 
 #endif /* _SERVICE_API_H_ */

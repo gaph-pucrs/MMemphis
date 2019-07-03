@@ -34,6 +34,9 @@ def main():
     APP_NAME        = sys.argv[2]   
     APP_PATH        = TESTCASE_PATH + "/applications/" + APP_NAME
     
+    #THIS LINE MAKES THE APP ALWWAYS BE RETRIVED FROM MEMPHIS_PATH/application
+    delete_if_exists(APP_PATH)
+    
     #Clean the app if it exists inside the testcase
     if os.path.exists(APP_PATH):
         os.system("cd "+APP_PATH+"; make clean")

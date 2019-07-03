@@ -39,8 +39,11 @@ def generate_sw_pkg( yaml_r ):
     max_local_tasks =   get_tasks_per_PE(yaml_r)
     x_mpsoc_dim =       get_mpsoc_x_dim(yaml_r)
     y_mpsoc_dim =       get_mpsoc_y_dim(yaml_r)
+    x_cluster_dim =     get_cluster_x_dim(yaml_r)
+    y_cluster_dim =     get_cluster_y_dim(yaml_r)
     IO_peripherals =    get_IO_peripherals(yaml_r)
     subnets_number =    get_subnet_number(yaml_r)
+    cluster_number =    (x_mpsoc_dim/x_cluster_dim) + (y_mpsoc_dim/y_cluster_dim)
     
     
     file_lines = []
@@ -55,6 +58,9 @@ def generate_sw_pkg( yaml_r ):
     
     file_lines.append("#define XDIMENSION                  "+str(x_mpsoc_dim)+"     //mpsoc  x dimension\n")
     file_lines.append("#define YDIMENSION                  "+str(y_mpsoc_dim)+"     //mpsoc  y dimension\n")
+    file_lines.append("#define XCLUSTER                    "+str(x_cluster_dim)+"     //cluster x dimension\n") 
+    file_lines.append("#define YCLUSTER                    "+str(y_cluster_dim)+"     //cluster y dimension\n")
+    file_lines.append("#define CLUSTER_NUMBER              "+str(cluster_number)+"     //total number of cluster\n")
     #file_lines.append("#define APP_NUMBER                  "+str(apps_number)+"     //max number of APPs described into testcase file\n")
     
     file_lines.append("//Peripherals\n")
