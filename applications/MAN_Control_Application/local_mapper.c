@@ -13,22 +13,23 @@
 
 void initialize(){
 
-	AddTaskLocation(global_mapper_id,global_mapper_id);
-
 	unsigned int * message = get_message_slot();
 
-	message[0] = INIT_I_AM_ALIVE;		//Task Service
-	message[1] = GetNetAddress();	//Task Address
+	AddTaskLocation(global_task_ID,global_task_ID);
+	net_address = GetNetAddress();	//Task Address
 
-	Puts("Sending I AM ALIVE to global mapper\n");
-	SendService(global_mapper_id, message, 2);
+
+	message[0] = INIT_I_AM_ALIVE;		//Task Service
+	message[1] = net_address;	//Task Address
+
+	//Puts("Sending I AM ALIVE to global mapper\n");
+	SendService(global_task_ID, message, 2);
 }
 
 void initialize_ids(unsigned int * msg){
 
 	int msg_index;
 	unsigned int id, loc;
-	unsigned int my_id;
 
 	cluster_position =  msg[1];
 	cluster_x_offset = (cluster_position >> 8) * XCLUSTER;
@@ -36,10 +37,10 @@ void initialize_ids(unsigned int * msg){
 
 	init_procesors();
 
-	my_id = position_to_ID(cluster_position);
+	my_task_ID = position_to_ID(cluster_position);
 
 	//Registers the page using to the own task
-	page_used(GetNetAddress(), my_id);
+	page_used(net_address, my_task_ID);
 
 	if (cluster_position == 0x000){
 		//Sets page used for the global manager
@@ -52,11 +53,11 @@ void initialize_ids(unsigned int * msg){
 	for(int i=0; i<=CLUSTER_NUMBER; i++){
 		id = msg[msg_index++];
 		loc = msg[msg_index++];
-		putsv("Addint task ", id);
+		//putsv("Addint task ", id);
 		AddTaskLocation(id, loc);
 	}
 
-	SetMyID(my_id);
+	SetMyID(my_task_ID);
 	Puts("Local mapper initialized by global mapper, address = "); Puts(itoh(cluster_position)); Puts("\n");
 	Puts("Cluster position: "); Puts(itoh(cluster_position)); Puts("\n");
 	Puts("Cluster x offset: "); Puts(itoa(cluster_x_offset)); Puts("\n");
@@ -70,12 +71,15 @@ void initialize_ids(unsigned int * msg){
 void send_app_allocation_request(Application * app_ptr){
 
 	Task * task_ptr;
+	unsigned int master_addr;
+
+	master_addr = (my_task_ID << 16) | net_address;
 
 	for(int task = 0; task < app_ptr->tasks_number; task++){
 
 		task_ptr = &app_ptr->tasks[task];
 
-		send_task_allocation_message(task_ptr->id, task_ptr->allocated_proc, cluster_position);
+		send_task_allocation_message(task_ptr->id, task_ptr->allocated_proc, master_addr);
 	}
 
 }
@@ -174,8 +178,98 @@ void handle_new_app(unsigned int * msg){
 
 	}
 
+}
 
+/** Assembles and sends a TASK_RELEASE packet to a slave kernel
+ *  \param app The Application instance
+ */
+void send_task_release(Application * app){
 
+	unsigned int * message;
+	unsigned int msg_size = CONSTANT_PKT_SIZE;
+
+	message = get_message_slot();
+
+	for (int i =0; i<app->tasks_number; i++){
+
+		message[msg_size++] = app->tasks[i].allocated_proc;
+		//Puts("Send task "); Puts(itoa(app->app_ID << 8 | i)); Puts(" loc "); Puts(itoh(app->tasks[i].allocated_proc)); Puts("\n");
+	}
+
+	//putsv("MEssage size: ", msg_size);
+
+	for (int i =0; i<app->tasks_number; i++){
+
+		message[0] = app->tasks[i].allocated_proc;
+		message[1] = msg_size - 2;
+		message[2] = TASK_RELEASE;
+		message[3] = app->tasks[i].id; //p->task_ID
+		message[8] = app->tasks_number; //p->app_task_number
+		message[9] = app->tasks[i].data_size; //p->data_size
+		message[11] = app->tasks[i].bss_size; //p->bss_size
+
+		SendRaw(message, msg_size);
+
+		app->tasks[i].status = TASK_RUNNING;
+
+		//putsv("\n -> send TASK_RELEASE to task ", app->tasks[i].id);
+		//puts(" in proc "); puts(itoh(p->header)); puts("\n----\n");
+	}
+
+	app->status = RUNNING;
+
+}
+
+void handle_task_allocated(unsigned int task_id){
+
+	unsigned int app_id, allocated_tasks;
+	Application * app_ptr;
+
+	//putsv("\n -> TASK ALLOCATED from task ", task_id);
+
+	app_id = task_id >> 8;
+
+	app_ptr = get_application_ptr(app_id);
+
+	allocated_tasks = set_task_allocated(app_ptr, task_id);
+
+	if (allocated_tasks == app_ptr->tasks_number){
+
+		//Puts("\nSEND TASK RELEASE\n\n");
+		/*Send the TASK RELEASE to all tasks begin its execution*/
+		send_task_release(app_ptr);
+	}
+}
+
+void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
+	Application * app_ptr;
+	Task * task_ptr;
+	unsigned int master_address;
+	unsigned int master_id;
+	unsigned int * message;
+
+	putsv("TASK_TERMINATED received from task: ", task_id);
+
+	master_address = master_addr & 0xFFFF;
+	master_id = master_addr >> 16;
+
+	app_ptr = get_application_ptr(task_id >> 8);
+
+	set_task_terminated(app_ptr, task_id);
+
+	task_ptr =  get_task_ptr(app_ptr, task_id);
+
+	if (task_ptr->borrowed_master == -1){
+		page_released(task_ptr->allocated_proc, task_id);
+		Puts("Task is local, page released\n");
+	} else {
+		message = get_message_slot();
+		message[0] = TASK_TERMINATED_OTHER_CLUSTER;
+		message[1] = task_ptr->allocated_proc;
+		message[2] = task_id;
+		send(task_ptr->borrowed_master, message, 3);
+		Puts("Sending TASK_TERMINATED_OTHER_CLUSTER to "); Puts(itoh(task_ptr->borrowed_master)); Puts("\n");
+	}
 }
 
 
@@ -187,6 +281,16 @@ void handle_message(unsigned int * data_msg){
 			break;
 		case NEW_APP:
 			handle_new_app(data_msg);
+			break;
+		case TASK_ALLOCATED:
+			handle_task_allocated(data_msg[1]);
+			break;
+		case TASK_TERMINATED:
+			handle_task_terminated(data_msg[1], data_msg[2]);
+			break;
+		case TASK_TERMINATED_OTHER_CLUSTER:
+			//			  proc_addr  , task_id
+			page_released(data_msg[1], data_msg[2]);
 			break;
 
 		case LOAN_PROCESSOR_REQUEST:

@@ -53,40 +53,25 @@ unsigned int averange_latency = 500;				//!< Stores the averange latency
 //void send_task_terminated(TCB * terminated_task, int perc){/*<--- perc**apagar trecho de end simulation****/
 void send_task_terminated(TCB * terminated_task){
 
-	ServiceHeader *p = get_service_header_slot();
+	unsigned int * message[3];
+	unsigned int master_addr, master_id;
 
-	p->header = terminated_task->master_address;
+	message[0] = TASK_TERMINATED;
+	message[1] = terminated_task->id; //p->task_ID
+	message[2] = terminated_task->master_address;
 
-	p->service = TASK_TERMINATED;
+	master_addr = terminated_task->master_address & 0xFFFF;
+	master_id = terminated_task->master_address >> 16;
 
-	p->task_ID = terminated_task->id;
+	send_service_api_message(master_id, master_addr, message, 3);
 
-	p->master_ID = cluster_master_address;
+	puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
+	putsv("Master id: ", master_id);
 
-	p->utilization = terminated_task->scheduling_ptr->utilization;
+	while(is_send_active(PS_SUBNET));
 
-	/***apagar trecho de end simulation****/
-	//p->mode = perc;
-	//putsv("Sending TASK_TERMINATED with path_requester_nmr: ", p->mode);
-	/***apagar trecho de end simulation****/
-	send_packet(p, 0, 0);
+	puts("Sended\n");
 
-	if (terminated_task->master_address != cluster_master_address){
-
-		p = get_service_header_slot();
-
-		p->header = cluster_master_address;
-
-		p->service = TASK_TERMINATED_OTHER_CLUSTER;
-
-		p->task_ID = terminated_task->id;
-
-		p->master_ID = terminated_task->master_address;
-
-		p->utilization = terminated_task->scheduling_ptr->utilization;
-
-		send_packet(p, 0, 0);
-	}
 
 }
 
@@ -155,17 +140,19 @@ void send_NoC_switching_ack(int producer_task, int consumert_task, int subnet, i
  */
 void send_task_allocated(TCB * allocated_task){
 
-	ServiceHeader *p = get_service_header_slot();
+	unsigned int master_addr, master_task_id;
+	unsigned int * message[3];
 
-	p->header = allocated_task->master_address;
+	message[0] = TASK_ALLOCATED;
+	message[1] = allocated_task->id;
 
-	p->service = TASK_ALLOCATED;
+	master_task_id = allocated_task->master_address >> 16;
+	master_addr = allocated_task->master_address & 0xFFFF;
 
-	p->task_ID = allocated_task->id;
+	send_service_api_message(master_task_id, master_addr, message, 2);
 
-	p->master_ID = cluster_master_address;
+	while(is_send_active(PS_SUBNET));
 
-	send_packet(p, 0, 0);
 	puts("Sending task allocated\n");
 }
 
@@ -680,7 +667,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 		break;
 
-		case IOSEND:
+		case SENDRAW:
 
 			if(is_send_active(PS_SUBNET))
 				return 0;
@@ -1023,11 +1010,17 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		tcb_ptr = searchTCB(p->task_ID);
 
+		//putsv("TASK_RELEASE\nTask ID: ", p->task_ID);
+
 		app_ID = p->task_ID >> 8;
 
 		tcb_ptr->data_lenght = p->data_size;
 
+		//puts("Data lenght: "); puts(itoh(tcb_ptr->data_lenght)); puts("\n");
+
 		tcb_ptr->bss_lenght = p->bss_size;
+
+		//puts("BSS lenght: "); puts(itoh(tcb_ptr->data_lenght)); puts("\n");
 
 		tcb_ptr->text_lenght = tcb_ptr->text_lenght - tcb_ptr->data_lenght;
 
@@ -1035,10 +1028,13 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 			tcb_ptr->scheduling_ptr->status = READY;
 		}
 
+		//putsv("app task number: ", p->app_task_number);
+
 		DMNI_read_data( (unsigned int) app_tasks_location, p->app_task_number);
 
 		for (int i = 0; i < p->app_task_number; i++){
 			add_task_location(app_ID << 8 | i, app_tasks_location[i]);
+			//puts("Add task "); puts(itoa(app_ID << 8 | i)); puts(" loc "); puts(itoh(app_tasks_location[i])); puts("\n");
 		}
 
 		if (current == &idle_tcb){
@@ -1106,6 +1102,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 		break;
 
 	case SERVICE_TASK_MESSAGE:
+	case TASK_TERMINATED:
 
 		//puts("\nAPI\n");
 

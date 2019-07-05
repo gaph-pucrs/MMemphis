@@ -83,7 +83,7 @@ void set_task_migrated(int, int);
 
 unsigned int get_app_id_counter();
 
-Application * read_and_create_application(unsigned int, volatile unsigned int *);
+Application * read_and_create_application(unsigned int, unsigned int *);
 
 void remove_application(int);
 
@@ -228,7 +228,7 @@ void set_task_migrated(int task_id, int new_proc){
 
 
 
-Application * read_and_create_application(unsigned int app_id, volatile unsigned int * ref_address){
+Application * read_and_create_application(unsigned int app_id, unsigned int * ref_address){
 
 	volatile unsigned int task_id;
 	Task * tp;

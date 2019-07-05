@@ -23,7 +23,7 @@
 #define GETMYID   			4
 #define ECHO      			5
 #define	REALTIME			6
-#define IOSEND 				7
+#define SENDRAW 			7
 #define IORECEIVE  			8
 
 #define MemoryWrite(A,V) *(volatile unsigned int*)(A)=(V)
@@ -34,7 +34,7 @@ extern int SystemCall();
 
 #define Send(msg, target) while(!SystemCall(WRITEPIPE, (unsigned int*)msg, target,0))
 #define Receive(msg, source) while(!SystemCall(READPIPE, (unsigned int*)msg, source,0))
-#define SendIO(msg, uint_size)	while(!SystemCall(IOSEND, (unsigned int *)msg, uint_size, 0))
+#define SendRaw(msg, uint_size)	while(!SystemCall(SENDRAW, (unsigned int *)msg, uint_size, 0))
 #define GetTick() SystemCall(GETTICK,0,0,0)
 #define GetMyID() SystemCall(GETMYID,0,0,0)
 #define Echo(str) SystemCall(ECHO, (char*)str,0,0)

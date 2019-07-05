@@ -74,7 +74,7 @@ void send_task_allocation_message(unsigned int task_id, unsigned int allocated_p
 	message[5] = allocated_proc;
 
 	//Send message to Peripheral
-	SendIO(message, 6);
+	SendRaw(message, 6);
 
 	Puts("Requesting task "); Puts(itoa(task_id)); Puts(" allocated at proc "); Puts(itoh(allocated_proc));
 	Puts(" belowing to master "); Puts(itoh(master_addr)); Puts("\n");

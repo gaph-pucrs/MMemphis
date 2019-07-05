@@ -12,7 +12,7 @@
 #include "application.h"
 #include "resoucer_controller.h"
 
-#define RECLUSTERING_DEBUG	1		//!<When enable compile the puts in this file
+#define RECLUSTERING_DEBUG	0		//!<When enable compile the puts in this file
 
 typedef struct {
 	Task * task;				//!<Task pointer of the task under reclustering
@@ -82,7 +82,7 @@ void send_loan_proc_request(int target_cluster, int taskID){
 	message[0] = LOAN_PROCESSOR_REQUEST;
 	message[1] = cluster_position; //Uses the manager PE as reference
 	message[2] = taskID; //task id
-	message[3] = GetNetAddress(); //Allocated proc reference
+	message[3] = net_address; //Allocated proc reference
 
 	send(target_cluster, message, 4);
 
@@ -174,8 +174,10 @@ void fires_reclustering_protocol(){
 	this_x = cluster_x_offset;
 	this_y = cluster_y_offset;
 
+#if RECLUSTERING_DEBUG
 	putsv("this_x: ", this_x);
 	putsv("this_y: ", this_y);
+#endif
 
 	//Walks for every cluster inside the level
 	for(int y=0; y<CLUSTER_Y_SIZE; y++){
@@ -184,18 +186,21 @@ void fires_reclustering_protocol(){
 			other_x = x * XCLUSTER;
 			other_y = y * YCLUSTER;
 
+#if RECLUSTERING_DEBUG
 			putsv("current_position: ", (x << 8 | y));
+#endif
 
 			if (cluster_position == (x << 8 | y)){
-				Puts("continue\n");
 				continue;
 			}
 
+#if RECLUSTERING_DEBUG
 			putsv("initial_x_level: ", initial_x_level);
 			putsv("initial_y_level: ", initial_y_level);
 
 			putsv("other_x: ", other_x);
 			putsv("other_y: ", other_y);
+#endif
 
 
 			hops_x = abs(this_x - other_x);
@@ -235,7 +240,7 @@ void handle_reclustering(unsigned int * msg){
 		/*
 			msg[1] = cluster_position; //Uses the manager PE as reference
 			msg[2] = taskID; //task id
-			msg[3] = GetNetAddress(); //Allocated proc reference
+			msg[3] = net_address; //Allocated proc reference
 		 */
 
 #if RECLUSTERING_DEBUG
@@ -342,7 +347,9 @@ void handle_reclustering(unsigned int * msg){
 				if (reclustering.neighbors_level > max_neighbors_level){
 
 					reclustering.neighbors_level = 1;
+#if RECLUSTERING_DEBUG
 					Puts("Warning: reclustering repeated!\n");
+#endif
 
 				}
 

@@ -52,7 +52,7 @@ void handle_i_am_alive(unsigned int source_addr){
 	unsigned int * message;
 	unsigned int index = 0;
 
-	Puts("handle_i_am_alive from "); Puts(itoa(source_addr)); Puts("\n");
+	//Puts("handle_i_am_alive from "); Puts(itoa(source_addr)); Puts("\n");
 
 	for(int i=0; i < CLUSTER_NUMBER; i++ ){
 		//Mapping in progress is being reused here, only for initializaiton, after that, the variable stores if a cluster is performing mapping or not
@@ -68,14 +68,14 @@ void handle_i_am_alive(unsigned int source_addr){
 		}
 	}
 
-	Puts("I am alive: "); Puts(itoa(received_i_am_alive_counter)); Puts("\n");
+	//Puts("I am alive: "); Puts(itoa(received_i_am_alive_counter)); Puts("\n");
 
 	while (error_flag)
 		Puts("ERROR: received address does not belongs to any cluster\n");
 
 	if (received_i_am_alive_counter == CLUSTER_NUMBER){
 
-		Puts("Initilizing local mappers\n");
+		Puts("Initializing local mappers\n");
 
 		message = get_message_slot();
 		message[0] = INIT_LOCAL;
@@ -86,8 +86,8 @@ void handle_i_am_alive(unsigned int source_addr){
 		for(int i=0; i<CLUSTER_NUMBER; i++){
 			message[index++] = (i+1); //Cluster task ID, +1 pq o global mapper possui o ID 0
 			message[index++] = clusters[i].free_resources;
-			Puts("ID "); Puts(itoa((i+1)));
-			Puts("\naddr: "); Puts(itoh(clusters[i].free_resources)); Puts("\n");
+			//Puts("ID "); Puts(itoa((i+1)));
+			//Puts("\naddr: "); Puts(itoh(clusters[i].free_resources)); Puts("\n");
 		}
 
 		for(int i=0; i<CLUSTER_NUMBER; i++){
@@ -113,7 +113,7 @@ void handle_i_am_alive(unsigned int source_addr){
 		message[0] = APP_INJECTOR;
 		message[1] = 1;
 		message[2] = APP_MAPPING_COMPLETE;
-		SendIO(message, 3);
+		SendRaw(message, 3);
 	}
 
 }
@@ -169,7 +169,7 @@ void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_numbe
 	message[2] = APP_REQ_ACK;
 	message[3] = app_id_counter;
 	message[4] = cluster_loc; //PLus 1 because as the global mapper is in ID 0 it shift all other IDs in more 1
-	SendIO(message, 5);
+	SendRaw(message, 5);
 }
 
 void handle_message(unsigned int * data_msg){
