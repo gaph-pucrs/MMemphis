@@ -799,7 +799,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			return net_address;
 		case ADDTASKLOCATION:
 			add_task_location(arg0, arg1);
-			puts("Added task id "); puts(itoa(arg0)); puts(" at loc "); puts(itoh(arg1)); puts("\n");
+			//puts("Added task id "); puts(itoa(arg0)); puts(" at loc "); puts(itoh(arg1)); puts("\n");
 			break;
 		case REMOVETASKLOCATION:
 			remove_task_location(arg0);
@@ -1109,8 +1109,11 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 	case TASK_TERMINATED:
 	case TASK_ALLOCATED:
+	case APP_TERMINATED:
 	case TASK_TERMINATED_OTHER_CLUSTER:
+	case APP_ALLOCATED:
 	case NEW_APP_REQ:
+	case NEW_APP:
 	case SERVICE_TASK_MESSAGE:
 	case INIT_I_AM_ALIVE:
 	case INIT_LOCAL:

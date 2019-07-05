@@ -85,7 +85,7 @@ unsigned int get_app_id_counter();
 
 Application * read_and_create_application(unsigned int, unsigned int *);
 
-void remove_application(int);
+void remove_application(Application *);
 
 void initialize_applications();
 
@@ -272,9 +272,9 @@ Application * read_and_create_application(unsigned int app_id, unsigned int * re
 	return app;
 }
 
-void remove_application(int app_id){
+void remove_application(Application * app){
 
-	Application * app = get_application_ptr(app_id);
+	//Application * app = get_application_ptr(app_id);
 
 	app->app_ID = -1;
 

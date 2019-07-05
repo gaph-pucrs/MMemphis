@@ -228,9 +228,9 @@ void app_injector::monitor_new_app(){
 
 						task_static_mapping = new int[req_app_task_number];
 
-						cout << "App name: " << req_app_name << endl;
-						cout << "req_app_cluster_id: " << req_app_cluster_id << endl;
-						cout << "app_task_number: " << req_app_task_number << endl;
+						//cout << "App name: " << req_app_name << endl;
+						//cout << "req_app_cluster_id: " << req_app_cluster_id << endl;
+						//cout << "app_task_number: " << req_app_task_number << endl;
 
 						//Gets the allocated processor for each task, useful for static task mapping
 						for(unsigned int i=0; i<req_app_task_number; i++){
@@ -240,8 +240,6 @@ void app_injector::monitor_new_app(){
 							//cout << "task id " << i << " mapped at " <<  task_static_mapping[i] << endl;
 							line_counter++;
 						}
-
-						cout << "App Injector requesting app " << req_app_name << endl;
 
 						EA_new_app_monitor = WAITING_TIME;
 					}
@@ -270,7 +268,9 @@ void app_injector::monitor_new_app(){
 					packet[CONSTANT_PACKET_SIZE] = NEW_APP_REQ;
 					packet[CONSTANT_PACKET_SIZE+1] = req_app_cluster_id;
 					packet[CONSTANT_PACKET_SIZE+2] = req_app_task_number;
-					cout << "NEW_APP_SENT" << endl;
+					//cout << "NEW_APP_SENT" << endl;
+
+					cout << "App Injector requesting app " << req_app_name << endl;
 
 					EA_new_app_monitor = WAITING_SEND_APP_REQ;
 				}
@@ -326,9 +326,9 @@ void app_injector::app_descriptor_loader(){
 		packet = new unsigned int[packet_size];
 
 		//Assembles the Service Header on packet
-		packet[0] = (cluster_address & 0xFFFFFF); // Manager address
+		packet[0] = (cluster_address & 0xFFFF); // Manager address
 		packet[1] = packet_size - 2; // Packet payload
-		packet[2] = SERVICE_TASK_MESSAGE;
+		packet[2] = NEW_APP;
 		packet[4] = (cluster_address >> 16); //Task Global Mapper
 		packet[8] = file_length + 3; //Payload lenght
 		packet[CONSTANT_PACKET_SIZE] = NEW_APP;
@@ -357,7 +357,7 @@ void app_injector::app_descriptor_loader(){
 		/*for(int i=0; i<packet_size; i++){
 			cout << hex << packet[i] << endl;
 		}*/
-		cout << "APP_DESCRIPTOR SENT" << endl;
+		//cout << "APP_DESCRIPTOR SENT" << endl;
 
 		repo_file.close();
 	} else {
@@ -458,18 +458,16 @@ void app_injector::receive_packet(){
 					switch (flit_counter) {
 						case 4:
 							ack_app_id = data_in.read();
-							cout << "App ID: " << ack_app_id << endl;
 							break;
 						case 5:
 							cluster_address = data_in.read();
-							cout << "Manager sent ACK" << endl;
-							cout << "Cluster Addr: " << hex << cluster_address << endl;
 							break;
 						default:
 							break;
 					}
 
 					if (payload_size == 0){
+						cout << "Manager sent ACK" << endl;
 						//Loads app descriptor to the pointer * packet (used in send_packet function)
 						app_descriptor_loader();
 						EA_receive_packet = WAITING_SEND_NEW_APP;
@@ -485,15 +483,12 @@ void app_injector::receive_packet(){
 					switch (flit_counter) {
 						case 4:
 							req_task_id = data_in.read();
-							cout << "Received allocation req to task " << req_task_id << endl;
 							break;
 						case 5:
 							req_task_master_ID = data_in.read();
 							break;
 						case 6:
 							req_task_allocated_proc = data_in.read();
-							cout << "Received allocated proc " << req_task_allocated_proc << endl;
-
 							break;
 						default:
 							break;

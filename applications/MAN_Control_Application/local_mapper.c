@@ -71,7 +71,9 @@ void initialize_ids(unsigned int * msg){
 void send_app_allocation_request(Application * app_ptr){
 
 	Task * task_ptr;
-	unsigned int master_addr;
+	unsigned int master_addr, msg_size;
+	unsigned int * message;
+
 
 	master_addr = (my_task_ID << 16) | net_address;
 
@@ -81,6 +83,24 @@ void send_app_allocation_request(Application * app_ptr){
 
 		send_task_allocation_message(task_ptr->id, task_ptr->allocated_proc, master_addr);
 	}
+
+	message = get_message_slot();
+	message[0] = APP_ALLOCATED;
+	message[1] = app_ptr->app_ID;
+	message[2] = app_ptr->tasks_number;
+	msg_size = 3;
+	for(int task = 0; task < app_ptr->tasks_number; task++){
+		task_ptr = &app_ptr->tasks[task];
+
+		if (task_ptr->borrowed_master == -1){
+			message[msg_size++] = cluster_position;
+		} else {
+			message[msg_size++] = task_ptr->borrowed_master;
+		}
+		//Puts("Task "); Puts(itoa(task_ptr->id)); Puts(" to cluster "); Puts(itoh(message[msg_size-1])); Puts("\n");
+	}
+	SendService(global_task_ID, message, msg_size);
+	Puts("APP_ALLOCATED sent\n\n");
 
 }
 
@@ -247,6 +267,7 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 	unsigned int master_address;
 	unsigned int master_id;
 	unsigned int * message;
+	unsigned int msg_size;
 
 	putsv("TASK_TERMINATED received from task: ", task_id);
 
@@ -261,7 +282,7 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 
 	if (task_ptr->borrowed_master == -1){
 		page_released(task_ptr->allocated_proc, task_id);
-		Puts("Task is local, page released\n");
+		//Puts("Task is local, page released\n");
 	} else {
 		message = get_message_slot();
 		message[0] = TASK_TERMINATED_OTHER_CLUSTER;
@@ -270,8 +291,37 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 		send(task_ptr->borrowed_master, message, 3);
 		Puts("Sending TASK_TERMINATED_OTHER_CLUSTER to "); Puts(itoh(task_ptr->borrowed_master)); Puts("\n");
 	}
-}
 
+	//Test if is necessary to terminate the app
+	if (app_ptr->terminated_tasks == app_ptr->tasks_number){
+
+		/*Sends APP TERMINATOR to global mapper*/
+		message = get_message_slot();
+		message[0] = APP_TERMINATED;
+		message[1] = app_ptr->app_ID;
+		message[2] = app_ptr->tasks_number;
+		message[3] = cluster_position;
+		msg_size = 4;
+
+		for (int i=0; i<app_ptr->tasks_number; i++){
+
+			//Puts("Task "); Puts(itoa(app_ptr->tasks[i].id));
+			if (app_ptr->tasks[i].borrowed_master != -1){
+				message[msg_size++] = app_ptr->tasks[i].borrowed_master;
+				//Puts(" master borrowed "); Puts(itoh(app_ptr->tasks[i].borrowed_master)); Puts("\n");
+			} else {
+				message[msg_size++] = cluster_position;
+				//Puts(" master local "); Puts(itoh(cluster_position)); Puts("\n");
+			}
+		}
+		/*As the message is being sent to global master is being used the SendService( instead send(*/
+		SendService(global_task_ID, message, msg_size);
+
+		remove_application(app_ptr);
+
+		Puts("App terminated!\n\n");
+	}
+}
 
 void handle_message(unsigned int * data_msg){
 

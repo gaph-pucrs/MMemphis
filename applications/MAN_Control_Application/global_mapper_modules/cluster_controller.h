@@ -43,23 +43,6 @@ int search_cluster(int app_task_number) {
 }
 
 
-/*Total MPSoC resources controll*/
-int decrease_avail_mpsoc_resources(unsigned int num_tasks){
-	if (num_tasks > total_mpsoc_resources)
-		return 0;
-
-	total_mpsoc_resources -= num_tasks;
-	return 1;
-}
-
-void increase_avail_mpsoc_resources(int num_tasks){
-	total_mpsoc_resources += num_tasks;
-
-	while (total_mpsoc_resources > (MAX_LOCAL_TASKS * XDIMENSION * YDIMENSION))
-		Puts("ERROR: total_mpsoc_resources higher than MAX\n");
-}
-
-
 /** Allocate resources to a Cluster by decrementing the number of free resources. If the number of resources
  * is higher than free_resources, then free_resourcers receives zero, and the remaining of resources are allocated
  * by reclustering
@@ -68,15 +51,16 @@ void increase_avail_mpsoc_resources(int num_tasks){
  */
 void allocate_cluster_resource(int cluster_index, int nro_resources){
 
-	Puts("\n\n Cluster address "); Puts(itoh(clusters[cluster_index].x_pos << 8 | clusters[cluster_index].y_pos)); Puts(" resources "); Puts(itoa(clusters[cluster_index].free_resources));
+	//Puts(" Cluster address "); Puts(itoh(clusters[cluster_index].x_pos << 8 | clusters[cluster_index].y_pos)); Puts(" resources "); Puts(itoa(clusters[cluster_index].free_resources));
 
-	if (clusters[cluster_index].free_resources > nro_resources){
+	if (clusters[cluster_index].free_resources >= nro_resources){
 		clusters[cluster_index].free_resources -= nro_resources;
 	} else {
-		clusters[cluster_index].free_resources = 0;
+		Puts("ERROR: cluster has not enought resources\n");
+		while(1);
 	}
 
-	Puts(" ALLOCATE - nro resources : ") Puts(itoa(clusters[cluster_index].free_resources)); Puts("\n\n");
+	//putsv(" ALLOCATE - nro resources : ", clusters[cluster_index].free_resources);
 }
 
 /** Release resources of a Cluster by incrementing the number of free resources according to the nro of resources
@@ -86,11 +70,11 @@ void allocate_cluster_resource(int cluster_index, int nro_resources){
  */
 void release_cluster_resources(int cluster_index, int nro_resources){
 
-	//puts(" Cluster address "); puts(itoh(cluster_info[cluster_index].master_x << 8 | cluster_info[cluster_index].master_y)); puts(" resources "); puts(itoa(cluster_info[cluster_index].free_resources));
+	//Puts(" Cluster address "); Puts(itoh(clusters[cluster_index].x_pos << 8 | clusters[cluster_index].y_pos)); Puts(" resources "); Puts(itoa(clusters[cluster_index].free_resources));
 
 	clusters[cluster_index].free_resources += nro_resources;
 
-   // putsv(" RELEASE - nro resources : ", cluster_info[cluster_index].free_resources);
+    //putsv(" RELEASE - nro resources : ", clusters[cluster_index].free_resources);
 }
 
 

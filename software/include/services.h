@@ -22,6 +22,7 @@
 #define 	TASK_TERMINATED     			0x00000070
 #define 	LOAN_PROCESSOR_RELEASE			0x00000090
 #define 	DEBUG_MESSAGE  					0x00000100
+#define 	APP_ALLOCATED					0x00000120
 #define 	NEW_TASK						0x00000130
 #define	 	APP_TERMINATED					0x00000140
 #define		NEW_APP							0x00000150 //Injector to Mestre (carries App descriptor)

@@ -323,7 +323,7 @@ void handle_reclustering(unsigned int * msg){
 			if (reclustering.current_borrowed_proc != -1){
 
 				//At this point the reclustering has benn finished successifully
-				Puts("Reclustering acacabou com sucesso, tarefa alocada no proc "); Puts(itoh(reclustering.current_borrowed_proc)); putsv(" com id ", reclustering.task->id);
+				Puts("Reclustering acabou com sucesso, tarefa alocada no proc "); Puts(itoh(reclustering.current_borrowed_proc)); putsv(" com id ", reclustering.task->id);
 
 				reclustering.active = 0;
 

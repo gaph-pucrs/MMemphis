@@ -7,6 +7,19 @@
 #include "common_include.h"
 #include "global_mapper_modules/cluster_controller.h"
 
+
+int get_local_mapper_index(unsigned int pos){
+	int tx, ty;
+
+	tx = pos >> 8;
+	ty = pos & 0xFF;
+
+	//Converts address in ID
+	pos = (tx + ty*(XDIMENSION/XCLUSTER)); //PLus 1 because the global mapper uses ID 0
+
+	return pos;
+}
+
 void instantiate_mapping_app(){
 
 	unsigned int cluster_id = 0;
@@ -23,7 +36,7 @@ void instantiate_mapping_app(){
 			//Aqui o mapeamentos dos lcoal mapper eh definido
 			cl_ptr->free_resources = (x*XCLUSTER << 8) | (y*YCLUSTER); //Reusing of this variable only for initialization
 
-			Puts("Cluster id "); Puts(itoa(cluster_id)); Puts("\nLocated at proc: "); Puts(itoh(cl_ptr->free_resources)); Puts("\n");
+			//Puts("Cluster id "); Puts(itoa(cluster_id)); Puts("\nLocated at proc: "); Puts(itoh(cl_ptr->free_resources)); Puts("\n");
 
 			if (x == 0 && y == 0)
 				//Esse +1 eh pq no PE 0x0 vai ficar o global mapper e o local mapper0x0 deve ficar em um PE diferente, portanto movi +1 pra direita
@@ -36,7 +49,8 @@ void instantiate_mapping_app(){
 		}
 	}
 
-	decrease_avail_mpsoc_resources((cluster_id + 1));
+	total_mpsoc_resources -= (cluster_id + 1);
+	putsv("total_mpsoc_resources: ", total_mpsoc_resources);
 
 	//Adiciona a si mesmo na tabela da task location
 	AddTaskLocation(0, 0);
@@ -109,6 +123,7 @@ void handle_i_am_alive(unsigned int source_addr){
 				clusters[i].free_resources = (MAX_LOCAL_TASKS * XCLUSTER * YCLUSTER) - 1;
 		}
 
+		/*Sending MAPPING COMPLETE to APP INJECTOR*/
 		message = get_message_slot();
 		message[0] = APP_INJECTOR;
 		message[1] = 1;
@@ -156,7 +171,9 @@ void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_numbe
 	//putsv("Global Master reserve application: ", num_app_tasks);
 	//putsv("total_mpsoc_resources ", total_mpsoc_resources);
 
-	decrease_avail_mpsoc_resources(app_task_number);
+	putsv("FIRST total_mpsoc_resources: ", total_mpsoc_resources);
+	total_mpsoc_resources -= app_task_number;
+	putsv("total_mpsoc_resources: ", total_mpsoc_resources);
 
 	cluster_loc = (app_cluster_id+1) << 16 | GetTaskLocation(app_cluster_id+1);
 
@@ -170,6 +187,85 @@ void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_numbe
 	message[3] = app_id_counter;
 	message[4] = cluster_loc; //PLus 1 because as the global mapper is in ID 0 it shift all other IDs in more 1
 	SendRaw(message, 5);
+
+	app_id_counter++;
+}
+
+void handle_app_terminated(unsigned int *msg){
+	unsigned int task_master_addr, index, app_task_number;
+	int borrowed_cluster_index, original_cluster, original_cluster_index;
+
+	putsv("\n --- > Handle APP terminated- app ID: ", msg[1]);
+	app_task_number = msg[2];
+	original_cluster = msg[4];
+
+	//Puts("original master pos: "); Puts(itoh(original_cluster)); Puts("\n");
+
+	original_cluster_index = get_local_mapper_index(original_cluster);
+
+	//Puts("original master index: "); Puts(itoa(original_cluster_index)); Puts("\n");
+
+	index = 4;
+
+	for (int i=0; i<app_task_number; i++){
+		task_master_addr = msg[index++];
+
+		//Puts("Terminated task id "); Puts(itoa(msg[1] << 8 | i)); Puts(" with master pos "); Puts(itoh(task_master_addr)); Puts("\n");
+
+		if (task_master_addr != original_cluster){
+
+			//Puts("Remove borrowed\n");
+			borrowed_cluster_index = get_local_mapper_index(task_master_addr);
+
+			release_cluster_resources(borrowed_cluster_index, 1);
+
+		} else {
+			//Puts("Remove original\n");
+			release_cluster_resources(original_cluster_index, 1);
+		}
+	}
+	total_mpsoc_resources += app_task_number;
+	putsv("total_mpsoc_resources: ", total_mpsoc_resources);
+
+	putsv("App terminated, total_mpsoc_resources: ", total_mpsoc_resources);
+
+	/* terminated_app_count++;
+	 * if (terminated_app_count == APP_NUMBER){
+		Puts("FINISH ");Puts(itoa(GetTick)); Puts("\n");
+		MemoryWrite(END_SIM,1);
+	}*/
+	//pending_app_req = app_task_number << 16 | app_cluster_id;
+	if (pending_app_req){
+		Puts("Pending APP to req TRUE\n");
+		app_task_number = pending_app_req >> 16;
+		original_cluster_index = pending_app_req & 0xFF;
+
+		handle_new_app_req(original_cluster_index, app_task_number);
+
+	}
+}
+
+void handle_app_allocated(unsigned int * msg){
+	unsigned int cluster_index, index, app_task_number;
+	unsigned int * message;
+
+	putsv("Receive APP_ALLOCATED for app ", msg[1]);
+	app_task_number = msg[2];
+
+	index = 3;
+	for(int i=0; i<app_task_number; i++){
+		cluster_index = get_local_mapper_index(msg[index++]);
+		//Puts("Task "); Puts(itoa(msg[1] << 8 | i)); Puts(" to cluster "); //Puts(itoh(msg[index-1])); Puts("\n");
+		allocate_cluster_resource(cluster_index, 1);
+	}
+
+	message = get_message_slot();
+	message[0] = APP_INJECTOR;
+	message[1] = 1; //Payload
+	message[2] = APP_MAPPING_COMPLETE; //Service
+	SendRaw(message, 3);
+	Puts("Sent APP_MAPPING_COMPLETE\n");
+
 }
 
 void handle_message(unsigned int * data_msg){
@@ -180,6 +276,12 @@ void handle_message(unsigned int * data_msg){
 			break;
 		case NEW_APP_REQ:
 			handle_new_app_req(data_msg[1], data_msg[2]);
+			break;
+		case APP_ALLOCATED:
+			handle_app_allocated(data_msg);
+			break;
+		case APP_TERMINATED:
+			handle_app_terminated(data_msg);
 			break;
 		default:
 			Puts("Error message unknown\n");
