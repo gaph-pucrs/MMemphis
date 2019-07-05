@@ -313,7 +313,13 @@ void send_service_api_message(int consumer_task, unsigned int targetPE, unsigned
 
 	p->header = targetPE;
 
-	p->service = SERVICE_TASK_MESSAGE;
+	//p->service = SERVICE_TASK_MESSAGE;
+	p->service = src_message[0]; //Service
+
+	if(p->service == TASK_TERMINATED){
+		p->task_ID = src_message[1];
+		putsv("Task IDDD: ", p->task_ID);
+	}
 
 	p->consumer_task = consumer_task;
 
@@ -1101,8 +1107,16 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		break;
 
-	case SERVICE_TASK_MESSAGE:
 	case TASK_TERMINATED:
+	case TASK_ALLOCATED:
+	case TASK_TERMINATED_OTHER_CLUSTER:
+	case NEW_APP_REQ:
+	case SERVICE_TASK_MESSAGE:
+	case INIT_I_AM_ALIVE:
+	case INIT_LOCAL:
+	case LOAN_PROCESSOR_REQUEST:
+	case LOAN_PROCESSOR_DELIVERY:
+	case LOAN_PROCESSOR_RELEASE:
 
 		//puts("\nAPI\n");
 

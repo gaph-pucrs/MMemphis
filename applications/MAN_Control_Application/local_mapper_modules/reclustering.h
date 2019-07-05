@@ -125,8 +125,8 @@ void send_loan_proc_release(int target_position, int release_proc, int taskID){
 	unsigned int * message = get_message_slot();
 	message[0] = LOAN_PROCESSOR_RELEASE;
 	message[1] = cluster_position;
-	message[2] = taskID;
-	message[3] = release_proc;
+	message[2] = release_proc;
+	message[3] = taskID;
 
 	send(target_position, message, 4);
 
@@ -363,14 +363,14 @@ void handle_reclustering(unsigned int * msg){
 
 		/*
 			msg[1] = cluster_position;
-			msg[2] = taskID;
-			msg[3] = release_proc;
+			msg[2] = release_proc;
+			msg[3] = taskID;
 		 */
 #if RECLUSTERING_DEBUG
 		Puts("\nReceive LOAN_PROCESSOR_RELEASE "); Puts(" from proc "); Puts(itoh(msg[1])); putsv(" task id ", msg[2]);
 #endif
 
-		page_released(msg[3], msg[2]);
+		page_released(msg[2], msg[3]);
 
 		break;
 	}

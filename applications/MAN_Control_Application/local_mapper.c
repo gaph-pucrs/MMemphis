@@ -289,7 +289,7 @@ void handle_message(unsigned int * data_msg){
 			handle_task_terminated(data_msg[1], data_msg[2]);
 			break;
 		case TASK_TERMINATED_OTHER_CLUSTER:
-			//			  proc_addr  , task_id
+			//			  proc_addr,    task_id
 			page_released(data_msg[1], data_msg[2]);
 			break;
 

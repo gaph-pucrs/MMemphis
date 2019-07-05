@@ -60,6 +60,10 @@
 #define 	CS_ALLOCATION					0x00000430
 #define		APP_MAPPING_COMPLETE			0x00000440
 
+/*Management Application Services*/
+#define		INIT_I_AM_ALIVE					0x00000450
+#define		INIT_LOCAL						0x00000460
+
 
 
 #endif

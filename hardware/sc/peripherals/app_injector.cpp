@@ -264,7 +264,7 @@ void app_injector::monitor_new_app(){
 
 					packet[0] = MPE_ADDR;
 					packet[1] = packet_size - 2;
-					packet[2] = SERVICE_TASK_MESSAGE;
+					packet[2] = NEW_APP_REQ;
 					packet[4] = 0; //Task Global Mapper
 					packet[8] = 3; //Payload lenght
 					packet[CONSTANT_PACKET_SIZE] = NEW_APP_REQ;

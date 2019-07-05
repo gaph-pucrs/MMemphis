@@ -24,10 +24,6 @@
 
 #define MAX_MAPPING_MSG		100
 
-/*Internal Services*/
-#define		INIT_I_AM_ALIVE	0
-#define		INIT_LOCAL		1
-
 
 typedef struct {
 
