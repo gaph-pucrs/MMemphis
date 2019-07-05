@@ -166,6 +166,7 @@ void send_task_allocated(TCB * allocated_task){
 	p->master_ID = cluster_master_address;
 
 	send_packet(p, 0, 0);
+	puts("Sending task allocated\n");
 }
 
 /** Assembles and sends a MESSAGE_DELIVERY packet to a consumer task located into a slave processor
@@ -732,9 +733,9 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			if (consumer_PE == -1){
 				//Task is blocked until its a TASK_RELEASE packet
 				current->scheduling_ptr->status = BLOCKED;
+				puts("WARNING: Task blocked\n");
 				return 0;
 			}
-
 			//Stores the address of producer task message
 			msg_address_src = (unsigned int *) (current->offset | arg1);
 
@@ -749,7 +750,6 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 				//if (is_send_active(PS_SUBNET))
 				//	return 0;
-
 				send_service_api_message(consumer_task, consumer_PE, msg_address_src, arg2);
 			}
 
@@ -806,11 +806,13 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			return net_address;
 		case ADDTASKLOCATION:
 			add_task_location(arg0, arg1);
-			//puts("Added task id "); puts(itoa(arg0)); puts(" at loc "); puts(itoh(arg1)); puts("\n");
+			puts("Added task id "); puts(itoa(arg0)); puts(" at loc "); puts(itoh(arg1)); puts("\n");
 			break;
 		case REMOVETASKLOCATION:
 			remove_task_location(arg0);
 			break;
+		case GETTASKLOCATION:
+			return get_task_location(arg0);
 		case SETMYID:
 			current->id = arg0;
 			putsv("Task id changed to: ", current->id);
@@ -990,6 +992,8 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		tcb_ptr->master_address = p->master_ID;
 
+		puts("Master address: "); puts(itoh(tcb_ptr->master_address)); puts("\n");
+
 		tcb_ptr->remove_ctp = 0;
 
 		tcb_ptr->add_ctp = 0;
@@ -1000,11 +1004,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		tcb_ptr->scheduling_ptr->remaining_exec_time = MAX_TIME_SLICE;
 
-		//DMNI_read_data(tcb_ptr->offset, code_lenght);
-		MemoryWrite(DMNI_NET, PS_SUBNET);
-		MemoryWrite(DMNI_OP, DMNI_RECEIVE_OP); // send is 0, receive is 1
-		MemoryWrite(DMNI_MEM_ADDR, tcb_ptr->offset);
-		MemoryWrite(DMNI_MEM_SIZE, code_lenght);
+		DMNI_read_data(tcb_ptr->offset, code_lenght);
 
 		if ((tcb_ptr->id >> 8) == 0){//Task of APP 0 (mapping) dont need to be released to start its execution
 			tcb_ptr->scheduling_ptr->status = READY;

@@ -33,6 +33,7 @@ typedef sc_uint<TAM_FLIT > regflit;
 #define		NEW_APP							0x00000150 //Injector to Mestre (carries App descriptor)
 #define 	APP_ALLOCATION_REQUEST			0x00000240 //Mestre to Injector (carries tasks properties and mapping)
 #define 	SERVICE_TASK_MESSAGE			0x00000350
+#define		APP_MAPPING_COMPLETE			0x00000440
 
 SC_MODULE(app_injector){
 
@@ -68,8 +69,8 @@ SC_MODULE(app_injector){
 	//FSM
 	enum FSM_bootloader{INITIALIZE, WAIT_SEND_BOOT, BOOTLOADER_FINISHED};
 	enum FSM_send_packet{IDLE, SEND_PACKET, WAITING_CREDIT, SEND_FINISHED};
-	enum FSM_receive_packet{HEADER, PAYLOAD_SIZE, SERVICE, RECEIVE_APP_ACK, RECEIVE_ALLOCATION_REQ, WAITING_SEND_NEW_APP, WAITING_SEND_TASK_ALLOCATION};
-	enum FSM_new_app_monitor{MONITORING, WAITING_TIME, WAITING_SEND_APP_REQ, IDLE_MONITOR};
+	enum FSM_receive_packet{HEADER, PAYLOAD_SIZE, SERVICE, RECEIVE_APP_ACK, RECEIVE_ALLOCATION_REQ, RECEIVE_MAPPING_COMPLETE, WAITING_SEND_NEW_APP, WAITING_SEND_TASK_ALLOCATION};
+	enum FSM_new_app_monitor{IDLE_MONITOR, MONITORING, WAITING_TIME, WAITING_SEND_APP_REQ};
 
 	enum FSM_bootloader 		EA_bootloader;
 	enum FSM_new_app_monitor 	EA_new_app_monitor;

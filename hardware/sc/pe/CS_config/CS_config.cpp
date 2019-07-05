@@ -29,9 +29,10 @@ void CS_config::process(){
 				case ppayload:
 					if (payload.read() == 1) {
 						PS.write(header);
-					} else
+					} else {
 						PS.write(ppayload);
-						payload.write(payload.read() - 1);
+					}
+					payload.write(payload.read() - 1);
 					break;
 
 				case config:

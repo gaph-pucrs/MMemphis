@@ -4,52 +4,33 @@
  *  Created on: Jul 1, 2019
  *      Author: ruaro
  */
-#include "global_mapper.h"
-#include "communication.h"
-#include <api.h>
-#include "common_mapping.h"
+#include "common_include.h"
+#include "global_mapper_modules/cluster_controller.h"
 
-/*Common Global Variables*/
-Cluster clusters[CLUSTER_NUMBER];
-unsigned int total_mpsoc_resources = (MAX_LOCAL_TASKS * XDIMENSION * YDIMENSION);
-
-/*Total MPSoC resources controll*/
-int decrease_avail_mpsoc_resources(unsigned int num_tasks){
-	if ((total_mpsoc_resources - num_tasks) < 0)
-		return 0;
-
-	total_mpsoc_resources -= num_tasks;
-	return 1;
-}
-
-void increase_avail_mpsoc_resources(int num_tasks){
-	total_mpsoc_resources += num_tasks;
-
-	while (total_mpsoc_resources > (MAX_LOCAL_TASKS * XDIMENSION * YDIMENSION))
-		puts("ERROR: total_mpsoc_resources higher than MAX\n");
-}
-
-
-void initialize(){
+void instantiate_mapping_app(){
 
 	unsigned int cluster_id = 0;
+	Cluster * cl_ptr;
+
 	for(int y=0; y<CLUSTER_Y_SIZE; y++){
 		for(int x=0; x<CLUSTER_X_SIZE; x++){
 
-			/*Initialize Clusters*/
-			clusters[cluster_id].x_addr = x;
-			clusters[cluster_id].y_addr = y;
-			//Aqui o mapeamentos dos lcoal mapper eh definido
-			clusters[cluster_id].manager_addr = (x*XCLUSTER << 8) | (y*YCLUSTER);
+			cl_ptr = &clusters[cluster_id];
 
-			Puts("Cluster id "); Puts(itoa(cluster_id)); Puts("\nLocated at proc: "); Puts(itoh(clusters[cluster_id].manager_addr)); Puts("\n");
+			/*Initialize Clusters*/
+			cl_ptr->x_pos = x;
+			cl_ptr->y_pos = y;
+			//Aqui o mapeamentos dos lcoal mapper eh definido
+			cl_ptr->free_resources = (x*XCLUSTER << 8) | (y*YCLUSTER); //Reusing of this variable only for initialization
+
+			Puts("Cluster id "); Puts(itoa(cluster_id)); Puts("\nLocated at proc: "); Puts(itoh(cl_ptr->free_resources)); Puts("\n");
 
 			if (x == 0 && y == 0)
 				//Esse +1 eh pq no PE 0x0 vai ficar o global mapper e o local mapper0x0 deve ficar em um PE diferente, portanto movi +1 pra direita
-				clusters[cluster_id].manager_addr = ((x*XCLUSTER << 8)+1) | (y*YCLUSTER);
+				cl_ptr->free_resources = ((x*XCLUSTER << 8)+1) | (y*YCLUSTER);
 
 			//Request to the injector to load the local_mapper inside the PEs
-			send_task_allocation_message(1, clusters[cluster_id].manager_addr);
+			send_task_allocation_message(1, cl_ptr->free_resources, 0);
 
 			cluster_id++;
 		}
@@ -74,7 +55,8 @@ void handle_i_am_alive(unsigned int source_addr){
 	Puts("handle_i_am_alive from "); Puts(itoa(source_addr)); Puts("\n");
 
 	for(int i=0; i < CLUSTER_NUMBER; i++ ){
-		if (clusters[i].manager_addr == source_addr){
+		//Mapping in progress is being reused here, only for initializaiton, after that, the variable stores if a cluster is performing mapping or not
+		if (clusters[i].free_resources == source_addr){
 
 			//Adiciona o ID do cluster ao seu endereco verdadeiro
 			//AddTaskLocation((i+1), source_addr);
@@ -103,37 +85,91 @@ void handle_i_am_alive(unsigned int source_addr){
 		index = 4;
 		for(int i=0; i<CLUSTER_NUMBER; i++){
 			message[index++] = (i+1); //Cluster task ID, +1 pq o global mapper possui o ID 0
-			message[index++] = clusters[i].manager_addr;
+			message[index++] = clusters[i].free_resources;
 			Puts("ID "); Puts(itoa((i+1)));
-			Puts("\naddr: "); Puts(itoh(clusters[i].manager_addr)); Puts("\n");
+			Puts("\naddr: "); Puts(itoh(clusters[i].free_resources)); Puts("\n");
 		}
 
 		for(int i=0; i<CLUSTER_NUMBER; i++){
 			//Add task location temporally
-			AddTaskLocation(1, clusters[i].manager_addr);
-			message[1] = (clusters[i].x_addr << 8 | clusters[i].y_addr);
+			AddTaskLocation(1, clusters[i].free_resources);
+			message[1] = (clusters[i].x_pos << 8 | clusters[i].y_pos);
 			SendService(1, message, index);
 		}
 
+		Puts("Local Mappers Initialization completed!\n");
+
 		//Update task location definitively
-		for(int i=0; i<CLUSTER_NUMBER; i++)
-			AddTaskLocation(i+1, clusters[i].manager_addr);
+		for(int i=0; i<CLUSTER_NUMBER; i++){
+			AddTaskLocation(i+1, clusters[i].free_resources);
+			//From this moment this variable <free_resources> starts to store its real meaning
+			if (i==0) //If the cluster has ID 0, remove two resources from its cluster
+				clusters[i].free_resources = (MAX_LOCAL_TASKS * XCLUSTER * YCLUSTER) - 2;
+			else
+				clusters[i].free_resources = (MAX_LOCAL_TASKS * XCLUSTER * YCLUSTER) - 1;
+		}
+
+		message = get_message_slot();
+		message[0] = APP_INJECTOR;
+		message[1] = 1;
+		message[2] = APP_MAPPING_COMPLETE;
+		SendIO(message, 3);
 	}
 
 }
 
 void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_number){
+
+	static unsigned int app_id_counter = 1;
+	unsigned int cluster_loc;
+	unsigned int * message;
+
+	if (app_cluster_id == -1) //This -1 comes from scripts, its means that mapping is dynamic
+		app_cluster_id = CLUSTER_NUMBER;
+
+	if (app_task_number > total_mpsoc_resources){
+		pending_app_req = app_task_number << 16 | app_cluster_id;
+		Puts("Cluster full\n");
+		return;
+	}
+
+	pending_app_req = 0;
+
 	Puts("\n\nNEW_APP_REQ\n");
 	Puts(itoa(app_cluster_id));
 	Puts("\nTask number: "); Puts(itoa(app_task_number));
 	Puts("\n");
 
-	/*If there is enought system resources*/
-	if (decrease_avail_mpsoc_resources(app_task_number)){
+	Puts("\nNew app req handled! - cluster mapping is ");
 
+	if (app_cluster_id == CLUSTER_NUMBER){
+		Puts("dynamic\n");
+		app_cluster_id = search_cluster(app_task_number);
+	} else {
+		Puts("static\n");
 	}
 
+	Puts("-----> NEW_APP_REQ from app injector. Task number is "); Puts(itoa(app_task_number));
+	Puts("\nApp mapped at cluster "); Puts(itoh(  clusters[app_cluster_id].x_pos << 8 | clusters[app_cluster_id].y_pos )); Puts("\n");
+	Puts("\nApplication ID: "); Puts(itoa(app_id_counter)); Puts("\n");
 
+	//putsv("Global Master reserve application: ", num_app_tasks);
+	//putsv("total_mpsoc_resources ", total_mpsoc_resources);
+
+	decrease_avail_mpsoc_resources(app_task_number);
+
+	cluster_loc = (app_cluster_id+1) << 16 | GetTaskLocation(app_cluster_id+1);
+
+	Puts("Cluster loc "); Puts(itoa(cluster_loc)); Puts("\n");
+
+	/*Sends packet to APP INJECTOR requesting repository to cluster app_cluster_id*/
+	message = get_message_slot();
+	message[0] = APP_INJECTOR;
+	message[1] = 3; //Payload size
+	message[2] = APP_REQ_ACK;
+	message[3] = app_id_counter;
+	message[4] = cluster_loc; //PLus 1 because as the global mapper is in ID 0 it shift all other IDs in more 1
+	SendIO(message, 5);
 }
 
 void handle_message(unsigned int * data_msg){
@@ -157,8 +193,8 @@ void main(){
 	RequestServiceMode();
 
 	Echo("Initializing Global Mapper\n");
-	init_communication();
-	initialize();
+	init_message_slots();
+	instantiate_mapping_app();
 
 	unsigned int data_message[MAX_MAPPING_MSG];
 

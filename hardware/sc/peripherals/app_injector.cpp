@@ -174,11 +174,11 @@ void app_injector::bootloader(){
  * EA_receive_packet and EA_send_packet
  */
 void app_injector::monitor_new_app(){
-	string line, req_app_name;
+	string line;
 	ifstream appstart_file;
 
 	if (reset.read() == 1)  {
-		EA_new_app_monitor = MONITORING;
+		EA_new_app_monitor = IDLE_MONITOR;
 		current_time = 0;
 		req_app_start_time = 0;
 		req_app_task_number = 0;
@@ -188,6 +188,14 @@ void app_injector::monitor_new_app(){
 	} else if (clock.posedge()){
 
 		switch (EA_new_app_monitor) {
+
+			case IDLE_MONITOR:
+
+				//Waits until the master sends the app mapping complete
+				if (EA_receive_packet == RECEIVE_MAPPING_COMPLETE)
+					EA_new_app_monitor = MONITORING;
+
+				break;
 
 			case MONITORING: //Reads appstart.txt
 
@@ -254,7 +262,6 @@ void app_injector::monitor_new_app(){
 
 					packet = new unsigned int[packet_size];
 
-
 					packet[0] = MPE_ADDR;
 					packet[1] = packet_size - 2;
 					packet[2] = SERVICE_TASK_MESSAGE;
@@ -265,13 +272,6 @@ void app_injector::monitor_new_app(){
 					packet[CONSTANT_PACKET_SIZE+2] = req_app_task_number;
 					cout << "NEW_APP_SENT" << endl;
 
-					//Assembles the packet
-					/*packet[0] = MPE_ADDR;
-					packet[1] = CONSTANT_PACKET_SIZE-2;
-					packet[2] = NEW_APP_REQ;
-					packet[4] = req_app_cluster_id;
-					packet[8] = req_app_task_number;*/
-
 					EA_new_app_monitor = WAITING_SEND_APP_REQ;
 				}
 
@@ -281,13 +281,6 @@ void app_injector::monitor_new_app(){
 
 				if (EA_send_packet == SEND_FINISHED)
 					EA_new_app_monitor = IDLE_MONITOR;
-
-				break;
-			case IDLE_MONITOR:
-
-				//Waits until the master sends the app ack
-				if (EA_receive_packet == WAITING_SEND_NEW_APP && EA_send_packet == SEND_FINISHED)
-					EA_new_app_monitor = MONITORING;
 
 				break;
 		}
@@ -327,19 +320,22 @@ void app_injector::app_descriptor_loader(){
 		repo_file.seekg (0, repo_file.beg);
 
 		//Sets the NoC's packet size
-		packet_size = CONSTANT_PACKET_SIZE + file_length;
+		packet_size = CONSTANT_PACKET_SIZE + 3 + file_length;
 
 		//Allocate memory
 		packet = new unsigned int[packet_size];
 
 		//Assembles the Service Header on packet
-		packet[0] = cluster_address; // Manager address
+		packet[0] = (cluster_address & 0xFFFFFF); // Manager address
 		packet[1] = packet_size - 2; // Packet payload
-		packet[2] = NEW_APP; //Packet service
-		packet[3] = ack_app_id; //Packet service
-		packet[8] = file_length; // App descriptor size
+		packet[2] = SERVICE_TASK_MESSAGE;
+		packet[4] = (cluster_address >> 16); //Task Global Mapper
+		packet[8] = file_length + 3; //Payload lenght
+		packet[CONSTANT_PACKET_SIZE] = NEW_APP;
+		packet[CONSTANT_PACKET_SIZE+1] = ack_app_id;
+		packet[CONSTANT_PACKET_SIZE+2] = file_length;
 
-		ptr_index = CONSTANT_PACKET_SIZE; //ptr_index starts after ServiceHeader
+		ptr_index = CONSTANT_PACKET_SIZE + 3; //ptr_index starts after ServiceHeader
 
 		//Assembles the App Descriptor from repository file
 		allocated_proc_index = 2;//Starts at index 2 because the first index is used to the number of app tasks, and the second one to the task name
@@ -361,6 +357,7 @@ void app_injector::app_descriptor_loader(){
 		/*for(int i=0; i<packet_size; i++){
 			cout << hex << packet[i] << endl;
 		}*/
+		cout << "APP_DESCRIPTOR SENT" << endl;
 
 		repo_file.close();
 	} else {
@@ -434,10 +431,22 @@ void app_injector::receive_packet(){
 			case SERVICE:
 
 				if (rx.read() == 1 && sig_credit_out.read() == 1){
-					if (data_in.read() == APP_REQ_ACK)
-						EA_receive_packet = RECEIVE_APP_ACK;
-					else if (data_in.read() == APP_ALLOCATION_REQUEST)
-						EA_receive_packet = RECEIVE_ALLOCATION_REQ;
+
+					switch (data_in.read()) {
+						case APP_REQ_ACK:
+							EA_receive_packet = RECEIVE_APP_ACK;
+							break;
+						case APP_ALLOCATION_REQUEST:
+							EA_receive_packet = RECEIVE_ALLOCATION_REQ;
+							break;
+						case APP_MAPPING_COMPLETE:
+							EA_receive_packet = RECEIVE_MAPPING_COMPLETE;
+							break;
+						default:
+							cout << "ERROR: packet received unknown\n" << endl;
+							break;
+					}
+
 				}
 
 				break;
@@ -449,10 +458,12 @@ void app_injector::receive_packet(){
 					switch (flit_counter) {
 						case 4:
 							ack_app_id = data_in.read();
+							cout << "App ID: " << ack_app_id << endl;
 							break;
 						case 5:
 							cluster_address = data_in.read();
 							cout << "Manager sent ACK" << endl;
+							cout << "Cluster Addr: " << hex << cluster_address << endl;
 							break;
 						default:
 							break;
@@ -494,6 +505,10 @@ void app_injector::receive_packet(){
 					}
 				}
 
+				break;
+
+			case RECEIVE_MAPPING_COMPLETE:
+				EA_receive_packet = HEADER;
 				break;
 
 			case WAITING_SEND_NEW_APP:

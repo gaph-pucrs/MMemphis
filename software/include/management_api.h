@@ -19,7 +19,9 @@
 #define	GETNETADDRESS	16
 #define	ADDTASKLOCATION	17
 #define REMOVETASKLOCATION 18
-#define SETMYID		 	19
+#define	GETTASKLOCATION	19
+#define SETMYID		 	20
+
 
 //Services definition
 #define	PATH_CONNECTION_REQUEST		1000
@@ -44,6 +46,7 @@ extern int SystemCall();
 #define GetNetAddress()						SystemCall(GETNETADDRESS, 	0, 0, 0)
 #define AddTaskLocation(task_id, location)	SystemCall(ADDTASKLOCATION, task_id, location, 0)
 #define RemoveTaskLocation(task_id)			SystemCall(REMOVETASKLOCATION, task_id, 0, 0)
+#define GetTaskLocation(task_id)			SystemCall(GETTASKLOCATION, task_id, 0, 0)
 #define SetMyID(new_id)						SystemCall(SETMYID, new_id, 0, 0)
 
 typedef struct {
