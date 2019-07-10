@@ -8,9 +8,9 @@
 #ifndef APPLICATIONS_MAN_CONTROL_APPLICATION_RESOUCER_CONTROLLER_H_
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_RESOUCER_CONTROLLER_H_
 
-#include "../../Management_Application/local_mapper_modules/application.h"
-#include "../../Management_Application/local_mapper_modules/globals.h"
-#include "../../Management_Application/local_mapper_modules/processors.h"
+#include "application.h"
+#include "globals.h"
+#include "processors.h"
 
 
 /** This function is called by kernel manager inside it own code and in the modules: reclustering and cluster_scheduler.

@@ -4,8 +4,8 @@
  *  Created on: Jul 1, 2019
  *      Author: ruaro
  */
-#include "../MAN_app/common_include.h"
-#include "../MAN_app/global_mapper_modules/cluster_controller.h"
+#include "common_include.h"
+#include "global_mapper_modules/cluster_controller.h"
 
 
 int get_local_mapper_index(unsigned int pos){

@@ -8,7 +8,7 @@
 #ifndef APPLICATIONS_MAN_CONTROL_APPLICATION_APPLICATION_H_
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_APPLICATION_H_
 
-#include "../../MAN_app/local_mapper_modules/globals.h"
+#include "globals.h"
 #include "../common_include.h"
 
 

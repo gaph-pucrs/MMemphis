@@ -8,8 +8,8 @@
 #ifndef APPLICATIONS_MAN_CONTROL_APPLICATION_PROCESSORS_H_
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_PROCESSORS_H_
 
-#include "../../Management_Application/local_mapper_modules/globals.h"
-#include "../../MAN_app/local_mapper_modules/resoucer_controller.h"
+#include "globals.h"
+#include "resoucer_controller.h"
 #include "../common_include.h"
 
 /**

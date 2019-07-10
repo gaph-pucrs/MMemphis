@@ -4,11 +4,11 @@
  *  Created on: Jul 2, 2019
  *      Author: ruaro
  */
-#include "../Management_Application/local_mapper_modules/resoucer_controller.h"
-#include "../MAN_app/common_include.h"
-#include "../MAN_app/local_mapper_modules/application.h"
-#include "../MAN_app/local_mapper_modules/processors.h"
-#include "../MAN_app/local_mapper_modules/reclustering.h"
+#include "local_mapper_modules/resoucer_controller.h"
+#include "common_include.h"
+#include "local_mapper_modules/application.h"
+#include "local_mapper_modules/processors.h"
+#include "local_mapper_modules/reclustering.h"
 
 
 void initialize(){

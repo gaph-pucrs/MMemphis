@@ -8,9 +8,9 @@
 #ifndef APPLICATIONS_MAN_CONTROL_APPLICATION_RECLUSTERING_H_
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_RECLUSTERING_H_
 
-#include "../../Management_Application/local_mapper_modules/application.h"
-#include "../../Management_Application/local_mapper_modules/globals.h"
-#include "../../Management_Application/local_mapper_modules/resoucer_controller.h"
+#include "application.h"
+#include "globals.h"
+#include "resoucer_controller.h"
 
 #define RECLUSTERING_DEBUG	0		//!<When enable compile the puts in this file
 
