@@ -47,13 +47,56 @@ unsigned short int	ctp_producer_adress;	//!< Used to set a CTP online
 unsigned int last_task_profiling_update;	//!< Used to store the last time that the profiling was sent to manager
 unsigned int averange_latency = 500;				//!< Stores the averange latency
 
+/*Function skeletons*/
+void send_service_api_message(int, unsigned int, unsigned int *, unsigned int);
+
+
+
+int write_local_service_to_task(unsigned int consumer_id, unsigned int * msg_data, int msg_lenght){
+
+	TCB * task_tcb_ptr;
+	unsigned int * msg_address_tgt;
+
+	task_tcb_ptr = searchTCB(consumer_id);
+
+	if (task_tcb_ptr == 0){
+		putsv("ERROR: tcb at SERVICE_TASK_MESSAGE_DELIVERY is null: ", task_tcb_ptr->id);
+		while(1);
+	}
+	if (task_tcb_ptr->is_service_task == 0){
+		puts("ERROR: Task at SERVICE_TASK_MESSAGE_DELIVERY is not a service task\n");
+		while(1);
+	}
+
+	//If target is not waiting message return 0 and schedules target to it consume the message
+	if (task_tcb_ptr->scheduling_ptr->waiting_msg == 0){
+		return 0;
+	}
+
+	msg_address_tgt = (unsigned int *) (task_tcb_ptr->offset | task_tcb_ptr->reg[3]);
+
+	//Copies the message from producer to consumer
+	for(int i=0; i<msg_lenght; i++){
+		msg_address_tgt[i] = msg_data[i];
+	}
+
+	//Unlock the blocked task
+	task_tcb_ptr->reg[0] = TRUE;
+
+	//Set to ready to execute into scheduler
+	task_tcb_ptr->scheduling_ptr->waiting_msg = 0;
+	//puts("Task not waitining anymeore 2\n");
+
+	return 1;
+}
+
 /** Assembles and sends a TASK_TERMINATED packet to the master kernel
  *  \param terminated_task Terminated task TCB pointer
  */
 //void send_task_terminated(TCB * terminated_task, int perc){/*<--- perc**apagar trecho de end simulation****/
 void send_task_terminated(TCB * terminated_task){
 
-	unsigned int * message[3];
+	unsigned int message[3];
 	unsigned int master_addr, master_id;
 
 	message[0] = TASK_TERMINATED;
@@ -63,13 +106,20 @@ void send_task_terminated(TCB * terminated_task){
 	master_addr = terminated_task->master_address & 0xFFFF;
 	master_id = terminated_task->master_address >> 16;
 
-	send_service_api_message(master_id, master_addr, message, 3);
+	if (master_addr == net_address){
 
-	puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
-	putsv("Master id: ", master_id);
+		write_local_service_to_task(master_id, message, 3);
 
-	while(is_send_active(PS_SUBNET));
+	} else {
 
+		send_service_api_message(master_id, master_addr, message, 3);
+
+
+		puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
+		putsv("Master id: ", master_id);
+
+		while(is_send_active(PS_SUBNET));
+	}
 	puts("Sended\n");
 
 
@@ -141,19 +191,30 @@ void send_NoC_switching_ack(int producer_task, int consumert_task, int subnet, i
 void send_task_allocated(TCB * allocated_task){
 
 	unsigned int master_addr, master_task_id;
-	unsigned int * message[3];
+	unsigned int message[2];
+
+	//Gets the task ID
+	master_task_id = allocated_task->master_address >> 16;
+	//Gets the task localion
+	master_addr = allocated_task->master_address & 0xFFFF;
 
 	message[0] = TASK_ALLOCATED;
 	message[1] = allocated_task->id;
 
-	master_task_id = allocated_task->master_address >> 16;
-	master_addr = allocated_task->master_address & 0xFFFF;
+	if (master_addr == net_address){
 
-	send_service_api_message(master_task_id, master_addr, message, 2);
+		puts("WRITE TASK ALLOCATED local\n");
+		write_local_service_to_task(master_task_id, message, 2);
 
-	while(is_send_active(PS_SUBNET));
+	} else {
 
-	puts("Sending task allocated\n");
+		send_service_api_message(master_task_id, master_addr, message, 2);
+
+		while(is_send_active(PS_SUBNET));
+
+		puts("Sending task allocated\n");
+	}
+
 }
 
 /** Assembles and sends a MESSAGE_DELIVERY packet to a consumer task located into a slave processor
@@ -316,9 +377,9 @@ void send_service_api_message(int consumer_task, unsigned int targetPE, unsigned
 	//p->service = SERVICE_TASK_MESSAGE;
 	p->service = src_message[0]; //Service
 
+	//This if is only usefull for graphical debugger, to it can monitor TASK_TERMINATED packets properly
 	if(p->service == TASK_TERMINATED){
 		p->task_ID = src_message[1];
-		putsv("Task IDDD: ", p->task_ID);
 	}
 
 	p->consumer_task = consumer_task;
@@ -415,7 +476,7 @@ void write_local_msg_to_task(TCB * task_tcb_ptr, int msg_lenght, int * msg_data)
 
 	//Set to ready to execute into scheduler
 	task_tcb_ptr->scheduling_ptr->waiting_msg = 0;
-	puts("Task not waitining anymeore 3\n");
+	//puts("Task not waitining anymeore 3\n");
 
 	if (task_tcb_ptr->add_ctp)
 		add_ctp_online(task_tcb_ptr);
@@ -443,7 +504,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 	PipeSlot *pipe_ptr;
 	TCB * tcb_ptr;
 	MessageRequest * msg_req_ptr;
-	unsigned int * msg_address_src, * msg_address_tgt;
+	unsigned int * msg_address_src;//, * msg_address_tgt;
 	int consumer_task;
 	int producer_task;
 	int producer_PE;
@@ -675,14 +736,17 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 		case SENDRAW:
 
-			if(is_send_active(PS_SUBNET))
+			schedule_after_syscall = 1;
+
+			if(is_send_active(PS_SUBNET)){
+				puts("Preso no SENDRAW\n");
 				return 0;
+			}
+
 
 			msg_address_src = (unsigned int *) (current->offset | arg0);
 
-			DMNI_send_data(msg_address_src, arg1, PS_SUBNET);
-
-			while(is_send_active(PS_SUBNET));
+			DMNI_send_data((unsigned int)msg_address_src, arg1, PS_SUBNET);
 
 			return 1;
 
@@ -698,14 +762,19 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 		case WRITESERVICE:
 
-			//puts("\nWRITESERVICE\n");
-
 			//Enable to schedule after syscall and interruptions since task will be blocked anyway
 			schedule_after_syscall = 1;
 
-			//Test if the task has permission to use service API
-			if (!current->is_service_task)
+			if (is_send_active(PS_SUBNET)){
+				puts("Preso no WRITESERVICE\n");
 				return 0;
+			}
+
+			//Test if the task has permission to use service API
+			if (!current->is_service_task){
+				puts("Task is not a service task YET\n");
+				return 0;
+			}
 
 			//Extracts the ID of producer and consumer task
 			producer_task =  current->id;
@@ -735,9 +804,13 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			//If both the task are at same PE then:
 			if (consumer_PE == net_address){
 
-				puts("ERROR - Two service tasks mapped at same PE\n");
-				putsv("consumerPE: ", consumer_PE);
-				while(1);
+				puts("Local send service from task "); puts(itoa(producer_task)); putsv(" to task ", consumer_task);
+
+				//If target is not waiting message return 0 and schedules target to it consume the message
+				if (!write_local_service_to_task(consumer_task, msg_address_src, arg2)){
+					schedule_after_syscall = 1;
+					return 0;
+				}
 
 			} else { //Else send the message to the remote task
 
@@ -808,7 +881,46 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			return get_task_location(arg0);
 		case SETMYID:
 			current->id = arg0;
-			putsv("Task id changed to: ", current->id);
+			//putsv("Task id changed to: ", current->id);
+			break;
+		case SETTASLRELEASE:
+
+			msg_address_src = (unsigned int *) (current->offset | arg0);
+			//msg_size = arg1
+
+			consumer_task = msg_address_src[3];
+
+			putsv("TASK_RELEASE\nTask ID: ", consumer_task);
+
+			tcb_ptr = searchTCB(consumer_task);
+
+			appID = consumer_task >> 8;
+
+			tcb_ptr->data_lenght = msg_address_src[9];
+
+			puts("Data lenght: "); puts(itoh(tcb_ptr->data_lenght)); puts("\n");
+
+			tcb_ptr->bss_lenght = msg_address_src[11];
+
+			puts("BSS lenght: "); puts(itoh(tcb_ptr->data_lenght)); puts("\n");
+
+			tcb_ptr->text_lenght = tcb_ptr->text_lenght - tcb_ptr->data_lenght;
+
+			if (tcb_ptr->scheduling_ptr->status == BLOCKED){
+				tcb_ptr->scheduling_ptr->status = READY;
+			}
+
+			putsv("app task number: ", msg_address_src[8]);
+
+			for(int i=0; i<msg_address_src[8]; i++){
+				add_task_location(appID << 8 | i, msg_address_src[CONSTANT_PKT_SIZE+i]);
+				puts("Add task "); puts(itoa(appID << 8 | i)); puts(" loc "); puts(itoh(msg_address_src[CONSTANT_PKT_SIZE+i])); puts("\n");
+			}
+
+			break;
+		default:
+			putsv("Syscall code unknow: ", service);
+			while(1);
 			break;
 	}
 
@@ -819,13 +931,13 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
  */
 int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
-	int need_scheduling, code_lenght, app_ID, task_loc, latency;
+	int need_scheduling, code_lenght, app_ID, task_loc, latency = 0;
 	unsigned int app_tasks_location[MAX_TASKS_APP];
 	PipeSlot * slot_ptr;
 	Message * msg_ptr;
 	unsigned int * tgt_message_addr;
 	TCB * tcb_ptr = 0;
-	CTP * ctp_ptr;
+	CTP * ctp_ptr = 0;
 
 	need_scheduling = 0;
 
@@ -1016,7 +1128,8 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		tcb_ptr = searchTCB(p->task_ID);
 
-		//putsv("TASK_RELEASE\nTask ID: ", p->task_ID);
+		if(tcb_ptr->id == 1026)
+			putsv("TASK_RELEASE\nTask ID: ", p->task_ID);
 
 		app_ID = p->task_ID >> 8;
 
@@ -1134,7 +1247,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 			while(1);
 		}
 		if (tcb_ptr->scheduling_ptr->waiting_msg == 0){
-			putsv("ERROR: Task at SERVICE_TASK_MESSAGE_DELIVERY is not waiting message: ", (unsigned int)tcb_ptr);
+			putsv("ERROR: Task at SERVICE_TASK_MESSAGE_DELIVERY is not waiting message: ", tcb_ptr->id);
 			while(1);
 		}
 
@@ -1352,6 +1465,12 @@ void Scheduler() {
 
 	OS_InterruptMaskSet(IRQ_SCHEDULER);
 
+	//Disable interruption for the task when it is a service task
+	if (current->is_service_task){
+		//puts("Service task will execute, interruption disabled\n");
+		OS_InterruptMaskClear(0xffffffff);
+	}
+
 }
 
 /** Function called by assembly (into interruption handler). Implements the routine to handle interruption in HeMPS
@@ -1363,7 +1482,6 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 	ServiceHeader * next_service;
 	CTP * ctp_ptr;
 	unsigned int call_scheduler, subnet, req_status;
-	volatile unsigned int ii = 0xF0DA;
 
 	MemoryWrite(SCHEDULING_REPORT, INTERRUPTION);
 
@@ -1471,10 +1589,11 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 	}
 
 	//Disable interruption for the task when it is a service task
-	if (current->is_service_task){
+	/*if (current->is_service_task){
 		//puts("Service task will execute, interruption disabled\n");
+		puts("INT disabled\n");
 		OS_InterruptMaskClear(0xffffffff);
-	}
+	}*/
 
     /*runs the scheduled task*/
     ASM_RunScheduledTask(current);

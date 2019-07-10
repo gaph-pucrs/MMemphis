@@ -503,7 +503,9 @@ void app_injector::receive_packet(){
 				break;
 
 			case RECEIVE_MAPPING_COMPLETE:
-				EA_receive_packet = HEADER;
+				if (payload_size == 0){
+					EA_receive_packet = HEADER;
+				}
 				break;
 
 			case WAITING_SEND_NEW_APP:
@@ -545,11 +547,13 @@ void app_injector::send_packet(){
 					EA_bootloader == WAIT_SEND_BOOT
 					) {
 
-					if (packet != NULL) {
-						EA_send_packet = SEND_PACKET;
-						p_index = 0;
-					} else
-						cout << "ERROR: packet has an NULL pointer" << endl;
+					if (credit_in.read() == 1){
+						if (packet != NULL) {
+							EA_send_packet = SEND_PACKET;
+							p_index = 0;
+						} else
+							cout << "ERROR: packet has an NULL pointer at time " << current_time <<  endl;
+						}
 				}
 				break;
 

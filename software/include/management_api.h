@@ -21,6 +21,7 @@
 #define REMOVETASKLOCATION 18
 #define	GETTASKLOCATION	19
 #define SETMYID		 	20
+#define SETTASLRELEASE	21
 
 
 //Services definition
@@ -48,6 +49,7 @@ extern int SystemCall();
 #define RemoveTaskLocation(task_id)			SystemCall(REMOVETASKLOCATION, task_id, 0, 0)
 #define GetTaskLocation(task_id)			SystemCall(GETTASKLOCATION, task_id, 0, 0)
 #define SetMyID(new_id)						SystemCall(SETMYID, new_id, 0, 0)
+#define SetTaskRelease(message, size)		SystemCall(SETTASLRELEASE, message, size, 0)
 
 typedef struct {
 	unsigned int task_id;

@@ -143,7 +143,11 @@ void send_packet(ServiceHeader *p, unsigned int initial_address, unsigned int dm
 	p->source_PE = net_address;
 
 	//Waits the DMNI send process be released
-	while ( MemoryRead(DMNI_SEND_ACTIVE) & (1 << PS_SUBNET));
+	while ( MemoryRead(DMNI_SEND_ACTIVE) & (1 << PS_SUBNET)){
+		puts("Preso tentando enviar servico: \n");
+		puts(itoh(p->service)); puts(" para dest: ");
+		puts(itoh(p->header)); puts("\n");
+	}
 
 	p->timestamp = MemoryRead(TICK_COUNTER);
 

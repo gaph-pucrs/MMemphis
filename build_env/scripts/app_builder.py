@@ -74,9 +74,12 @@ def main():
 
     if exit_status != 0:
         sys.exit("\nError compiling applications' source code\n");
+        exit(1)
     
     #Generate the repository.txt and repository_debug.txt files for each application
     generate_repository(yaml_r, TESTCASE_PATH, APP_PATH, APP_NAME);
+    
+    exit(0)
     
 def copy_app_make(memphis_path, app_path, page_size_KB):
     
