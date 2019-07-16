@@ -144,18 +144,15 @@ void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_numbe
 
 	if (app_task_number > total_mpsoc_resources){
 		pending_app_req = app_task_number << 16 | app_cluster_id;
-		Puts("Cluster full\n");
+		Puts("Cluster full - return\n");
 		return;
 	}
 
 	pending_app_req = 0;
 
-	Puts("\n\nNEW_APP_REQ\n");
-	Puts(itoa(app_cluster_id));
-	Puts("\nTask number: "); Puts(itoa(app_task_number));
-	Puts("\n");
-
-	Puts("\nNew app req handled! - cluster mapping is ");
+	Puts("\n\n******** NEW_APP_REQ **********\n");
+	//Puts(itoa(app_cluster_id));
+	putsv("Task number: ", app_task_number);
 
 	if (app_cluster_id == CLUSTER_NUMBER){
 		Puts("dynamic\n");
@@ -164,20 +161,19 @@ void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_numbe
 		Puts("static\n");
 	}
 
-	Puts("-----> NEW_APP_REQ from app injector. Task number is "); Puts(itoa(app_task_number));
-	Puts("\nApp mapped at cluster "); Puts(itoh(  clusters[app_cluster_id].x_pos << 8 | clusters[app_cluster_id].y_pos )); Puts("\n");
-	Puts("\nApplication ID: "); Puts(itoa(app_id_counter)); Puts("\n");
+	Puts("App mapped at cluster "); Puts(itoh(  clusters[app_cluster_id].x_pos << 8 | clusters[app_cluster_id].y_pos )); Puts("\n");
+	Puts("Application ID: "); Puts(itoa(app_id_counter)); Puts("\n");
 
 	//putsv("Global Master reserve application: ", num_app_tasks);
 	//putsv("total_mpsoc_resources ", total_mpsoc_resources);
 
-	putsv("FIRST total_mpsoc_resources: ", total_mpsoc_resources);
+	putsv("\nCURRENT - total_mpsoc_resources: ", total_mpsoc_resources);
 	total_mpsoc_resources -= app_task_number;
-	putsv("total_mpsoc_resources: ", total_mpsoc_resources);
+	putsv("AFTER - total_mpsoc_resources: ", total_mpsoc_resources);
 
 	cluster_loc = (app_cluster_id+1) << 16 | GetTaskLocation(app_cluster_id+1);
 
-	Puts("Cluster loc "); Puts(itoa(cluster_loc)); Puts("\n");
+	//Puts("Cluster loc "); Puts(itoa(cluster_loc)); Puts("\n");
 
 	/*Sends packet to APP INJECTOR requesting repository to cluster app_cluster_id*/
 	message = get_message_slot();
@@ -225,7 +221,6 @@ void handle_app_terminated(unsigned int *msg){
 		}
 	}
 	total_mpsoc_resources += app_task_number;
-	putsv("total_mpsoc_resources: ", total_mpsoc_resources);
 
 	putsv("App terminated, total_mpsoc_resources: ", total_mpsoc_resources);
 
@@ -249,13 +244,13 @@ void handle_app_allocated(unsigned int * msg){
 	unsigned int cluster_index, index, app_task_number;
 	unsigned int * message;
 
-	putsv("Receive APP_ALLOCATED for app ", msg[1]);
+	putsv("\n******************************\nReceive APP_ALLOCATED for app ", msg[1]);
 	app_task_number = msg[2];
 
 	index = 3;
 	for(int i=0; i<app_task_number; i++){
 		cluster_index = get_local_mapper_index(msg[index++]);
-		//Puts("Task "); Puts(itoa(msg[1] << 8 | i)); Puts(" to cluster "); //Puts(itoh(msg[index-1])); Puts("\n");
+		Puts("Task "); Puts(itoa(msg[1] << 8 | i)); Puts(" to cluster "); Puts(itoh(msg[index-1])); Puts("\n");
 		allocate_cluster_resource(cluster_index, 1);
 	}
 

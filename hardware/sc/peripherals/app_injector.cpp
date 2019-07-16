@@ -37,7 +37,7 @@ string app_injector::get_app_repo_path(unsigned int app_id){
 			for(int i=0; i<4; i++){
 				getline (repo_file,line);
 			}
-			sscanf( line.substr(0, 8).c_str(), "%x", &task_number);
+			sscanf( line.substr(0, 8).c_str(), "%u", &task_number);
 
 			/*Skips the number of tasks*/
 			for(unsigned int i=0; i<task_number; i++){
@@ -118,7 +118,7 @@ void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned in
 		packet[ptr_index++] = master_ID; //Master ID
 		ptr_index 			= ptr_index + 5; //Jumps to code_size field on ServiceHeader
 		packet[ptr_index++] = code_size; //Code size
-		ptr_index 			= ptr_index + 2; //Jumps to the end of ServiceHeader
+		ptr_index 			= CONSTANT_PACKET_SIZE; //Jumps to the end of ServiceHeader
 
 		//Assembles txt
 		for(unsigned int i=0; i<code_size; i++){
@@ -127,6 +127,8 @@ void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned in
 			//cout << line << endl;
 		}
 
+	} else {
+		cout << "ERROR cannot read the file at path: " << path << " and app id " << app_id << endl;
 	}
 }
 
@@ -335,7 +337,7 @@ void app_injector::app_descriptor_loader(){
 		packet[CONSTANT_PACKET_SIZE+1] = ack_app_id;
 		packet[CONSTANT_PACKET_SIZE+2] = file_length;
 
-		ptr_index = CONSTANT_PACKET_SIZE + 3; //ptr_index starts after ServiceHeader
+		ptr_index = CONSTANT_PACKET_SIZE + 3; //ptr_index starts after ServiceHeader + 3
 
 		//Assembles the App Descriptor from repository file
 		allocated_proc_index = 2;//Starts at index 2 because the first index is used to the number of app tasks, and the second one to the task name
@@ -353,6 +355,7 @@ void app_injector::app_descriptor_loader(){
 		}
 
 		delete [] task_static_mapping;
+		task_static_mapping = NULL;
 
 		/*for(int i=0; i<packet_size; i++){
 			cout << hex << packet[i] << endl;
@@ -496,6 +499,7 @@ void app_injector::receive_packet(){
 
 					if (payload_size == 0){
 						task_allocation_loader(req_task_id, req_task_master_ID, req_task_allocated_proc);
+						cout << "Loading task ID " << req_task_id << " to PE " << (req_task_allocated_proc >> 8) << "x" << (req_task_allocated_proc & 0xFF) << endl;
 						EA_receive_packet = WAITING_SEND_TASK_ALLOCATION;
 					}
 				}
@@ -541,6 +545,7 @@ void app_injector::send_packet(){
 		switch (EA_send_packet) {
 
 			case IDLE:
+				//IDLE monitors the states of other FSM that acts as triggers
 				if (EA_new_app_monitor == WAITING_SEND_APP_REQ ||
 					EA_receive_packet == WAITING_SEND_NEW_APP ||
 					EA_receive_packet == WAITING_SEND_TASK_ALLOCATION ||
@@ -553,7 +558,7 @@ void app_injector::send_packet(){
 							p_index = 0;
 						} else
 							cout << "ERROR: packet has an NULL pointer at time " << current_time <<  endl;
-						}
+					}
 				}
 				break;
 
@@ -589,7 +594,7 @@ void app_injector::send_packet(){
 			case SEND_FINISHED:
 
 				delete[] packet;
-
+				packet = NULL;
 				EA_send_packet = IDLE;
 
 				break;

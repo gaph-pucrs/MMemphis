@@ -256,7 +256,6 @@ void send_message_delivery(int producer_task, int consumer_task, int consumer_PE
  */
 void send_slack_time_report(){
 
-	//Achei melhor nao desativar pra validar o SDN com tudo junto
 	return;
 
 	unsigned int time_aux;

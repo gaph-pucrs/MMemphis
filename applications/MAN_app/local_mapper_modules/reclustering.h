@@ -78,16 +78,25 @@ int is_reclustering_NOT_active(){
  */
 void send_loan_proc_request(int target_cluster, int taskID){
 
+	int initial_proc;
+	Application * app_ptr = get_application_ptr(taskID >> 8);
+
+	if (app_ptr->tasks[0].allocated_proc == -1){
+		initial_proc = net_address;
+	} else {
+		initial_proc = app_ptr->tasks[0].allocated_proc;
+	}
+
 	unsigned int * message = get_message_slot();
 	message[0] = LOAN_PROCESSOR_REQUEST;
 	message[1] = cluster_position; //Uses the manager PE as reference
 	message[2] = taskID; //task id
-	message[3] = net_address; //Allocated proc reference
+	message[3] = initial_proc; //Allocated proc reference
 
 	send(target_cluster, message, 4);
 
 #if RECLUSTERING_DEBUG
-	Puts("-> send loan proc REQUEST para proc "); Puts(itoh(target_cluster)); Puts(" task id "); Puts(itoa(taskID)); Puts(" allocated proc "); Puts(itoh(message[3])); Puts("\n");
+	Puts("-> send loan proc REQUEST para proc "); Puts(itoh(target_cluster)); Puts(" task id "); Puts(itoa(taskID)); Puts(" initial proc "); Puts(itoh(message[3])); Puts("\n");
 #endif
 
 }
@@ -161,8 +170,8 @@ void fires_reclustering_protocol(){
 	cluster_y_size = starting_y_cluster_size;
 
 #if RECLUSTERING_DEBUG
-	putsv("starting_x_cluster_size: ", starting_x_cluster_size);
-	putsv("starting_y_cluster_size: ", starting_y_cluster_size);
+	//putsv("starting_x_cluster_size: ", starting_x_cluster_size);
+	//putsv("starting_y_cluster_size: ", starting_y_cluster_size);
 #endif
 
 	initial_x_level = cluster_x_size * (reclustering.neighbors_level -1);
@@ -175,8 +184,8 @@ void fires_reclustering_protocol(){
 	this_y = cluster_y_offset;
 
 #if RECLUSTERING_DEBUG
-	putsv("this_x: ", this_x);
-	putsv("this_y: ", this_y);
+	//putsv("this_x: ", this_x);
+	//putsv("this_y: ", this_y);
 #endif
 
 	//Walks for every cluster inside the level
@@ -187,7 +196,7 @@ void fires_reclustering_protocol(){
 			other_y = y * YCLUSTER;
 
 #if RECLUSTERING_DEBUG
-			putsv("current_position: ", (x << 8 | y));
+			//putsv("current_position: ", (x << 8 | y));
 #endif
 
 			if (cluster_position == (x << 8 | y)){
@@ -195,11 +204,11 @@ void fires_reclustering_protocol(){
 			}
 
 #if RECLUSTERING_DEBUG
-			putsv("initial_x_level: ", initial_x_level);
-			putsv("initial_y_level: ", initial_y_level);
+			//putsv("initial_x_level: ", initial_x_level);
+			//putsv("initial_y_level: ", initial_y_level);
 
-			putsv("other_x: ", other_x);
-			putsv("other_y: ", other_y);
+			//putsv("other_x: ", other_x);
+			//putsv("other_y: ", other_y);
 #endif
 
 
@@ -231,7 +240,7 @@ void handle_reclustering(unsigned int * msg){
 
 	int mapped_proc;
 	Application *app;
-	int hops;
+	int hops, ref_x, ref_y, curr_x, curr_y;
 
 	switch(msg[0]){
 
@@ -240,27 +249,35 @@ void handle_reclustering(unsigned int * msg){
 		/*
 			msg[1] = cluster_position; //Uses the manager PE as reference
 			msg[2] = taskID; //task id
-			msg[3] = net_address; //Allocated proc reference
+			msg[3] = ref proc; //Allocated proc reference
 		 */
 
 #if RECLUSTERING_DEBUG
-		Puts("\nReceive LOAN_PROCESSOR_REQUEST "); Puts(" from master "); Puts(itoh(msg[1])); Puts(" allocated proc "); Puts(itoh(msg[3])); putsv(" task id ", msg[2]);
+		Puts("\nReceive LOAN_PROCESSOR_REQUEST "); Puts(" from master "); Puts(itoh(msg[1])); Puts(" ref proc "); Puts(itoh(msg[3])); putsv(" task id ", msg[2]);
 #endif
 
-		if (free_resources <= 0){
+		if (free_resources < 1){
 
 			send_loan_proc_delivery(msg[1], msg[2], -1, -1);
 
 		} else {
 
 			//Procura pelo processador mais proximo do processador requisitnate
-			mapped_proc = map_task(msg[2]);
 
-			hops = (msg[3] >> 8) + (mapped_proc >> 8);
-			hops += (msg[3] & 0xFF) + (mapped_proc & 0xFF);
+			mapped_proc = reclustering_map(msg[3]);
+
+
+			//Puts("\nRef proc for task "); Puts(itoa(msg[2])); Puts(" is: "); Puts(itoh(msg[3])); Puts("\n");
+
+			ref_x = (msg[3] >> 8);
+			ref_y = (msg[3] & 0xFF);
+			curr_x = (mapped_proc >> 8);
+			curr_y = (mapped_proc & 0xFF);
+
+			hops = (abs(ref_x - curr_x) + abs(ref_y - curr_y));
 
 #if RECLUSTERING_DEBUG
-			Puts("Alocou proc "); Puts(itoh(mapped_proc)); Puts("\n");
+			Puts("Alocou proc "); Puts(itoh(mapped_proc)); putsv(" hops ", hops); Puts("\n");
 #endif
 
 			send_loan_proc_delivery(msg[1], msg[2], mapped_proc, hops);
@@ -283,7 +300,7 @@ void handle_reclustering(unsigned int * msg){
 		reclustering.pending_loan_delivery--;
 
 #if RECLUSTERING_DEBUG
-		Puts("\nReceive LOAN_PROCESSOR_DELIVERY "); Puts(" from proc "); Puts(itoh(msg[1] )); Puts("\n");
+		Puts("\nReceive LOAN_PROCESSOR_DELIVERY "); Puts(" from proc "); Puts(itoh(msg[1] ));  Puts(" hops "); Puts(itoa(msg[3])); Puts("\n");
 		putsv("Numeros de delivery pendendtes: ", reclustering.pending_loan_delivery);
 #endif
 

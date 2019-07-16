@@ -13,7 +13,7 @@
 typedef struct {
 	int x_pos;					//!< Stores the application id
 	int y_pos;					//!< Stores the application status
-	unsigned int free_resources;
+	int free_resources;
 } Cluster;
 
 
@@ -53,12 +53,12 @@ void allocate_cluster_resource(int cluster_index, int nro_resources){
 
 	//Puts(" Cluster address "); Puts(itoh(clusters[cluster_index].x_pos << 8 | clusters[cluster_index].y_pos)); Puts(" resources "); Puts(itoa(clusters[cluster_index].free_resources));
 
-	if (clusters[cluster_index].free_resources >= nro_resources){
+	//if (clusters[cluster_index].free_resources >= nro_resources){
 		clusters[cluster_index].free_resources -= nro_resources;
-	} else {
-		Puts("ERROR: cluster has not enought resources\n");
+	/*} else {
+		Puts("ERROR: cluster has not enought resources\n"); putsv(" index ", cluster_index);
 		while(1);
-	}
+	}*/
 
 	//putsv(" ALLOCATE - nro resources : ", clusters[cluster_index].free_resources);
 }

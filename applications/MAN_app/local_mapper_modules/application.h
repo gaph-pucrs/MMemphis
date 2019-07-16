@@ -89,6 +89,8 @@ void remove_application(Application *);
 
 void initialize_applications();
 
+void get_initial_pe_list(int *, int *);
+
 
 
 /** Receives and app ID and return the Application pointer for the required app ID.
@@ -254,9 +256,9 @@ Application * read_and_create_application(unsigned int app_id, unsigned int * re
 		tp->id = app_id << 8 | task_id;
 		tp->borrowed_master = -1;
 
-		Puts("Creating task: "); Puts(itoa( tp->id )); Puts("\n");
+		/*Puts("Creating task: "); Puts(itoa( tp->id )); Puts("\n");
 		Puts("	code_size: "); Puts(itoh( tp->code_size )); Puts("\n");
-		Puts("	allocated proc: "); Puts(itoa( tp->allocated_proc )); Puts("\n");
+		Puts("	allocated proc: "); Puts(itoa( tp->allocated_proc )); Puts("\n");*/
 
 		/*for(int j=0; j < MAX_TASK_DEPENDECES; j++){
 
@@ -270,6 +272,23 @@ Application * read_and_create_application(unsigned int app_id, unsigned int * re
 	}
 
 	return app;
+}
+
+void get_initial_pe_list(int * initial_list, int * size){
+
+
+	*size = 0;
+
+	for(int i=0; i<MAX_CLUSTER_TASKS; i++){
+
+		if (applications[i].status == RUNNING){
+			initial_list[*size] = applications[i].tasks[0].allocated_proc;
+			//Puts("Task id 0 from app "); Puts(itoa(applications[i].app_ID)); Puts(" mapped at ");
+			//Puts(itoh(initial_list[*size])); Puts("\n");
+
+			*size = *size + 1;
+		}
+	}
 }
 
 void remove_application(Application * app){
