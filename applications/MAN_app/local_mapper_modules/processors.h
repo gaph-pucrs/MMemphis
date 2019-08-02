@@ -246,6 +246,7 @@ void init_procesors(){
 			add_procesor( ( x << 8 | y ) );
 		}
 	}
+	Puts("End init processors\n");
 
 }
 

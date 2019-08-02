@@ -38,8 +38,8 @@ def main():
     delete_if_exists(APP_PATH)
     
     #Clean the app if it exists inside the testcase
-    if os.path.exists(APP_PATH):
-        os.system("cd "+APP_PATH+"; make clean")
+    #if os.path.exists(APP_PATH):
+    #    os.system("cd "+APP_PATH+"; make clean")
     
     #Selects the application source code from the MEMPHIS_PATH or from MEMPHIS_HOME
     source_app_path = ""
