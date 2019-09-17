@@ -27,8 +27,6 @@
  */
 #define MIGRATION_ENABLED			1		//!< Enable or disable the migration module
 
-#define IRQ_PS	(IRQ_INIT_NOC << (SUBNETS_NUMBER-1) )
-
 
 extern unsigned int ASM_SetInterruptEnable(unsigned int);
 extern void ASM_SaveRemainingContext(TCB*);

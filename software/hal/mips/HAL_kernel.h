@@ -64,6 +64,7 @@ extern unsigned int net_address;
 #define  UNUSED 5
 
 
+#define IRQ_PS	(IRQ_INIT_NOC << (SUBNETS_NUMBER-1) )
 
 #define APL_WINDOW	1000000
 
