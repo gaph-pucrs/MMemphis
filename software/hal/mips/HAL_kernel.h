@@ -14,6 +14,7 @@
 #include "../../../include/kernel_pkg.h"
 //HAL_model_properties.h"
 
+/*Onique global variable used by more then 1 module, holds the address XY of the current PE*/
 extern unsigned int net_address;
 
 /*********** Hardware MMR addresses ***********/
@@ -63,17 +64,18 @@ extern unsigned int net_address;
 #define	 LOCAL	4
 #define  UNUSED 5
 
+/*Used to filter the IRQ status with only the value of PS interruption*/
+#define IRQ_PS					(IRQ_INIT_NOC << (SUBNETS_NUMBER-1) )
 
-#define IRQ_PS	(IRQ_INIT_NOC << (SUBNETS_NUMBER-1) )
-
-#define APL_WINDOW	1000000
+/*Used by DAPE to define the application window period */
+#define APL_WINDOW				1000000
 
 /* Kernel Status */
 #define PE_STATUS_MIGRATING		0
 #define PE_STATUS_ALLOCATING	1
 #define PE_STATUS_RUNNING		2
 
-
+/*Sets the slack time windows period in clock cycles*/
 #define SLACK_TIME_WINDOW		100000 // half milisecond - Remove from here because here is the place of thing related to hardware
 
 /* DMNI hardware working mode */
@@ -84,16 +86,12 @@ extern unsigned int net_address;
 /* Defines the number where Packet-Switching subnet is refered in MMR*/
 #define PS_SUBNET 				(SUBNETS_NUMBER-1)
 
-/*********** Interrupt bits **************/
-#define IRQ_SCHEDULER				0x01 //bit 0
-#define IRQ_PENDING_SERVICE			0x02 //bit 1
-#define IRQ_SLACK_TIME				0x04 //bit 2
-#define IRQ_CS_REQUEST				0x08 //bit 3
-#define IRQ_INIT_NOC				0x10 //bit 4
-
-/*Access to MMR (Memory Mapped Register)*/
-//#define HAL_memory_read(address) (*(volatile unsigned int*)(address))
-//#define HAL_memory_write(address, data) *(volatile unsigned int*)(address)=(data)
+/*********** IRQ Interrupt bits **************/
+#define IRQ_SCHEDULER			0x01 //bit 0
+#define IRQ_PENDING_SERVICE		0x02 //bit 1
+#define IRQ_SLACK_TIME			0x04 //bit 2
+#define IRQ_CS_REQUEST			0x08 //bit 3
+#define IRQ_INIT_NOC			0x10 //bit 4
 
 /*MMR read functions*/
 #define HAL_get_tick() 					(*(volatile unsigned int*)(TICK_COUNTER))
@@ -121,14 +119,12 @@ extern unsigned int net_address;
 #define HAL_set_time_slice(t_slice)		*(volatile unsigned int*)(TIME_SLICE)=(t_slice)
 #define HAL_handle_CS_request(req_st)	*(volatile unsigned int*)(HANDLE_CS_REQUEST)=(req_st)
 
-/*** Externs of the HAL function implemented in assembly (file HAL_asm.S) ***/
-extern void HAL_run_scheduled_task(unsigned int); //TCB *
+/*** Externs of the HAL function implemented in assembly (file HAL_kernel_asm.S) ***/
+extern void HAL_run_scheduled_task(unsigned int);
 extern void HAL_set_interrupt_enabled(unsigned int);
 /****************************************************************************/
 
-#define putsv(string, value) puts(string); puts(itoa(value)); puts("\n");
-
-
+/*Initializing function, for now, only set the value of net_address*/
 void init_HAL();
 
 /*IRQ abstraction*/
@@ -145,8 +141,10 @@ void DMNI_send_data(unsigned int, unsigned int, unsigned int);
 
 void config_subnet(unsigned int, unsigned int, unsigned int);
 
+/*UART abstraction*/
 int puts(char *);
 
+#define putsv(string, value) puts(string); puts(itoa(value)); puts("\n");
 
 
 #endif /* SOFTWARE_HAL_H_ */

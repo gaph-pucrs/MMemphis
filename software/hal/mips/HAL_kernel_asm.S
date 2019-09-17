@@ -1,53 +1,55 @@
 ##------------------------------------------------------------------------------------------------
+##  Memphis Kernel Boot
+##	Author: Marcelo Ruaro (September, 2019)
+##  Research group: GAPH-PUCRS    -    contact  marcelo.ruaro@acad.pucrs.br and fernando.moraes@pucrs.br
+##  Brief description: Implements the interrupt, syscall handling for MIPS processor
 ##
-##  DISTRIBUTED HEMPS -  5.0
+##  MIPS has jumps to the following addresses:
 ##
-##  Research group: GAPH-PUCRS    -    contact   fernando.moraes@pucrs.br
+##    	0x3C: memory address that CPU jumps when a hardware interruption occurs
+##	        - NoC Interrupction
+##	        - Scheduler timer
+##	        - Monitors timers
+##    	0x44: memory address that CPU jumps when a task call by a syscall
 ##
-##  Distribution:  September 2013
-##
-##  Source name:  boot.S
-##
-##  Brief description: Initializes the stack pointer and jumps to main().
-##
+##  MIPS has the following co-processor register mapped:
+##		- $10: page
+##		- $12: interruptions
+##      - $14: program counter
 ##------------------------------------------------------------------------------------------------
 
         .text      
         .align  2
-        .set noat
+        .set noat		#Disable warning when $at register is used by user
         .globl  entry
         .ent    entry
 entry:
         .set noreorder
         
-		li $sp,sp_addr
-		jal     main
-		nop
+        li      $sp,sp_addr
+        mtc0    $0,$12          # Disables interrupts using $1 value (0==FALSE)
+        jal     main
+        nop
 
 $L1:
         j $L1
         nop
 
-        .org 0x3c
-#address 0x3c
-interrupt_service_routine_entry:
-        j       interrupt_service_routine
-        nop
-
-#address 0x44
-system_service_routine_entry:
-        j       system_service_routine
-        nop
-
-#address 0x4c
+        .org 0x3c		#Forces the next instruction to start at address 0x3c
+#address 0x3c - This address is mapped inside reg_back of MIPS
 interrupt_service_routine:
+        j       HAL_interruption
+        nop
 
-        #REGISTERS $26 AND $27 ARE RESERVED FOR THE OS
-        #la      $26,needTaskScheduling
-        #sw      $0,0($26)
+#address 0x44 - This address is mapped inside reg_back of MIPS
+system_service_routine:
+        j       HAL_syscall
+        nop
 
-        #SAVE ra AND REGISTERS
-        la      $27,current
+
+HAL_interruption:
+
+        la      $27,current	#Uses register $27 to store current poiter address
         lw      $27,0($27)
                                    
         sw      $2,0($27)       # reg[0] = $v0
@@ -74,222 +76,199 @@ interrupt_service_routine:
         sw      $23,84($27)     # reg[21] = $s7
         sw      $24,88($27)     # reg[22] = $t8
         sw      $25,92($27)     # reg[23] = $t9
-#        sw      $28,96($27)     # reg[24] = $gp
+
+        #Note that registers $26 and $27 are reserved for kernel, thus they are not being saved here
+#       sw      $28,96($27)     # reg[24] = $gp - GP is not saved in order to allows PC to refer to absolute task page and not the relative page. The relative memory management is performed by a turnarround implemented insed PE.vhd and PE.cpp (PE top)
         sw      $29,100($27)    # reg[25] = $sp
         sw      $30,104($27)    # reg[26] = $s8
         sw      $31,108($27)    # reg[27] = $ra
-        mfhi    $26
+        mfhi    $26             # Save the value of hi into $26
         sw      $26,112($27)    # reg[28] = $hi
-        mflo    $26
+        mflo    $26             # Save the value of lo into $26
         sw      $26,116($27)    # reg[29] = $lo
-        mfc0    $26,$14
+        mfc0    $26,$14         # Copy $14 from coprocessor 0 to the register $26
         sw      $26,120($27)    # reg[30] = save PC
 
-
+        #Reset kernel stack pointer
         li $sp,sp_addr
         
         #JUMP TO INTERRUPT SERVICE ROUTINE
         lui     $5,0x2000    
-        lw      $4,0x20($5)     #IRQ_STATUS
-        lw      $6,0x10($5)     #IRQ_MASK
-        jal     OS_InterruptServiceRoutine
-        and     $4,$4,$6
+        lw      $4,0x20($5)     		 # IRQ_STATUS - Get the status of interruption (address=0x20000020) storing in $4
+        lw      $6,0x10($5)     		 # IRQ_MASK   - Get the status of mask (address=0x20000010) storing in $6
+        jal     OS_interruption_handler  # Calls the OS_interruption_handler inside kernel
+        and     $4,$4,$6        		 # Creates the final value of first argument (status) of function  OS_interruption_handler
+        # Every jump in MIPS execute the always execute the instruction above jump. Some cases the compiler puts a nop after a jump. In this case the space of nop was reused to execute a usefull instruction
 
 ####################################################
 
-system_service_routine:
+HAL_syscall:
         # registers $26 and $27 are reserved for kernel       
-        la      $27,current
+        la      $27,current     # Loads the address of current TCB pointer at reg $27
         lw      $27,0($27)
         
-        # saves minimun context
-        sw      $4,8($27)       # $a0
-        sw      $5,12($27)      # $a1
-        sw      $6,16($27)      # $a2
-        sw      $7,20($27)      # $a3
+        # Saves partial task context (save the value of arguments (A0 - A3) passed by the task to SystemCall)
+        sw      $4,8($27)       # reg[2] = $a0
+        sw      $5,12($27)      # reg[3] = $a1
+        sw      $6,16($27)      # reg[4] = $a2
+        sw      $7,20($27)      # reg[5] = $a3
 
-#        sw      $28,96($27)     # $gp
-        sw      $29,100($27)    # $sp
-        sw      $31,108($27)    # $ra
+        sw      $29,100($27)    # reg[25] = $sp
+        sw      $31,108($27)    # reg[27] = $ra
         
-        mfc0    $26,$14
-        sw      $26,120($27)    # save PC
+        mfc0    $26,$14         # Get PC and stores in $26
+        sw      $26,120($27)    # Saves PC at reg[30]
 
-
+        # Reset the stack pointer to kernel
         li $sp,sp_addr
 
-        # jumps to system calls handler
-        jal     Syscall
+        # jumps to OS system calls handler
+        jal     OS_syscall_handler
         nop
         
         
-        # verifies if scheduling is needed
+        # Verifies if scheduling is needed
         la      $26,schedule_after_syscall
         lw      $26,0($26)
-        beqz    $26,system_service_restore
+        beqz    $26,restore_partial_task_context # IF (schedule_after_syscall == 0) THEN restore_partial_task_context ELSE save_remaining_task_context and calls Scheduler
         nop
         
-        # saves the context of the running task
+        # The code below will be executed only if schedule_after_syscall == 1
+        # Saves the context of the running task
         la      $4,current
         lw      $4,0($4)
-        jal     ASM_SaveRemainingContext
+        jal     save_remaining_task_context
         nop
         
-        # schedules the next ready task
-        jal     Scheduler
+        # Call scheduler inside kernel to select a new task if ready
+        jal     OS_scheduler
         nop
         
-        # restores the context and runs the scheduled task
+        # Set the $a0 (first argmument) register pointer to current and calls HAL_run_scheduled_task to restore task context and to run it
         la      $4,current
         lw      $4,0($4)
-        jal     ASM_RunScheduledTask
+        jal     HAL_run_scheduled_task
         nop
        
-system_service_restore:
+# Restore the remaining context of the running task since the scheduler not was called to selected a different task
+restore_partial_task_context:
 
+        # Loads the address of current TCB at reg $27
         la      $27,current
         lw      $27,0($27)        
         
-        # restores the context previously saved
-#        lw      $28,96($27)     # $gp
-        lw      $29,100($27)    # $sp
-        lw      $31,108($27)    # $ra
+        # Restores the partial context previously saved
+        lw      $29,100($27)    # $sp = reg[25]
+        lw      $31,108($27)    # $ra = reg[27]
         
-        lw      $26,120($27)    # loads pc of the task that was running
-        lw      $27,124($27)    # loads offset of the task (for paging setup)
+        lw      $26,120($27)    # $pc = reg[30]
+        lw      $27,124($27)    # Loads TCB.offset of the task (for paging setup)
         li      $1,0x1  
         
-        mtc0    $27,$10
-        jr      $26             # jumps to pc
-        mtc0    $1,$12          # enables interrupts
+        mtc0    $27,$10         # Set page register
+        jr      $26             # Jumps to pc
+        mtc0    $1,$12          # Enables interrupts
 
         .set    reorder 
         .end    entry
         
 ###################################################
         
-        .globl  ASM_SaveRemainingContext
-        .ent    ASM_SaveRemainingContext
+        .globl  save_remaining_task_context
+        .ent    save_remaining_task_context
         .set    noreorder
         
-ASM_SaveRemainingContext:
+save_remaining_task_context:
 
-        sw      $2,0($4)        #  $v0
-        sw      $3,4($4)        #  $v1
-        #sw      $8,24($4)       #  $t0
-        #sw      $9,28($4)       #  $t1
-        #sw      $10,32($4)      #  $t2
-        #sw      $11,36($4)      #  $t3
-        #sw      $12,40($4)      #  $t4
-        #sw      $13,44($4)      #  $t5
-        #sw      $14,48($4)      #  $t6
-        #sw      $15,52($4)      #  $t7
-        sw      $16,56($4)      #  $s0
-        sw      $17,60($4)      #  $s1
-        sw      $18,64($4)      #  $s2
-        sw      $19,68($4)      #  $s3
-        sw      $20,72($4)      #  $s4
-        sw      $21,76($4)      #  $s5
-        sw      $22,80($4)      #  $s6
-        sw      $23,84($4)      #  $s7
-        #sw      $24,88($4)      #  $t8
-        #sw      $25,92($4)      #  $t9
-        sw      $30,104($4)     #  $s8
-        #mfhi    $26
-        #sw      $26,112($4)     #  $hi
-        #mflo    $26
-        #sw      $26,116($4)     #  $lo
-
-        #mfc0    $26,$14
-        #sw      $26,120($4)     #  save PC
+        sw      $2,0($4)        #  reg[0] = $v0
+        sw      $3,4($4)        #  reg[1] = $v1
+        # ...
+        sw      $16,56($4)      #  reg[14] = $s0
+        sw      $17,60($4)      #  reg[15] = $s1
+        sw      $18,64($4)      #  reg[16] = $s2
+        sw      $19,68($4)      #  reg[17] = $s3
+        sw      $20,72($4)      #  reg[18] = $s4
+        sw      $21,76($4)      #  reg[19] = $s5
+        sw      $22,80($4)      #  reg[20] = $s6
+        sw      $23,84($4)      #  reg[21] = $s7
+        # ...
+        sw      $30,104($4)     #  reg[26] = $s8
         
         jr      $31
         nop
         
         .set    reorder
-        .end    ASM_SaveRemainingContext
+        .end    save_remaining_task_context
         
 ###################################################
 
-        .globl  ASM_RunScheduledTask
-        .ent    ASM_RunScheduledTask
+        .globl  HAL_run_scheduled_task
+        .ent    HAL_run_scheduled_task
         .set    noreorder
+
+# Restorse the full context of the task to be executed
+HAL_run_scheduled_task:
+
+        move    $27,$4          # Gets the first argument pointer and stores to reg $27
         
-ASM_RunScheduledTask:
+        lw      $2,0($27)       # $v0 = reg[0]
+        lw      $3,4($27)       # $v1 = reg[1]
+        lw      $4,8($27)       # $a0 = reg[2]
+        lw      $5,12($27)      # $a1 = reg[3]
+        lw      $6,16($27)      # $a2 = reg[4]
+        lw      $7,20($27)      # $a3 = reg[5]
+        lw      $8,24($27)      # $t0 = reg[6]
+        lw      $9,28($27)      # $t1 = reg[7]
+        lw      $10,32($27)     # $t2 = reg[8]
+        lw      $11,36($27)     # $t3 = reg[9]
+        lw      $12,40($27)     # $t4 = reg[10]
+        lw      $13,44($27)     # $t5 = reg[11]
+        lw      $14,48($27)     # $t6 = reg[12]
+        lw      $15,52($27)     # $t7 = reg[13]
+        lw      $16,56($27)     # $s0 = reg[14]
+        lw      $17,60($27)     # $s1 = reg[15]
+        lw      $18,64($27)     # $s2 = reg[16]
+        lw      $19,68($27)     # $s3 = reg[17]
+        lw      $20,72($27)     # $s4 = reg[18]
+        lw      $21,76($27)     # $s5 = reg[19]
+        lw      $22,80($27)     # $s6 = reg[20]
+        lw      $23,84($27)     # $s7 = reg[21]
+        lw      $24,88($27)     # $t8 = reg[22]
+        lw      $25,92($27)     # $t9 = reg[23]
+#       lw      $28,96($27)     # $gp - GP is never saved or restored
+        lw      $29,100($27)    # $sp = reg[25]
+        lw      $30,104($27)    # $s8 = reg[26]
+        lw      $31,108($27)    # $ra = reg[27]
+        lw      $26,112($27)    # Move the content of reg[28] (hi) to $26
+        mthi    $26             # hi = reg[28]
+        lw      $26,116($27)    # Move the content of reg[29] (lo) to $26
+        mtlo    $26             # hi = reg[29]
 
-        move    $27,$4
+        lw      $26,120($27)    # pc = reg[30]
         
-        lw      $2,0($27)       # $v0
-        lw      $3,4($27)       # $v1
-        lw      $4,8($27)       # $a0
-        lw      $5,12($27)      # $a1
-        lw      $6,16($27)      # $a2
-        lw      $7,20($27)      # $a3
-        lw      $8,24($27)      # $t0
-        lw      $9,28($27)      # $t1
-        lw      $10,32($27)     # $t2
-        lw      $11,36($27)     # $t3
-        lw      $12,40($27)     # $t4
-        lw      $13,44($27)     # $t5
-        lw      $14,48($27)     # $t6
-        lw      $15,52($27)     # $t7
-        lw      $16,56($27)     # $s0
-        lw      $17,60($27)     # $s1
-        lw      $18,64($27)     # $s2
-        lw      $19,68($27)     # $s3
-        lw      $20,72($27)     # $s4
-        lw      $21,76($27)     # $s5
-        lw      $22,80($27)     # $s6
-        lw      $23,84($27)     # $s7
-        lw      $24,88($27)     # $t8
-        lw      $25,92($27)     # $t9
-#        lw      $28,96($27)     # $gp
-        lw      $29,100($27)    # $sp
-        lw      $30,104($27)    # $s8
-        lw      $31,108($27)    # $ra
-        lw      $26,112($27)    # $hi
-        mthi    $26
-        lw      $26,116($27)    # $lo
-        mtlo    $26
+        # Load TCB.offet to $27 to used this value to set the page in mtc0    $27,$10
+        lw      $27,124($27)    # $27 = TCB.offset
+        li      $1,0x1          # $1 = 1 - used in sequence
 
-        lw      $26,120($27)    # loads pc of the task that will run
-        lw      $27,124($27)    # loads offset of the task (for paging setup)
-        li      $1,0x1
-
-        mtc0    $27,$10
+        mtc0    $27,$10         # Set the page register on MIPS that is mapped as a co-processor $10
         jr      $26             # jumps to pc
-        mtc0    $1,$12          # enables interrupts
+        mtc0    $1,$12          # Enables interrupts using $1 value (1==TRUE)
         
         .set    reorder
-        .end    ASM_RunScheduledTask
+        .end    HAL_run_scheduled_task
         
 ###################################################
 
-        .globl  ASM_SetInterruptEnable
-        .ent    ASM_SetInterruptEnable
+        .globl  HAL_set_interrupt_enabled
+        .ent    HAL_set_interrupt_enabled
 
-ASM_SetInterruptEnable:
+# Enable or disable interruption accord to value of $a0 - argument 0 register that is represented by enable input
+HAL_set_interrupt_enabled:
         .set    noreorder
-        mfc0    $2,$12
+        mfc0    $2,$12          # There is no reason to this instruction be there since it does't nothing usefull
         jr      $31
-        mtc0    $4,$12          #enable interrupts
+        mtc0    $4,$12          # Set co-processor $12 accoriding the value of $a0 - enabling/disabling interrupts
 
         .set    reorder
-        .end    ASM_SetInterruptEnable
+        .end    HAL_set_interrupt_enabled
 
-################## READ_INST ##################
-
-        .globl  read_inst
-        .ent    read_inst
-        .set    noreorder
-read_inst:
-        la      $27,global_inst
-
-        mfc0    $26,$16
-        sw      $26,0($27)    #  save global_inst
-
-        jr      $31             # return to the caller
-        nop
-
-        .set    reorder
-        .end    read_inst

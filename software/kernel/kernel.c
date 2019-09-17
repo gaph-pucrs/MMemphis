@@ -496,7 +496,7 @@ void write_local_msg_to_task(TCB * task_tcb_ptr, int msg_lenght, int * msg_data)
  * \param arg1 Generic argument
  * \param arg2 Generic argument
  */
-int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned int arg2) {
+int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned int arg2) {
 
 	Message *msg_read;
 	Message *msg_write;
@@ -755,7 +755,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			current->is_service_task = 1;
 
 			puts("Task REQUESTED service - disabling interruption\n");
-			OS_InterruptMaskClear(0xffffffff);
+			HAL_interrupt_mask_clear(0xffffffff);
 
 			return 1;
 
@@ -839,7 +839,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			current->scheduling_ptr->waiting_msg = 1;
 			//putsv("Task is waiting message: ", (unsigned int)current);
 
-			OS_InterruptMaskSet(interrput_mask);
+			HAL_interrupt_mask_set(interrput_mask);
 
 			return 0;
 
@@ -1414,7 +1414,7 @@ void remove_ctp_online(TCB * task_to_remove){
 
 /** Generic task scheduler call
  */
-void Scheduler() {
+void OS_scheduler() {
 
 	Scheduling * scheduled;
 	unsigned int scheduler_call_time;
@@ -1462,12 +1462,12 @@ void Scheduler() {
 
 	HAL_set_time_slice(get_time_slice());
 
-	OS_InterruptMaskSet(IRQ_SCHEDULER);
+	HAL_interrupt_mask_set(IRQ_SCHEDULER);
 
 	//Disable interruption for the task when it is a service task
 	if (current->is_service_task){
 		//puts("Service task will execute, interruption disabled\n");
-		OS_InterruptMaskClear(0xffffffff);
+		HAL_interrupt_mask_clear(0xffffffff);
 	}
 
 }
@@ -1475,7 +1475,7 @@ void Scheduler() {
 /** Function called by assembly (into interruption handler). Implements the routine to handle interruption in HeMPS
  * \param status Status of the interruption. Signal the interruption type
  */
-void OS_InterruptServiceRoutine(unsigned int status) {
+void OS_interruption_handler(unsigned int status) {
 
 	volatile ServiceHeader p;
 	ServiceHeader * next_service;
@@ -1573,7 +1573,7 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 
 	if (call_scheduler){
 
-		Scheduler();
+		OS_scheduler();
 
 	} else if (current == &idle_tcb){
 
@@ -1591,38 +1591,14 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 	/*if (current->is_service_task){
 		//puts("Service task will execute, interruption disabled\n");
 		puts("INT disabled\n");
-		OS_InterruptMaskClear(0xffffffff);
+		HAL_interrupt_mask_clear(0xffffffff);
 	}*/
 
     /*runs the scheduled task*/
-    ASM_RunScheduledTask(current);
+    HAL_run_scheduled_task((unsigned int) current);
 }
 
-/** Clear a interruption mask
- * \param Mask Interruption mask clear
- */
-unsigned int OS_InterruptMaskClear(unsigned int Mask) {
 
-    unsigned int mask;
-
-    mask = HAL_get_irq_status() & ~Mask;
-    HAL_set_irq_mask(mask);
-
-    return mask;
-}
-
-/** Set a interruption mask
- * \param Mask Interruption mask set
- */
-unsigned int OS_InterruptMaskSet(unsigned int Mask) {
-
-    unsigned int mask;
-
-    mask = HAL_get_irq_status() | Mask;
-    HAL_set_irq_mask(mask);
-
-    return mask;
-}
 
 /** Idle function
  */
@@ -1634,7 +1610,7 @@ void OS_Idle() {
 
 int main(){
 
-	ASM_SetInterruptEnable(FALSE);
+	HAL_set_interrupt_enabled(0); //Set interruption disabled
 
 	idle_tcb.pc = (unsigned int) &OS_Idle;
 	idle_tcb.id = 0;
@@ -1663,7 +1639,7 @@ int main(){
 	init_TCBs();
 
 	/*disable interrupts*/
-	OS_InterruptMaskClear(0xffffffff);
+	HAL_interrupt_mask_clear(0xffffffff);
 
 	//Set to enable all subnets mask
 	interrput_mask = 0;
@@ -1675,12 +1651,12 @@ int main(){
 	interrput_mask = IRQ_SCHEDULER | IRQ_PENDING_SERVICE | IRQ_SLACK_TIME | IRQ_CS_REQUEST | interrput_mask;
 	//OS_InterruptMaskSet(IRQ_SCHEDULER | IRQ_PENDING_SERVICE | IRQ_SLACK_TIME | IRQ_CS_REQUEST | interrput_mask);
 	//Slack-time disabled
-	OS_InterruptMaskSet(interrput_mask);
+	HAL_interrupt_mask_set(interrput_mask);
 
 	HAL_set_slack_time_monitor(SLACK_TIME_WINDOW);
 
 	/*runs the scheduled task*/
-	ASM_RunScheduledTask(current);
+	HAL_run_scheduled_task((unsigned int)current);
 
 	return 0;
 }
