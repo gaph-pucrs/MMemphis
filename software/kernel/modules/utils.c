@@ -11,7 +11,6 @@
  *
  */
 
-#include "../../include/plasma.h"
 #include "utils.h"
 
 #define FALSE		0
@@ -21,7 +20,7 @@
  * \param string array of chars
  * \return The int return is only to avoid a build-in warning
  */
-int puts(char *string) {
+/*int puts(char *string) {
 
 	int *str_part;
 	//This is the most crazy and complicated FOR declaration that I ever seen. For obviously purposes, I divided the FOR section in lines
@@ -34,7 +33,7 @@ int puts(char *string) {
 			*str_part++,MemoryWrite(UART_WRITE, *str_part)
 	);
 	return 0;
-}
+}*/
 
 /**Converts a integer number to its decimal representation in a array of char
  * \param num Integer number to be converted

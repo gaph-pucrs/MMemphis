@@ -14,10 +14,8 @@
 
 #include "task_control.h"
 
-#include "../../../include/kernel_pkg.h"
-#include "../../include/plasma.h"
+#include "../../hal/mips/HAL_kernel.h"
 #include "../../include/services.h"
-#include "utils.h"
 #include "packet.h"
 
 

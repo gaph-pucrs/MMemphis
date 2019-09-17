@@ -1,8 +1,6 @@
 RED  =\033[0;31m
 NC   =\033[0m # No Color
 
-KERNEL_PKG_TGT    = ../include/kernel_pkg.h
-
 CFLAGS            = -O2 -Wall -fms-extensions -c -s -std=c99 -G 0
 GCC_MIPS          = mips-elf-gcc $(CFLAGS)
 AS_MIPS           = mips-elf-as
@@ -10,38 +8,52 @@ LD_MIPS           = mips-elf-ld
 DUMP_MIPS         = mips-elf-objdump
 COPY_MIPS         = mips-elf-objcopy -I elf32-bigmips -O binary
 
-BOOT_SLAVE        = boot_slave
-BOOT_SLAVE_SRC	  = kernel/boot.S
-KERNEL_SLAVE 	  = kernel
-KERNEL_SLAVE_SRC  = kernel/kernel.c 
-KERNEL_SLAVE_H	  = kernel/kernel.h
-
-
 #https://www.gnu.org/software/make/manual/make.html#Automatic-Variables
 
+#------------- HAL ASSEMBLY -------------
+BOOT    		  = HAL_kernel_asm
+BOOT_SRC	  	  = hal/mips/HAL_kernel_asm.S
+
+#------------- HAL KERNEL ---------------
+HAL_KERNEL_DIR	  = hal/mips/
+HAL_NAME		  = HAL_kernel
+HAL_KERNEL_SRC = $(addsuffix .c, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) ) $(addsuffix .h, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) )
+HAL_KERNEL_TGT = $(addsuffix .o, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) )
+
+#------------- MODULES KERNEL -------------
 MODULES_DIR = kernel/modules/
 MODULES_NAMES = utils packet pending_service communication task_control task_location task_migration task_scheduler ctp
+
+
 MODULES_SRC = $(addsuffix .c, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) ) $(addsuffix .h, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) )
 MODULES_TGT = $(addsuffix .o, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) )
 
-KERNEL_SLAVE_MODULES = utils packet pending_service communication task_control task_location task_migration task_scheduler ctp
-KERNEL_SLAVE_TGT 	 = $(addsuffix .o, $(addprefix $(MODULES_DIR), $(KERNEL_SLAVE_MODULES) ) )
+#------------- MAIN KERNEL -------------
+KERNEL 	  		  = kernel
+KERNEL_SRC 		  = kernel/kernel.c 
+KERNEL_H	      = kernel/kernel.h
+KERNEL_TGT 	 = $(addsuffix .o, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) ) $(addsuffix .o, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) )
 
-default: $(KERNEL_SLAVE).txt 
+default: $(KERNEL).txt 
 
-$(MODULES_TGT): $(MODULES_SRC)
-	@printf "${RED}Compiling Kernel %s ...${NC}\n" "$*.c"
+$(HAL_KERNEL_TGT): $(HAL_KERNEL_SRC)
+	@printf "${RED}Compiling HAL %s ...${NC}\n" "$*.c"
 	$(GCC_MIPS) -o $*.o $*.c
 
-$(KERNEL_SLAVE).txt: $(MODULES_TGT) $(KERNEL_SLAVE_SRC) $(KERNEL_SLAVE_H) $(BOOT_SLAVE_SRC)
-	@printf "${RED}Compiling Kernel Slave: %s ...${NC}\n" "$(KERNEL_SLAVE).c"
-	$(AS_MIPS) --defsym sp_addr=$(PAGE_SP_INIT) -o $(BOOT_SLAVE).o $(BOOT_SLAVE_SRC)
-	$(GCC_MIPS) -o $(KERNEL_SLAVE).o $(KERNEL_SLAVE_SRC) -D PLASMA
-	$(LD_MIPS) -Ttext 0 -eentry -Map $(KERNEL_SLAVE).map -s -N -o $(KERNEL_SLAVE).bin $(BOOT_SLAVE).o $(KERNEL_SLAVE).o $(KERNEL_SLAVE_TGT) 
-	$(LD_MIPS) -Ttext 0 -eentry -Map $(KERNEL_SLAVE)_debug.map -o $(KERNEL_SLAVE)_debug.bin $(BOOT_SLAVE).o $(KERNEL_SLAVE).o $(KERNEL_SLAVE_TGT)
-	$(DUMP_MIPS) -S $(KERNEL_SLAVE)_debug.bin > $(KERNEL_SLAVE).lst
-	$(COPY_MIPS) $(KERNEL_SLAVE).bin $(KERNEL_SLAVE).dump
-	hexdump -v -e '1/1 "%02x" 1/1 "%02x" 1/1 "%02x" 1/1 "%02x" "\n"' $(KERNEL_SLAVE).dump > $(KERNEL_SLAVE).txt
+
+$(MODULES_TGT): $(HAL_KERNEL_TGT) $(MODULES_SRC)
+	@printf "${RED}Compiling Module %s ...${NC}\n" "$*.c"
+	$(GCC_MIPS) -o $*.o $*.c
+
+$(KERNEL).txt: $(HAL_KERNEL_TGT) $(MODULES_TGT) $(KERNEL_SRC) $(KERNEL_H) $(BOOT_SRC)
+	@printf "${RED}Compiling Kernel: %s ...${NC}\n" "$(KERNEL).c"
+	$(AS_MIPS) --defsym sp_addr=$(PAGE_SP_INIT) -o $(BOOT).o $(BOOT_SRC)
+	$(GCC_MIPS) -o $(KERNEL).o $(KERNEL_SRC)
+	$(LD_MIPS) -Ttext 0 -eentry -Map $(KERNEL).map -s -N -o $(KERNEL).bin $(BOOT).o $(KERNEL).o $(KERNEL_TGT) 
+	$(LD_MIPS) -Ttext 0 -eentry -Map $(KERNEL)_debug.map -o $(KERNEL)_debug.bin $(BOOT).o $(KERNEL).o $(KERNEL_TGT)
+	$(DUMP_MIPS) -S $(KERNEL)_debug.bin > $(KERNEL).lst
+	$(COPY_MIPS) $(KERNEL).bin $(KERNEL).dump
+	hexdump -v -e '1/1 "%02x" 1/1 "%02x" 1/1 "%02x" 1/1 "%02x" "\n"' $(KERNEL).dump > $(KERNEL).txt
 
 clean:
 	@printf "Cleaning up\n"
@@ -52,4 +64,6 @@ clean:
 	@rm -rf *.lst
 	@rm -rf *.txt
 	@rm -rf *.dump
+
+
 

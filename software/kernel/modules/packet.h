@@ -119,10 +119,6 @@ typedef struct {
 }ServiceHeaderSlot;
 
 
-#define is_send_active(subnet) (MemoryRead(DMNI_SEND_ACTIVE) & (1 << subnet))
-
-extern unsigned int net_address;
-
 ServiceHeader* get_service_header_slot();
 
 void init_packet();

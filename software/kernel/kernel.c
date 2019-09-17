@@ -17,11 +17,10 @@
  * The kernel_slave file uses several modules that implement specific functions
  */
 
+#include "kernel.h"
 #include "../include/api.h"
 #include "../include/management_api.h"
-#include "../include/plasma.h"
 #include "../include/services.h"
-#include "kernel.h"
 #include "modules/task_location.h"
 #include "modules/packet.h"
 #include "modules/communication.h"
@@ -118,7 +117,7 @@ void send_task_terminated(TCB * terminated_task){
 		puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
 		putsv("Master id: ", master_id);
 
-		while(is_send_active(PS_SUBNET));
+		while(HAL_is_send_active(PS_SUBNET));
 	}
 	puts("Sended\n");
 
@@ -210,7 +209,7 @@ void send_task_allocated(TCB * allocated_task){
 
 		send_service_api_message(master_task_id, master_addr, message, 2);
 
-		while(is_send_active(PS_SUBNET));
+		while(HAL_is_send_active(PS_SUBNET));
 
 		puts("Sending task allocated\n");
 	}
@@ -266,7 +265,7 @@ void send_slack_time_report(){
 
 	p->service = SLACK_TIME_REPORT;
 
-	time_aux = MemoryRead(TICK_COUNTER);
+	time_aux = HAL_get_tick();
 
 	p->cpu_slack_time = ( (total_slack_time*100) / (time_aux - last_slack_time_report) );
 
@@ -343,7 +342,7 @@ void send_message_request(int producer_task, int consumer_task, unsigned int tar
 
 	if ( subnet != -1){
 
-		MemoryWrite(WRITE_CS_REQUEST, (1 << subnet));
+		HAL_set_CS_request((1 << subnet));
 
 	} else {
 
@@ -394,7 +393,7 @@ void send_service_api_message(int consumer_task, unsigned int targetPE, unsigned
 	send_packet(p, (unsigned int) src_message, msg_size);
 
 	//SE ISSO ESTIVER DESCOMENTANDO ENTAO O CONTROLE DE SOBRESCRITA DE MEMORIA E FEITA PELA APLICACAO
-	//while(is_send_active(PS_SUBNET));
+	//while(HAL_is_send_active(PS_SUBNET));
 
 }
 
@@ -442,7 +441,8 @@ void send_config_router(int target_proc, int input_port, int output_port, int cs
 
 		DMNI_send_data((unsigned int)config_pkt, 3 , PS_SUBNET);
 
-		while (MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << PS_SUBNET));
+		while (HAL_is_receive_active((1 << PS_SUBNET)));
+
 	}
 #if CS_DEBUG
 	puts("\n********* Send config router ********* \n");
@@ -483,8 +483,8 @@ void write_local_msg_to_task(TCB * task_tcb_ptr, int msg_lenght, int * msg_data)
 		remove_ctp_online(task_tcb_ptr);
 
 
-	//task_tcb_ptr->communication_time = MemoryRead(TICK_COUNTER) - task_tcb_ptr->communication_time;
-	task_tcb_ptr->total_comm += MemoryRead(TICK_COUNTER) - task_tcb_ptr->communication_time;
+	//task_tcb_ptr->communication_time = HAL_get_tick() - task_tcb_ptr->communication_time;
+	task_tcb_ptr->total_comm += HAL_get_tick() - task_tcb_ptr->communication_time;
 	//puts("["); puts(itoa(task_tcb_ptr->id)); puts("] Comm ==> "); puts(itoa(current->communication_time)); puts("\n");
 
 
@@ -521,11 +521,11 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			schedule_after_syscall = 1;
 
 			//Deadlock avoidance: avoids to send a packet when the DMNI is busy in send process
-			if (is_send_active(PS_SUBNET) || search_PIPE_producer(current->id)){
+			if (HAL_is_send_active(PS_SUBNET) || search_PIPE_producer(current->id) ){
 				return 0;
 			}
 
-			puts("Task id: "); puts(itoa(current->id)); putsv(" terminated at ", MemoryRead(TICK_COUNTER));
+			puts("Task id: "); puts(itoa(current->id)); putsv(" terminated at ", HAL_get_tick());
 
 			//send_task_terminated(current, arg0);
 			send_task_terminated(current);
@@ -590,7 +590,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 					ret = get_subnet(producer_task, consumer_task, DMNI_SEND_OP);
 					if (ret == -1)
 						ret = PS_SUBNET; //If the CTP was not found, then by default send by PS
-					if (is_send_active(ret)){
+					if (HAL_is_send_active(ret)){
 						//Restore the message request
 						msg_req_ptr->requested = producer_task;
 						msg_req_ptr->requester = consumer_task;
@@ -670,7 +670,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 				//*************** Deadlock avoidance ************************
 				//Só testa se tiver algo na rede PS pq o CS vai via sinal de req
 				ret = get_subnet(producer_task, consumer_task, DMNI_RECEIVE_OP);
-				if (ret == -1 && is_send_active(PS_SUBNET) ) {
+				if (ret == -1 && HAL_is_send_active(PS_SUBNET) ) {
 					return 0;
 				}
 				//***********************************************************
@@ -683,7 +683,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 			schedule_after_syscall = 1;
 
-			current->communication_time = MemoryRead(TICK_COUNTER);
+			current->communication_time = HAL_get_tick();
 			//putsv("Request ", current->communication_time);
 
 			//current->computation_time = current->communication_time - current->computation_time;
@@ -695,7 +695,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 		case GETTICK:
 
-			return MemoryRead(TICK_COUNTER);
+			return HAL_get_tick();
 
 		case GETMYID:
 
@@ -717,7 +717,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 		case REALTIME:
 
-			if (is_send_active(PS_SUBNET)){
+			if (HAL_is_send_active(PS_SUBNET)){
 				return 0;
 			}
 
@@ -737,7 +737,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 			schedule_after_syscall = 1;
 
-			if(is_send_active(PS_SUBNET)){
+			if(HAL_is_send_active(PS_SUBNET)){
 				puts("Preso no SENDRAW\n");
 				return 0;
 			}
@@ -764,7 +764,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			//Enable to schedule after syscall and interruptions since task will be blocked anyway
 			schedule_after_syscall = 1;
 
-			if (is_send_active(PS_SUBNET)){
+			if (HAL_is_send_active(PS_SUBNET)){
 				puts("Preso no WRITESERVICE\n");
 				return 0;
 			}
@@ -813,7 +813,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 			} else { //Else send the message to the remote task
 
-				//if (is_send_active(PS_SUBNET))
+				//if (HAL_is_send_active(PS_SUBNET))
 				//	return 0;
 				send_service_api_message(consumer_task, consumer_PE, msg_address_src, arg2);
 			}
@@ -851,7 +851,7 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 
 		case CFGROUTER:
 
-			if (is_send_active(PS_SUBNET))
+			if (HAL_is_send_active(PS_SUBNET))
 				return 0;
 
 			send_config_router(arg0, arg1 >> 8, arg1 & 0xFF, arg2);
@@ -859,13 +859,13 @@ int Syscall(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned
 			return 1;
 		case NOCSENDFREE:
 			//If DMNI send is active them return FALSE
-			if (is_send_active(PS_SUBNET))
+			if (HAL_is_send_active(PS_SUBNET))
 				return 0;
 			//Otherwise return TRUE
 			return 1;
 
 		case INCOMINGPACKET:
-			return (MemoryRead(IRQ_STATUS) >= IRQ_INIT_NOC);
+			return (HAL_get_irq_status() >= IRQ_INIT_NOC);
 
 		case GETNETADDRESS:
 			return net_address;
@@ -1012,7 +1012,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 		if (subnet == PS_SUBNET){ //Read by PS
 
 			if(tcb_ptr->scheduling_ptr->period)
-				latency = MemoryRead(TICK_COUNTER)-p->timestamp;
+				latency = HAL_get_tick()-p->timestamp;
 
 			//In PS get the msg_lenght from service header
 			msg_ptr->length = p->msg_lenght;
@@ -1068,9 +1068,9 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 		} else
 #endif
 
-		//putsv("Delivery ", MemoryRead(TICK_COUNTER));
+		//putsv("Delivery ", HAL_get_tick());
 		//puts("Delivery\n");
-		tcb_ptr->total_comm += MemoryRead(TICK_COUNTER) - tcb_ptr->communication_time;
+		tcb_ptr->total_comm += HAL_get_tick() - tcb_ptr->communication_time;
 		//puts("["); puts(itoa(tcb_ptr->id)); puts("] Comm ==> "); puts(itoa(tcb_ptr->total_comm)); puts("\n");
 
 
@@ -1088,7 +1088,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		tcb_ptr->id = p->task_ID;
 
-		puts("Task id: "); puts(itoa(tcb_ptr->id)); putsv(" allocated at ", MemoryRead(TICK_COUNTER));
+		puts("Task id: "); puts(itoa(tcb_ptr->id)); putsv(" allocated at ", HAL_get_tick());
 
 		code_lenght = p->code_size;
 
@@ -1178,11 +1178,11 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		putsv("Slave initialized by cluster address: ", cluster_master_address);
 
-		if (is_disturbing_prod_PE()){
+		/*if (is_disturbing_prod_PE()){
 			disturbing_generator();
 		} else if (is_disturbing_cons_PE()){
 			disturbing_reader();
-		}
+		}*/
 
 		app_ID = net_address >> 8;
 		task_loc = net_address & 0xFF;
@@ -1326,7 +1326,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 	default:
 		puts("ERROR: service unknown: "); puts(itoh(p->service));
-		putsv(" time: ", MemoryRead(TICK_COUNTER));
+		putsv(" time: ", HAL_get_tick());
 		break;
 	}
 
@@ -1366,7 +1366,7 @@ void add_ctp_online(TCB * task_to_add){
 
 	send_packet(p, 0, 0);
 
-	while(is_send_active(PS_SUBNET));
+	while(HAL_is_send_active(PS_SUBNET));
 
 	task_to_add->add_ctp = 0;
 }
@@ -1420,9 +1420,9 @@ void Scheduler() {
 	unsigned int scheduler_call_time;
 	TCB * last_executed_task;
 
-	scheduler_call_time = MemoryRead(TICK_COUNTER);
+	scheduler_call_time = HAL_get_tick();
 
-	MemoryWrite(SCHEDULING_REPORT, SCHEDULER);
+	HAL_set_scheduling_report(SCHEDULER);
 
 	#if MIGRATION_ENABLED
 		if (current->proc_to_migrate != -1 && current->scheduling_ptr->status == RUNNING && current->scheduling_ptr->waiting_msg == 0){
@@ -1440,17 +1440,17 @@ void Scheduler() {
 		current = (TCB *) scheduled->tcb_ptr;
 
 		//puts("Scheduled\n");
-		current->computation_time = MemoryRead(TICK_COUNTER);
+		current->computation_time = HAL_get_tick();
 
-		MemoryWrite(SCHEDULING_REPORT, current->id);
+		HAL_set_scheduling_report(current->id);
 
 	} else {
 
 		current = &idle_tcb;	// schedules the idle task
 
-		last_idle_time = MemoryRead(TICK_COUNTER);
+		last_idle_time = HAL_get_tick();
 
-        MemoryWrite(SCHEDULING_REPORT, IDLE);
+        HAL_set_scheduling_report(IDLE);
 
 #if ENABLE_APL_SLAVE
         if(abs(last_idle_time-last_task_profiling_update) > APL_WINDOW){
@@ -1460,7 +1460,7 @@ void Scheduler() {
 #endif
 	}
 
-	MemoryWrite(TIME_SLICE, get_time_slice() );
+	HAL_set_time_slice(get_time_slice());
 
 	OS_InterruptMaskSet(IRQ_SCHEDULER);
 
@@ -1482,13 +1482,13 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 	CTP * ctp_ptr;
 	unsigned int call_scheduler, subnet, req_status;
 
-	MemoryWrite(SCHEDULING_REPORT, INTERRUPTION);
+	HAL_set_scheduling_report(INTERRUPTION);
 
 	if (current == &idle_tcb){
-		total_slack_time += MemoryRead(TICK_COUNTER) - last_idle_time;
+		total_slack_time += HAL_get_tick() - last_idle_time;
 	} else {
-		//current->computation_time = MemoryRead(TICK_COUNTER) - current->computation_time;
-		current->total_comp += MemoryRead(TICK_COUNTER) - current->computation_time;
+		//current->computation_time = HAL_get_tick() - current->computation_time;
+		current->total_comp += HAL_get_tick() - current->computation_time;
 		//puts("["); puts(itoa(current->id)); puts("] Comp --> "); puts(itoa(current->computation_time)); puts("\n");
 
 	}
@@ -1501,7 +1501,7 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 
 			read_packet((ServiceHeader *)&p);
 
-			if (is_send_active(PS_SUBNET) && (p.service == MESSAGE_REQUEST || p.service == TASK_MIGRATION) ){
+			if (HAL_is_send_active(PS_SUBNET) && (p.service == MESSAGE_REQUEST || p.service == TASK_MIGRATION) ){
 
 				add_pending_service((ServiceHeader *)&p);
 
@@ -1530,12 +1530,12 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 
 	} else if (status & IRQ_CS_REQUEST){//If the interruption comes request wire
 
-		req_status = MemoryRead(READ_CS_REQUEST);
+		req_status = HAL_get_CS_request();
 
 		for(subnet=0; subnet < (SUBNETS_NUMBER-1); subnet++){
 			if (req_status & (1 << subnet) ){
 
-				//putsv("Subnet REQUEST interruption: ", MemoryRead(TICK_COUNTER));
+				//putsv("Subnet REQUEST interruption: ", HAL_get_tick());
 				ctp_ptr = get_ctp_ptr(subnet, DMNI_SEND_OP);
 
 				p.service = MESSAGE_REQUEST;
@@ -1549,7 +1549,7 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 			}
 		}
 
-		MemoryWrite(HANDLE_CS_REQUEST, req_status);
+		HAL_handle_CS_request(req_status);
 
 
 	} else if (status & IRQ_PENDING_SERVICE) {
@@ -1562,7 +1562,7 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 
 	} else if (status & IRQ_SLACK_TIME){
 		send_slack_time_report();
-		MemoryWrite(SLACK_TIME_MONITOR, SLACK_TIME_WINDOW);
+		HAL_set_slack_time_monitor(SLACK_TIME_WINDOW);
 	}
 
 
@@ -1577,14 +1577,14 @@ void OS_InterruptServiceRoutine(unsigned int status) {
 
 	} else if (current == &idle_tcb){
 
-		last_idle_time = MemoryRead(TICK_COUNTER);
+		last_idle_time = HAL_get_tick();
 
-		MemoryWrite(SCHEDULING_REPORT, IDLE);
+		HAL_set_scheduling_report(IDLE);
 
 	} else {
-		MemoryWrite(SCHEDULING_REPORT, current->id);
+		HAL_set_scheduling_report(current->id);
 
-		current->computation_time = MemoryRead(TICK_COUNTER);
+		current->computation_time = HAL_get_tick();
 	}
 
 	//Disable interruption for the task when it is a service task
@@ -1605,8 +1605,8 @@ unsigned int OS_InterruptMaskClear(unsigned int Mask) {
 
     unsigned int mask;
 
-    mask = MemoryRead(IRQ_MASK) & ~Mask;
-    MemoryWrite(IRQ_MASK, mask);
+    mask = HAL_get_irq_status() & ~Mask;
+    HAL_set_irq_mask(mask);
 
     return mask;
 }
@@ -1618,8 +1618,8 @@ unsigned int OS_InterruptMaskSet(unsigned int Mask) {
 
     unsigned int mask;
 
-    mask = MemoryRead(IRQ_MASK) | Mask;
-    MemoryWrite(IRQ_MASK, mask);
+    mask = HAL_get_irq_status() | Mask;
+    HAL_set_irq_mask(mask);
 
     return mask;
 }
@@ -1628,7 +1628,7 @@ unsigned int OS_InterruptMaskSet(unsigned int Mask) {
  */
 void OS_Idle() {
 	for (;;){
-		MemoryWrite(CLOCK_HOLD, 1);
+		HAL_set_clock_hold(1);
 	}
 }
 
@@ -1644,9 +1644,11 @@ int main(){
 
 	last_slack_time_report = 0;
 
-	last_idle_time = MemoryRead(TICK_COUNTER);
+	last_idle_time = HAL_get_tick();
 
 	current = &idle_tcb;
+
+	init_HAL();
 
 	init_packet();
 
@@ -1675,7 +1677,7 @@ int main(){
 	//Slack-time disabled
 	OS_InterruptMaskSet(interrput_mask);
 
-	MemoryWrite(SLACK_TIME_MONITOR, SLACK_TIME_WINDOW);
+	HAL_set_slack_time_monitor(SLACK_TIME_WINDOW);
 
 	/*runs the scheduled task*/
 	ASM_RunScheduledTask(current);

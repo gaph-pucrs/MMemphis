@@ -14,8 +14,7 @@
  * access this structure to be aware about the other task of the ctp pair
  */
 #include "ctp.h"
-#include "../../../include/kernel_pkg.h"
-#include "../../include/plasma.h"
+#include "../../hal/mips/HAL_kernel.h"
 #include "utils.h"
 
 #define MAX_CTP	(SUBNETS_NUMBER-1) * 2 //!< Maximum number of ctp into a slave processor

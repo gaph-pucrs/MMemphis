@@ -37,11 +37,11 @@ char *strcpy(char *, const char *);
 
 int strlen(const char *);
 
-int puts(char *);
+//int puts(char *);
 
-#define putsv(string, value) puts(string); puts(itoa(value)); puts("\n");
+//#define putsv(string, value) puts(string); puts(itoa(value)); puts("\n");
 
-#define putsvsv(str1, v1, str2, v2) puts(str1); puts(itoa(v1)); puts(str2); puts(itoa(v2)); puts("\n");
+//#define putsvsv(str1, v1, str2, v2) puts(str1); puts(itoa(v1)); puts(str2); puts(itoa(v2)); puts("\n");
 
 
 

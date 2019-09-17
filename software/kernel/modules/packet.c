@@ -15,14 +15,9 @@
  */
 
 #include "packet.h"
-#include "utils.h"
-#include "../../include/plasma.h"
+#include "../../hal/mips/HAL_kernel.h"
 
 volatile ServiceHeaderSlot sh_slot1, sh_slot2;	//!<Slots to prevent memory writing while is sending a packet
-
-unsigned int global_inst = 0;			//!<Global CPU instructions counter
-
-unsigned int net_address;				//!<Global net_address
 
 
 /**Searches for a free ServiceHeaderSlot (sh_slot1 or sh_slot2) pointer.
@@ -51,30 +46,15 @@ ServiceHeader * get_service_header_slot() {
 void init_packet(){
 	sh_slot1.status = 1;
 	sh_slot2.status = 1;
-
-	net_address = MemoryRead(NI_CONFIG);
 }
 
-/**Function that say if the send process of DMNI is active
- * \param subnet Number of the required subnet
- * \return 1 - if active, 0 - if not active
- */
-#define is_send_active(subnet) (MemoryRead(DMNI_SEND_ACTIVE) & (1 << subnet))
-
-/**Function that say if the receive process of DMNI is active
- * \param subnet Number of the required subnet
- * \return 1 - if active, 0 - if not active
- */
-/*int is_receive_active(unsigned int subnet){
-	return ( MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << subnet) );
-}*/
 
 /**Function that abstracts the DMNI programming for read data from NoC and copy to memory
  * \param initial_address Initial memory address to copy the received data
  * \param dmni_msg_size Data size, is represented in memory word of 32 bits
  * \param subnet_nr Number of the subnet to read the data
  */
-void DMNI_read_data(unsigned int initial_address, unsigned int dmni_msg_size){
+/*void DMNI_read_data(unsigned int initial_address, unsigned int dmni_msg_size){
 
 	MemoryWrite(DMNI_NET, PS_SUBNET);
 	MemoryWrite(DMNI_OP, DMNI_RECEIVE_OP); // send is 0, receive is 1
@@ -82,7 +62,7 @@ void DMNI_read_data(unsigned int initial_address, unsigned int dmni_msg_size){
 	MemoryWrite(DMNI_MEM_SIZE, dmni_msg_size);
 
 	while (MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << PS_SUBNET));
-}
+}*/
 
 
 /**Function that abstracts the DMNI programming for read data from CS NoC and copy to memory
@@ -90,7 +70,7 @@ void DMNI_read_data(unsigned int initial_address, unsigned int dmni_msg_size){
  * \param initial_address Initial memory address to copy the received data
  * \param subnet_nr Number of the subnet to read the data
  */
-inline unsigned int DMNI_read_data_CS(unsigned int initial_address, unsigned int subnet_nr){
+/*inline unsigned int DMNI_read_data_CS(unsigned int initial_address, unsigned int subnet_nr){
 
 	volatile unsigned int size_32bits;
 
@@ -110,7 +90,7 @@ inline unsigned int DMNI_read_data_CS(unsigned int initial_address, unsigned int
 	while (MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << subnet_nr));
 
 	return size_32bits;
- }
+ }*/
 
 
 
@@ -119,7 +99,7 @@ inline unsigned int DMNI_read_data_CS(unsigned int initial_address, unsigned int
  * \param dmni_msg_size Data size, is represented in memory word of 32 bits
  * \param subnet_nr Number of the subnet to send the data
  */
-void DMNI_send_data(unsigned int initial_address, unsigned int dmni_msg_size,  unsigned int subnet_nr){
+/*void DMNI_send_data(unsigned int initial_address, unsigned int dmni_msg_size,  unsigned int subnet_nr){
 
 	while ( MemoryRead(DMNI_SEND_ACTIVE) & (1 << subnet_nr) );
 
@@ -127,7 +107,7 @@ void DMNI_send_data(unsigned int initial_address, unsigned int dmni_msg_size,  u
 	MemoryWrite(DMNI_OP, DMNI_SEND_OP); // send is 0, receive is 1
 	MemoryWrite(DMNI_MEM_ADDR, initial_address);
 	MemoryWrite(DMNI_MEM_SIZE, dmni_msg_size);
-}
+}*/
 
 /**Function that abstracts the process to send a generic packet to NoC by programming the DMNI
  * \param p Packet pointer
@@ -143,24 +123,29 @@ void send_packet(ServiceHeader *p, unsigned int initial_address, unsigned int dm
 	p->source_PE = net_address;
 
 	//Waits the DMNI send process be released
-	while ( MemoryRead(DMNI_SEND_ACTIVE) & (1 << PS_SUBNET)){
-		puts("Preso tentando enviar servico: \n");
-		puts(itoh(p->service)); puts(" para dest: ");
-		puts(itoh(p->header)); puts("\n");
-	}
+	//while ( MemoryRead(DMNI_SEND_ACTIVE) & (1 << PS_SUBNET)){
+	while ( HAL_is_send_active(PS_SUBNET) );
 
-	p->timestamp = MemoryRead(TICK_COUNTER);
+	p->timestamp = HAL_get_tick();
 
-	MemoryWrite(DMNI_NET, PS_SUBNET);
-	MemoryWrite(DMNI_OP, DMNI_SEND_OP);
+	//MemoryWrite(DMNI_NET, PS_SUBNET);
+	//MemoryWrite(DMNI_OP, DMNI_SEND_OP);
+	HAL_set_dmni_net(PS_SUBNET);
+	HAL_set_dmni_op(DMNI_SEND_OP);
 
 	if (dmni_msg_size > 0){
-		MemoryWrite(DMNI_MEM_ADDR2, initial_address);
-		MemoryWrite(DMNI_MEM_SIZE2, dmni_msg_size);
+		//MemoryWrite(DMNI_MEM_ADDR2, initial_address);
+		//MemoryWrite(DMNI_MEM_SIZE2, dmni_msg_size);
+
+		HAL_set_dmni_mem_addr2(initial_address);
+		HAL_set_dmni_mem_size2(dmni_msg_size);
 	}
 
-	MemoryWrite(DMNI_MEM_ADDR, (unsigned int) p);
-	MemoryWrite(DMNI_MEM_SIZE, CONSTANT_PKT_SIZE);
+	//MemoryWrite(DMNI_MEM_ADDR, (unsigned int) p);
+	//MemoryWrite(DMNI_MEM_SIZE, CONSTANT_PKT_SIZE);
+
+	HAL_set_dmni_mem_addr((unsigned int) p);
+	HAL_set_dmni_mem_size(CONSTANT_PKT_SIZE);
 
 }
 
@@ -169,12 +154,7 @@ void send_packet(ServiceHeader *p, unsigned int initial_address, unsigned int dm
  */
 void read_packet(ServiceHeader *p){
 
-	MemoryWrite(DMNI_NET, PS_SUBNET); //default is ps subnoc
-	MemoryWrite(DMNI_OP, DMNI_RECEIVE_OP); // send is 0, receive is 1
-	MemoryWrite(DMNI_MEM_ADDR, (unsigned int) p);
-	MemoryWrite(DMNI_MEM_SIZE, CONSTANT_PKT_SIZE);
-
-	while (MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << PS_SUBNET));
+	DMNI_read_data((unsigned int) p, CONSTANT_PKT_SIZE);
 }
 
 /**Function that abstracts the process to configure the CS routers table,
@@ -183,7 +163,7 @@ void read_packet(ServiceHeader *p){
  * \param output_port Output port number [0-4]
  * \param subnet_nr Subnet number
  */
-void config_subnet(unsigned int input_port, unsigned int output_port, unsigned int subnet_nr){
+/*void config_subnet(unsigned int input_port, unsigned int output_port, unsigned int subnet_nr){
 
 #if CS_DEBUG
 	puts("\n **** CONFIG subnet routine *****\n");
@@ -196,11 +176,11 @@ void config_subnet(unsigned int input_port, unsigned int output_port, unsigned i
 	config = (input_port << 13) | (output_port << 10) | (2 << subnet_nr) | 0;
 
 	MemoryWrite(CONFIG_VALID_NET, config);
-}
+}*/
 
 
 //COISAS DE DISTURBING, APAGAR DEPOIS
-
+#if 0
 
 #define DISTURBING_DATA_SIZE	7100//8000//5096
 #define DISTURBING_WAITING		1
@@ -311,3 +291,4 @@ void disturbing_reader(){
 		}
 	}
 }
+#endif

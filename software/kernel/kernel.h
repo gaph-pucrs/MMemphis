@@ -20,7 +20,7 @@
 #define __KERNEL_SLAVE_H__
 
 #include "modules/task_control.h"
-#include "../../include/kernel_pkg.h"
+#include "../hal/mips/HAL_kernel.h"
 
 /*
  * ENABLE MODULES

@@ -14,7 +14,7 @@
  */
 
 #include "task_location.h"
-#include "utils.h"
+#include "../../hal/mips/HAL_kernel.h"
 
 TaskLocaion task_location[MAX_TASK_LOCATION];	//!<array of TaskLocation
 

@@ -12,7 +12,7 @@
  */
 
 #include "communication.h"
-#include "../../include/plasma.h"
+#include "../../hal/mips/HAL_kernel.h"
 #include "utils.h"
 
 PipeSlot pipe[PIPE_SIZE];						//!< pipe array

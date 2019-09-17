@@ -16,8 +16,7 @@
  */
 
 #include "task_scheduler.h"
-#include "../../../include/kernel_pkg.h"
-#include "../../include/plasma.h"
+#include "../../hal/mips/HAL_kernel.h"
 #include "../../include/services.h"
 #include "packet.h"
 #include "utils.h"
@@ -192,7 +191,7 @@ void real_time_task(Scheduling * real_time_task, unsigned int period, int deadli
 	real_time_task->deadline = deadline;
 	real_time_task->execution_time = execution_time;
 
-	current_time = MemoryRead(TICK_COUNTER);
+	current_time = HAL_get_tick();
 
 	//If is task already called RealTime
 	if (real_time_task->ready_time == 0){
@@ -457,7 +456,7 @@ Scheduling * LST(unsigned int current_time){
 
 		if (scheduled_task->deadline != NO_DEADLINE){
 			//Sets the task running start time to the current time
-			scheduled_task->running_start_time = MemoryRead(TICK_COUNTER);
+			scheduled_task->running_start_time = HAL_get_tick();
 #if DEBUG
 			putsv("Running start time: ", scheduled_task->running_start_time);
 #endif
@@ -493,7 +492,7 @@ Scheduling * LST(unsigned int current_time){
 		putsv("Time slice: ", time_slice);
 #endif
 
-	instant_overhead = MemoryRead(TICK_COUNTER) - instant_overhead;
+	instant_overhead = HAL_get_tick() - instant_overhead;
 	schedule_overhead = (unsigned int) (schedule_overhead + instant_overhead) / 2;
 
 	return scheduled_task;

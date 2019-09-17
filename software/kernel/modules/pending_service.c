@@ -15,8 +15,7 @@
 
 
 #include "pending_service.h"
-#include "../../include/plasma.h"
-#include "utils.h"
+#include "../../hal/mips/HAL_kernel.h"
 
 ServiceHeader pending_services_FIFO[PENDING_SERVICE_TAM];	//!<pending services array declaration
 
@@ -55,7 +54,7 @@ unsigned char add_pending_service(ServiceHeader * pending_service){
 	add_fifo = 1;
 
 	//puts("Interruption set ON\n");
-	MemoryWrite(PENDING_SERVICE_INTR, 1);
+	HAL_set_pending_service(1);
 
 	return 1;
 }
@@ -86,7 +85,7 @@ ServiceHeader * get_next_pending_service(){
 	//Test if the buffer is empty
 	if (pending_service_first == pending_service_last){
 		//puts("Interruption set OFF\n");
-		MemoryWrite(PENDING_SERVICE_INTR, 0);
+		HAL_set_pending_service(0);
 	}
 
 	return service_header_to_ret;

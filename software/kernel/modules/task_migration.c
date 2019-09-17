@@ -13,9 +13,8 @@
  */
 #include "task_migration.h"
 
-#include "../../../include/kernel_pkg.h"
 #include "../../include/services.h"
-#include "../../include/plasma.h"
+#include "../../hal/mips/HAL_kernel.h"
 #include "task_location.h"
 #include "task_control.h"
 #include "task_scheduler.h"
@@ -251,9 +250,9 @@ void migrate_dynamic_memory(TCB * tcb_aux){
 
 #if TASK_MIGRATION_DEBUG
 	puts("migration FINISH, clearing task structures....\n");
-	puts("finished\nTask id: "); puts(itoa(tcb_aux->id)); puts(" migrated to proc "); puts(itoa(processor)); putsv(" at ", MemoryRead(TICK_COUNTER));
+	puts("finished\nTask id: "); puts(itoa(tcb_aux->id)); puts(" migrated to proc "); puts(itoa(processor)); putsv(" at ", HAL_get_tick());
 #endif
-	puts("Task id: "); puts(itoa(tcb_aux->id)); puts(" migrated at time "); puts(itoa(MemoryRead(TICK_COUNTER))); puts(" to processor "); puts(itoh(processor)); puts("\n");
+	puts("Task id: "); puts(itoa(tcb_aux->id)); puts(" migrated at time "); puts(itoa(HAL_get_tick())); puts(" to processor "); puts(itoh(processor)); puts("\n");
 
 	clear_scheduling(tcb_aux->scheduling_ptr);
 	tcb_aux->pc = 0;
@@ -481,7 +480,7 @@ void handle_migration_DATA_BSS(volatile ServiceHeader * p, TCB * migrate_tcb){
 #if TASK_MIGRATION_DEBUG
 	puts("\tDATA and BSS received\nMigration FINISH - task READY TO EXECUTE\n");
 #endif
-	puts("Task id: "); puts(itoa(migrate_tcb->id)); puts(" allocated by task migration at time "); puts(itoa(MemoryRead(TICK_COUNTER))); puts(" from processor "); puts(itoh(p->source_PE)); puts("\n");
+	puts("Task id: "); puts(itoa(migrate_tcb->id)); puts(" allocated by task migration at time "); puts(itoa(HAL_get_tick())); puts(" from processor "); puts(itoh(p->source_PE)); puts("\n");
 
 }
 
