@@ -27,16 +27,6 @@
  */
 #define MIGRATION_ENABLED			1		//!< Enable or disable the migration module
 
-
-//extern unsigned int ASM_SetInterruptEnable(unsigned int);
-//extern void ASM_SaveRemainingContext(TCB*);
-//extern void ASM_RunScheduledTask(TCB*);
-//void OS_InterruptServiceRoutine(unsigned int);
-
-//Kernel slave functions
-void remove_ctp_online(TCB *);
-void add_ctp_online(TCB *);
-
 void OS_Init();
 void OS_Idle();
 

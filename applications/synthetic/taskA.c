@@ -15,13 +15,17 @@ void main()
 	for(int i=0;i<SYNTHETIC_ITERATIONS;i++)
 	{
 		//Compute and send something
-		compute(&msg1.msg);
-		msg1.length = 128;
+		msg1.msg[0] = i;
+		msg1.length = 1;
+
+		//compute(&msg1.msg);
 		Send(&msg1,taskB);
 
 		//Compute and send something
-		compute(&msg2.msg);
-		msg2.length = 128;
+		msg2.msg[0] = SYNTHETIC_ITERATIONS-i;
+		msg2.length = 1;
+
+		//compute(&msg2.msg);
 		Send(&msg2,taskC);
 	}
 

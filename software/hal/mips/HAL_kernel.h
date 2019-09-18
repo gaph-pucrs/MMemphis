@@ -12,6 +12,7 @@
 #define SOFTWARE_HAL_H_
 
 #include "../../../include/kernel_pkg.h"
+#include "../../kernel/modules/task_control.h" //Included only due reference to TCB pointer
 //HAL_model_properties.h"
 
 /*Onique global variable used by more then 1 module, holds the address XY of the current PE*/
@@ -93,6 +94,8 @@ extern unsigned int net_address;
 #define IRQ_CS_REQUEST			0x08 //bit 3
 #define IRQ_INIT_NOC			0x10 //bit 4
 
+
+
 /*MMR read functions*/
 #define HAL_get_tick() 					(*(volatile unsigned int*)(TICK_COUNTER))
 #define HAL_get_irq_status() 			(*(volatile unsigned int*)(IRQ_MASK))
@@ -126,6 +129,13 @@ extern void HAL_set_interrupt_enabled(unsigned int);
 
 /*Initializing function, for now, only set the value of net_address*/
 void init_HAL();
+
+/*Low level task management abstraction*/
+inline void HAL_release_waiting_task(TCB *);
+
+inline void HAL_enable_scheduler_after_syscall();
+
+inline void HAL_disable_scheduler_after_syscall();
 
 /*IRQ abstraction*/
 unsigned int HAL_interrupt_mask_clear(unsigned int);

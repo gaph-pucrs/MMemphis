@@ -17,6 +17,8 @@
 #ifndef CTP_H_
 #define CTP_H_
 
+#include "task_control.h"
+
 /**
  * \brief This structure store CTP information used in CS communication
  */
@@ -38,5 +40,9 @@ CTP * add_ctp(int, int, int, int);
 void remove_ctp(int, int);
 
 int get_subnet(int, int, int);
+
+void check_ctp_reconfiguration(TCB *);
+
+void set_ctp_producer_adress(unsigned int);
 
 #endif /* CTP_H_ */

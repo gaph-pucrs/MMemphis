@@ -13,10 +13,10 @@
 
 void compute(unsigned int * data){
 	volatile int t;
-	for(t=0; t<1000; t++);
+	/*for(t=0; t<1000; t++);
 	for (int i=0; i<128; i++){
 		data[i] = i;
-	}
+	}*/
 }
 
 

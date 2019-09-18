@@ -16,21 +16,35 @@
 
 #include "HAL_kernel.h"
 
+
 unsigned int global_inst = 0;			//!<Global CPU instructions counter
 unsigned int net_address;				//!<Global net_address
+unsigned int schedule_after_syscall;	//!< Signals the syscall function (referenced in assembly - HAL_kernel_asm) to call the scheduler after the syscall
 
 
 void init_HAL(){
 	net_address = HAL_get_core_addr();
 }
 
-void HAL_release_waiting_task(){
-
+inline void HAL_release_waiting_task(TCB * tcb_ptr){
+	//Alows this task to restore its execution by returning 1 at the syscall function
+	tcb_ptr->reg[0] = 1;
+	//Set to ready to execute into scheduler
+	tcb_ptr->scheduling_ptr->waiting_msg = 0;
 }
 
-void HAL_call_scheduler_after_syscall(){
-
+/*Set the HAL_kernel_asm to calls the scheduler after a system call execution
+ * */
+inline void HAL_enable_scheduler_after_syscall(){
+	schedule_after_syscall = 1;
 }
+
+/*Set the HAL_kernel_asm to calls the scheduler after a system call execution
+ * */
+inline void HAL_disable_scheduler_after_syscall(){
+	schedule_after_syscall = 0;
+}
+
 
 /**Function that abstracts the DMNI programming for read data from NoC and copy to memory
  * \param initial_address Initial memory address to copy the received data

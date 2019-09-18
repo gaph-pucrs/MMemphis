@@ -13,16 +13,20 @@ void main()
 
 	for(int i=0;i<SYNTHETIC_ITERATIONS;i++)
 	{
-
+		Echo("New round");
 		Receive(&msg, taskB);
+		Echo("B");
+		Echo(itoa(msg.msg[0]));
 		Receive(&msg, taskC);
+		Echo("C");
+		Echo(itoa(msg.msg[0]));
 
 	}
-
+/*
 	Echo("Final message");
 	for(int j=0; j<msg.length; j++){
 		Echo(itoa(msg.msg[j]));
-	}
+	}*/
 
 
     Echo("Task D finished at time");

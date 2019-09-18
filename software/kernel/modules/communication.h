@@ -20,6 +20,8 @@
 
 #include "../../hal/mips/HAL_kernel.h"
 #include "../../include/api.h"
+#include "task_control.h"
+#include "packet.h"
 
 
 #define REQUEST_SIZE	 MAX_LOCAL_TASKS*(MAX_TASKS_APP-1) //50	//!< Size of the message request array in fucntion of the maximum number of local task and max task per app
@@ -43,6 +45,18 @@ int search_message_request(int, int);
 MessageRequest * remove_message_request(int, int);
 
 int remove_all_requested_msgs(int, unsigned int *);
+
+int send_message(TCB *, unsigned int, unsigned int);
+
+int receive_message(TCB *, unsigned int, unsigned int);
+
+void send_message_request(int, int, unsigned int, unsigned int);
+
+void send_message_delivery(int, int, int, Message *);
+
+int handle_message_delivery(volatile ServiceHeader *, int);
+
+int handle_message_request(volatile ServiceHeader *);
 
 
 

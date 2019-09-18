@@ -13,8 +13,10 @@ void main()
 
 	for(int i=0;i<SYNTHETIC_ITERATIONS;i++)
 	{
-
+		Echo("New round");
 		Receive(&msg, taskA);
+		Echo("A");
+		Echo(itoa(msg.msg[0]));
 
 		compute(&msg.msg);
 

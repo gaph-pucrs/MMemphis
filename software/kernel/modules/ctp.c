@@ -15,11 +15,14 @@
  */
 #include "ctp.h"
 #include "../../hal/mips/HAL_kernel.h"
+#include "../../include/services.h"
+#include "packet.h"
 #include "utils.h"
 
 #define MAX_CTP	(SUBNETS_NUMBER-1) * 2 //!< Maximum number of ctp into a slave processor
 
 CTP ctp[ MAX_CTP ];
+unsigned int	ctp_producer_adress;	//!< Used to set a CTP online
 
 void init_ctp(){
 	for(int i=0; i<MAX_CTP; i++){
@@ -96,3 +99,94 @@ int get_subnet(int producer_task, int consumer_task, int dmni_op){
 	}
 	return -1;
 }
+
+
+void set_ctp_producer_adress(unsigned int ctp_addr){
+	ctp_producer_adress = ctp_addr;
+}
+
+/**Add the CTP instance from the CTP array structure, redirect the order to remove the CTP to
+ * the producer task. This procedure ensure that no message is lost, because the consumer changes CS
+ * before the producer.
+ * \param task_to_add TCB pointer of the task to allocate the CTP
+ */
+void add_ctp_online(TCB * task_to_add){
+
+	ServiceHeader * p;
+	int producer_task, subnet;
+
+	producer_task = task_to_add->add_ctp & 0xFFFF;
+	subnet = task_to_add->add_ctp >> 16;
+
+	add_ctp(producer_task, task_to_add->id, DMNI_RECEIVE_OP, subnet);
+
+	p = get_service_header_slot();
+
+	//p->header = get_task_location(producer_task);
+	p->header = ctp_producer_adress;
+
+	p->service = SET_NOC_SWITCHING_PRODUCER;
+
+	p->producer_task = producer_task;
+
+	p->consumer_task = task_to_add->id;
+
+	p->cs_mode = 1;
+
+	p->cs_net = subnet;
+
+	send_packet(p, 0, 0);
+
+	while(HAL_is_send_active(PS_SUBNET));
+
+	task_to_add->add_ctp = 0;
+}
+
+/**Remove the CTP instance from the CTP array structure, redirect the order to remove the CTP to
+ * the producer task. This producere ensure that no message is lost, because the consumer changes CS
+ * before the producer.
+ * \param task_to_remove TCB pointer of the task to remove the CS
+ */
+void remove_ctp_online(TCB * task_to_remove){
+
+	ServiceHeader * p;
+
+	//puts("remove_ctp_online\n");
+
+	int subnet = get_subnet(task_to_remove->remove_ctp, task_to_remove->id, DMNI_RECEIVE_OP);
+
+	if (subnet == -1){
+		puts("ERROR, subnet -1\n");
+		while(1);
+	}
+
+	remove_ctp(subnet, DMNI_RECEIVE_OP);
+
+	p = get_service_header_slot();
+
+	//p->header = get_task_location(task_to_remove->remove_ctp);
+	p->header = ctp_producer_adress;
+
+	p->service = SET_NOC_SWITCHING_PRODUCER;
+
+	p->producer_task = task_to_remove->remove_ctp;
+
+	p->consumer_task = task_to_remove->id;
+
+	p->cs_mode = 0;
+
+	p->cs_net = subnet;
+
+	send_packet(p, 0, 0);
+
+	task_to_remove->remove_ctp = 0;
+
+}
+
+void check_ctp_reconfiguration(TCB * tcb_ptr){
+	if (tcb_ptr->add_ctp)
+		add_ctp_online(tcb_ptr);
+	else if (tcb_ptr->remove_ctp)
+		remove_ctp_online(tcb_ptr);
+}
+
