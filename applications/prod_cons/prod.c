@@ -23,7 +23,6 @@ int main()
 	for(i=0;i<MSG_SIZE;i++) msg.msg[i]=i;
 	msg.length = MSG_SIZE;
 
-	msg.msg[9]=0xBA;
 
 	for(i=0; i<PROD_CONS_ITERATIONS; i++){
 		Send(&msg, cons);

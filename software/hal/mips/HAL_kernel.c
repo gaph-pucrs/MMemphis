@@ -20,17 +20,16 @@ unsigned int global_inst = 0;			//!<Global CPU instructions counter
 unsigned int net_address;				//!<Global net_address
 
 
-/**Function that say if the receive process of DMNI is active
- * \param subnet Number of the required subnet
- * \return 1 - if active, 0 - if not active
- */
-/*int is_receive_active(unsigned int subnet){
-	return ( MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << subnet) );
-}*/
-
-
 void init_HAL(){
 	net_address = HAL_get_core_addr();
+}
+
+void HAL_release_waiting_task(){
+
+}
+
+void HAL_call_scheduler_after_syscall(){
+
 }
 
 /**Function that abstracts the DMNI programming for read data from NoC and copy to memory
@@ -44,12 +43,6 @@ void DMNI_read_data(unsigned int initial_address, unsigned int dmni_msg_size){
 	HAL_set_dmni_op(DMNI_RECEIVE_OP);
 	HAL_set_dmni_mem_addr(initial_address);
 	HAL_set_dmni_mem_size(dmni_msg_size);
-
-	/*MemoryWrite(DMNI_NET, PS_SUBNET);
-	MemoryWrite(DMNI_OP, DMNI_RECEIVE_OP);
-	MemoryWrite(DMNI_MEM_ADDR, initial_address);
-	MemoryWrite(DMNI_MEM_SIZE, dmni_msg_size);
-	while (MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << PS_SUBNET));*/
 
 	while(HAL_is_receive_active(PS_SUBNET));
 }
@@ -65,27 +58,14 @@ inline unsigned int DMNI_read_data_CS(unsigned int initial_address, unsigned int
 	volatile unsigned int size_32bits;
 
 	//Discovery the data size
-	/*MemoryWrite(DMNI_NET, subnet_nr);
-	MemoryWrite(DMNI_OP, DMNI_RECEIVE_OP); // send is 0, receive is 1
-	MemoryWrite(DMNI_MEM_ADDR, (unsigned int)&size_32bits);
-	MemoryWrite(DMNI_MEM_SIZE, 1);*/
-
 	HAL_set_dmni_net(PS_SUBNET);
 	HAL_set_dmni_op(DMNI_RECEIVE_OP);
 	HAL_set_dmni_mem_addr((unsigned int)&size_32bits);
 	HAL_set_dmni_mem_size(1);
 
-	/*while (MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << subnet_nr));*/
-
 	while(HAL_is_receive_active(subnet_nr));
 
 	//Copies to the memory
-	/*MemoryWrite(DMNI_NET, subnet_nr);
-	MemoryWrite(DMNI_OP, DMNI_RECEIVE_OP); // send is 0, receive is 1
-	MemoryWrite(DMNI_MEM_ADDR, (unsigned int)initial_address);
-	MemoryWrite(DMNI_MEM_SIZE, size_32bits);
-	while (MemoryRead(DMNI_RECEIVE_ACTIVE) & (1 << subnet_nr));*/
-
 	HAL_set_dmni_net(subnet_nr);
 	HAL_set_dmni_op(DMNI_RECEIVE_OP); // send is 0, receive is 1
 	HAL_set_dmni_mem_addr((unsigned int)initial_address);
@@ -105,13 +85,7 @@ inline unsigned int DMNI_read_data_CS(unsigned int initial_address, unsigned int
  */
 void DMNI_send_data(unsigned int initial_address, unsigned int dmni_msg_size,  unsigned int subnet_nr){
 
-	//while ( MemoryRead(DMNI_SEND_STATUS) & (1 << subnet_nr) );
 	while (HAL_is_send_active(subnet_nr));
-
-	/*MemoryWrite(DMNI_NET, subnet_nr);
-	MemoryWrite(DMNI_OP, DMNI_SEND_OP); // send is 0, receive is 1
-	MemoryWrite(DMNI_MEM_ADDR, initial_address);
-	MemoryWrite(DMNI_MEM_SIZE, dmni_msg_size);*/
 
 	HAL_set_dmni_net(subnet_nr);
 	HAL_set_dmni_op(DMNI_SEND_OP); // send is 0, receive is 1

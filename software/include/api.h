@@ -17,8 +17,8 @@
 
 /* Syscalls*/
 #define EXIT      			0
-#define WRITEPIPE 			1
-#define READPIPE  			2
+#define SENDMESSAGE 		1
+#define RECVMESSAGE  		2
 #define GETTICK   			3
 #define GETMYID   			4
 #define ECHO      			5
@@ -26,14 +26,13 @@
 #define SENDRAW 			7
 #define IORECEIVE  			8
 
-#define MemoryWrite(A,V) *(volatile unsigned int*)(A)=(V)
 #define TRUE	1
 #define FALSE	0
 
 extern int SystemCall();
 
-#define Send(msg, target) while(!SystemCall(WRITEPIPE, (unsigned int*)msg, target,0))
-#define Receive(msg, source) while(!SystemCall(READPIPE, (unsigned int*)msg, source,0))
+#define Send(msg, target) while(!SystemCall(SENDMESSAGE, (unsigned int*)msg, target,0))
+#define Receive(msg, source) while(!SystemCall(RECVMESSAGE, (unsigned int*)msg, source,0))
 #define SendRaw(msg, uint_size)	while(!SystemCall(SENDRAW, (unsigned int *)msg, uint_size, 0))
 #define GetTick() SystemCall(GETTICK,0,0,0)
 #define GetMyID() SystemCall(GETMYID,0,0,0)
@@ -52,7 +51,7 @@ extern int SystemCall();
  *    This is not the same structure used in the kernels.
  *
  *--------------------------------------------------------------------*/
-#define MSG_SIZE 128
+#define MSG_SIZE 1024//128
 
 typedef struct {
 	int length;

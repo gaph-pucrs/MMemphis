@@ -25,6 +25,8 @@ int main()
 
 		Receive(&msg, prod);
 		time[i] = GetTick();
+		//Echo("Recebeu:");
+		//Echo(itoa(msg.msg[0]));
 	}
 
 

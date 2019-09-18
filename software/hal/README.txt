@@ -16,5 +16,5 @@ README.txt
      Each HAL directory contains a folder that specify the name of the target CPU. Inside the directory there are
      three files: 
      	- HAL_kernel_asm.S 	: Implements the assembly code to handle interrutions and syscalls, saving and restoring the task context
-     	- HAL_kernel.c  	: Implements driver for DMNI, timers, Interruption Mask Set, and MMR. 
+     	- HAL_kernel(.c,.h) : Implements driver for DMNI, timers, Interruption Mask Set, and MMR. 
      	- HAL_task_ams.c 	: Implements the assembly code to start the execution of task and give access to SysCall jumping

@@ -28,12 +28,16 @@ typedef struct {
     unsigned int pc;            	//!<program counter
     unsigned int offset;        	//!<initial address of the task code in page
     int       	 id;            	//!<identifier
+    int 		 send_target;		//!<Task ID of the consumer
+    unsigned int send_buffer;		//!<Buffer pointer of sending message
+    unsigned int recv_buffer;		//!<Buffer pointer of requested message
+    int 		 recv_source;		//!<Task ID of the producer
+
 	unsigned int text_lenght;   	//!<Memory TEXT section lenght in bytes
     unsigned int data_lenght;		//!<Memory DATA section lenght in bytes
     unsigned int bss_lenght;		//!<Memory BSS section lenght in bytes
     unsigned int proc_to_migrate;	//!<Processor to migrate the task
     unsigned int master_address;	//!<Master address of the task
-    unsigned int send_data_addr;	//!<Points to the data address of the producer tasks when it calls SendService
     unsigned int remove_ctp;		//!<Flag (1|0) to remove a given CTP
     unsigned int add_ctp;			//!<Flag (1|0) to add a given CTP
     unsigned int is_service_task;	//!<If 0 means a user tasks, otherwise means a service task

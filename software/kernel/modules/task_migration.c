@@ -156,23 +156,20 @@ void migrate_dynamic_memory(TCB * tcb_aux){
 	add_task_location(tcb_aux->id, processor);
 
 	for( int i=0; i<MAX_TASKS_APP; i++ ){
-
-		if ( search_PIPE_producer(app_id | i) ) {
-			task_location_array[i] = net_address;
-		} else {
-			task_location_array[i] = get_task_location( (app_id | i) );
-		}
+		task_location_array[i] = get_task_location( (app_id | i) );
 #if TASK_MIGRATION_DEBUG
 		puts("Location task "); puts(itoa(app_id | i)); putsv(" : ", task_location_array[i]);
 #endif
 	}
 
-	if (search_PIPE_producer(tcb_aux->id) == 0){
+
+
+	/*if (search_PIPE_producer(tcb_aux->id) == 0){
 		send_task_migrated(tcb_aux->id, processor, tcb_aux->master_address);
 	} else {
 		//putsv("Task migrout com PIPE = ", search_PIPE_producer(tcb_aux->id));
 		add_pending_migration_task(tcb_aux->id, tcb_aux->master_address);
-	}
+	}*/
 
 
 
@@ -248,10 +245,14 @@ void migrate_dynamic_memory(TCB * tcb_aux){
 	send_packet(p, tcb_aux->offset + (tcb_aux->text_lenght * 4) ,  (tcb_aux->data_lenght + tcb_aux->bss_lenght) );
 	// ----- end data and bss -----
 
+	//Concludes task migration sending the notification to the manager
+	send_task_migrated(tcb_aux->id, processor, tcb_aux->master_address);
+
 #if TASK_MIGRATION_DEBUG
 	puts("migration FINISH, clearing task structures....\n");
 	puts("finished\nTask id: "); puts(itoa(tcb_aux->id)); puts(" migrated to proc "); puts(itoa(processor)); putsv(" at ", HAL_get_tick());
 #endif
+
 	puts("Task id: "); puts(itoa(tcb_aux->id)); puts(" migrated at time "); puts(itoa(HAL_get_tick())); puts(" to processor "); puts(itoh(processor)); puts("\n");
 
 	clear_scheduling(tcb_aux->scheduling_ptr);

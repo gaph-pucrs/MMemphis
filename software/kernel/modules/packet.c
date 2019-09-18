@@ -63,26 +63,17 @@ void send_packet(ServiceHeader *p, unsigned int initial_address, unsigned int dm
 	p->source_PE = net_address;
 
 	//Waits the DMNI send process be released
-	//while ( MemoryRead(DMNI_SEND_ACTIVE) & (1 << PS_SUBNET)){
 	while ( HAL_is_send_active(PS_SUBNET) );
 
 	p->timestamp = HAL_get_tick();
 
-	//MemoryWrite(DMNI_NET, PS_SUBNET);
-	//MemoryWrite(DMNI_OP, DMNI_SEND_OP);
 	HAL_set_dmni_net(PS_SUBNET);
 	HAL_set_dmni_op(DMNI_SEND_OP);
 
 	if (dmni_msg_size > 0){
-		//MemoryWrite(DMNI_MEM_ADDR2, initial_address);
-		//MemoryWrite(DMNI_MEM_SIZE2, dmni_msg_size);
-
 		HAL_set_dmni_mem_addr2(initial_address);
 		HAL_set_dmni_mem_size2(dmni_msg_size);
 	}
-
-	//MemoryWrite(DMNI_MEM_ADDR, (unsigned int) p);
-	//MemoryWrite(DMNI_MEM_SIZE, CONSTANT_PKT_SIZE);
 
 	HAL_set_dmni_mem_addr((unsigned int) p);
 	HAL_set_dmni_mem_size(CONSTANT_PKT_SIZE);

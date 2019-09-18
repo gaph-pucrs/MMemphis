@@ -33,14 +33,13 @@
 #endif
 
 //Globals
-unsigned int 	schedule_after_syscall;		//!< Signals the syscall function (assembly implemented) to call the scheduler after the syscall
+unsigned int 	schedule_after_syscall;		//!< Signals the syscall function (referenced in assembly - HAL_kernel_asm) to call the scheduler after the syscall
 unsigned int 	interrput_mask;				//!< Stores the bit set allowing interruption, this variable is set within main()
 unsigned int 	last_idle_time;				//!< Store the last idle time duration
 unsigned int 	last_slack_time_report;		//!< Store time at the last slack time update sent to manager
 unsigned int 	total_slack_time;			//!< Store the total of the processor idle time
 TCB 			idle_tcb;					//!< TCB pointer used to run idle task
-TCB *			current;					//!< TCB pointer used to store the current task executing into processor
-Message 		msg_write_pipe;				//!< Message variable which is used to copy a message and send it by the NoC
+TCB *			current;					//!< TCB pointer used to store the current task executing into processor (referenced at assembly - HAL_kernel_asm)
 
 unsigned short int	ctp_producer_adress;	//!< Used to set a CTP online
 unsigned int last_task_profiling_update;	//!< Used to store the last time that the profiling was sent to manager
@@ -333,7 +332,7 @@ void request_update_task_location(unsigned int target_proc, unsigned int task_id
  * \param requestingPE Processor address of the consumer task
  * \param insert_pipe_flag Tells to the producer PE that the message not need to be by passed again
  */
-void send_message_request(int producer_task, int consumer_task, unsigned int targetPE, unsigned int requestingPE, int insert_pipe_flag){
+void send_message_request(int producer_task, int consumer_task, unsigned int targetPE, unsigned int requestingPE){
 
 	ServiceHeader *p;
 	int subnet;
@@ -357,8 +356,6 @@ void send_message_request(int producer_task, int consumer_task, unsigned int tar
 		p->producer_task = producer_task;
 
 		p->consumer_task = consumer_task;
-
-		p->insert_request = insert_pipe_flag;
 
 		send_packet(p, 0, 0);
 	}
@@ -459,11 +456,11 @@ void send_config_router(int target_proc, int input_port, int output_port, int cs
  * \param msg_lenght Lenght of the message to be copied
  * \param msg_data Message data
  */
-void write_local_msg_to_task(TCB * task_tcb_ptr, int msg_lenght, int * msg_data){
+void write_local_msg_to_task(TCB * consumer_tcb_ptr, int msg_lenght, int * msg_data){
 
 	Message * msg_ptr;
 
-	msg_ptr = (Message*)((task_tcb_ptr->offset) | ((unsigned int)task_tcb_ptr->reg[3])); //reg[3] = address message
+	msg_ptr = (Message*) consumer_tcb_ptr->recv_buffer;
 
 	msg_ptr->length = msg_lenght;
 
@@ -471,20 +468,20 @@ void write_local_msg_to_task(TCB * task_tcb_ptr, int msg_lenght, int * msg_data)
 		msg_ptr->msg[i] = msg_data[i];
 
 	//Unlock the blocked task
-	task_tcb_ptr->reg[0] = TRUE;
+	consumer_tcb_ptr->reg[0] = TRUE;
 
 	//Set to ready to execute into scheduler
-	task_tcb_ptr->scheduling_ptr->waiting_msg = 0;
+	consumer_tcb_ptr->scheduling_ptr->waiting_msg = 0;
 	//puts("Task not waitining anymeore 3\n");
 
-	if (task_tcb_ptr->add_ctp)
-		add_ctp_online(task_tcb_ptr);
-	else if (task_tcb_ptr->remove_ctp)
-		remove_ctp_online(task_tcb_ptr);
+	if (consumer_tcb_ptr->add_ctp)
+		add_ctp_online(consumer_tcb_ptr);
+	else if (consumer_tcb_ptr->remove_ctp)
+		remove_ctp_online(consumer_tcb_ptr);
 
 
 	//task_tcb_ptr->communication_time = HAL_get_tick() - task_tcb_ptr->communication_time;
-	task_tcb_ptr->total_comm += HAL_get_tick() - task_tcb_ptr->communication_time;
+	consumer_tcb_ptr->total_comm += HAL_get_tick() - consumer_tcb_ptr->communication_time;
 	//puts("["); puts(itoa(task_tcb_ptr->id)); puts("] Comm ==> "); puts(itoa(current->communication_time)); puts("\n");
 
 
@@ -500,7 +497,6 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 
 	Message *msg_read;
 	Message *msg_write;
-	PipeSlot *pipe_ptr;
 	TCB * tcb_ptr;
 	MessageRequest * msg_req_ptr;
 	unsigned int * msg_address_src;//, * msg_address_tgt;
@@ -521,7 +517,7 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 			schedule_after_syscall = 1;
 
 			//Deadlock avoidance: avoids to send a packet when the DMNI is busy in send process
-			if (HAL_is_send_active(PS_SUBNET) || search_PIPE_producer(current->id) ){
+			if (HAL_is_send_active(PS_SUBNET)){
 				return 0;
 			}
 
@@ -541,12 +537,13 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 
 		return 1;
 
-		case WRITEPIPE:
+		case SENDMESSAGE:
 
 			producer_task =  current->id;
 			consumer_task = (int) arg1;
 
 			appID = producer_task >> 8;
+			//Consumer task already has the absolute task id, this line creates the full id: app id | task id
 			consumer_task = (appID << 8) | consumer_task;
 
 			//puts("WRITEPIPE - prod: "); puts(itoa(producer_task)); putsv(" consumer ", consumer_task);
@@ -560,21 +557,38 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 				return 0;
 			}
 
+			while (current->send_buffer != 0){
+				puts("ERROR send buffer not zero\n");
+			}
+
 			/*Points the message in the task page. Address composition: offset + msg address*/
-			msg_read = (Message *)((current->offset) | arg0);
+			current->send_buffer = (current->offset) | arg0;
+			/*Set the consumer id of the message */
+			current->send_target = consumer_task;
+
+			msg_read = (Message *) current->send_buffer;
 
 			//Searches if there is a message request to the produced message
 			msg_req_ptr = remove_message_request(producer_task, consumer_task);
+			//puts("Remove message request\n");
 
-			if (msg_req_ptr){
+			if (msg_req_ptr){ // If there is a message request for that message
 
 				if (msg_req_ptr->requester_proc == net_address){ //Test if the consumer is local or remote
 
 					//Writes to the consumer page address (local consumer)
 					TCB * requesterTCB = searchTCB(consumer_task);
 
+					while (requesterTCB->recv_buffer == 0 || requesterTCB->recv_source != producer_task){
+						puts("ERROR recv buffer not zero\n");
+					}
+
+					//puts("Message found - Write local message\n");
 					write_local_msg_to_task(requesterTCB, msg_read->length, msg_read->msg);
 
+					/*Erase the produced message info since the message was transmitted*/
+					current->send_buffer = 0;
+					current->send_target = -1;
 #if MIGRATION_ENABLED
 					if (requesterTCB->proc_to_migrate != -1){
 
@@ -598,31 +612,40 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 					}
 					//**********************************************************
 
-					msg_write_pipe.length = msg_read->length;
-
 					//Avoids message overwriting by the producer task
-					for (int i=0; i < msg_read->length; i++)
-						msg_write_pipe.msg[i] = msg_read->msg[i];
+					//msg_write_pipe.length = msg_read->length;
+					//for (int i=0; i < msg_read->length; i++){
+						//msg_write_pipe.msg[i] = msg_read->msg[i];
+						//puts(itoa(msg_write_pipe->msg[i])); puts("\n");
+					//}
+					//puts("Message found - send message delivery\n");
+					send_message_delivery(producer_task, consumer_task, msg_req_ptr->requester_proc, msg_read);
 
-					//Bug fixed, for some reason the consumerPE has being used as requeter_proc - changed to msg_req_prt->requester_proc
-					send_message_delivery(producer_task, consumer_task, msg_req_ptr->requester_proc, &msg_write_pipe);
+					/*Erase the produced message info since the message was transmitted*/
+					current->send_buffer = 0;
+					current->send_target = -1;
+
+					//putsv("\nSENDMESSAGE - Enviando delivery at time: ", HAL_get_tick());
+
+					//This is to avoid that the producer task overwrites the send_buffer before message is sent
+					while (HAL_is_send_active(PS_SUBNET));
 
 				}
-			} else { //message not requested yet, stores into PIPE
+			} else { //message not requested yet, set producer as blocked
 
-				//########################### ADD PIPE #################################
-				ret = add_PIPE(producer_task, consumer_task, msg_read);
-				//########################### ADD PIPE #################################
+				//putsv("\nSENDMESSAGE - producer wating at time: ", HAL_get_tick());
 
-				if (ret == 0){
-					schedule_after_syscall = 1;
-					return 0;
-				}
+
+				current->scheduling_ptr->waiting_msg = 1;
+
+				//Cals syscall in order to make other task to execute
+				schedule_after_syscall = 1;
+
 			}
 
 		return 1;
 
-		case READPIPE:
+		case RECVMESSAGE:
 
 			consumer_task =  current->id;
 			producer_task = (int) arg1;
@@ -641,31 +664,42 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 				return 0;
 			}
 
+			current->recv_buffer = current->offset | arg0;
+			current->recv_source = producer_task;
 
-			if (producer_PE == net_address){
 
-				pipe_ptr = remove_PIPE(producer_task, consumer_task);
+			if (producer_PE == net_address){ //Receive is local
 
-				if (pipe_ptr == 0){
+				tcb_ptr = searchTCB(producer_task);
 
-					insert_message_request(producer_task, consumer_task, net_address);
+				if (tcb_ptr->send_target == consumer_task && tcb_ptr->send_buffer != 0){
+
+					msg_write = (Message*) tcb_ptr->send_buffer;
+
+					//puts("Local receive - write message\n");
+
+					write_local_msg_to_task(current, msg_write->length, msg_write->msg);
+
+					//Clear the receive buffer info since message was received
+					current->recv_buffer = 0;
+					current->recv_source = -1;
+
+					//Clear the producer buffer info since message was transmitted
+					tcb_ptr->send_buffer = 0;
+					tcb_ptr->send_target = -1;
+
+					//Alows producer to restore its execution after Send, since the message was transmitted
+					tcb_ptr->reg[0] = 1;
+					tcb_ptr->scheduling_ptr->waiting_msg = 0;
+
+					return 1; //Exit the receive returnin 1
 
 				} else {
-
-					msg_write = (Message*) arg0;
-
-					msg_write = (Message*)((current->offset) | ((unsigned int)msg_write));
-
-					msg_write->length = pipe_ptr->message.length;
-
-					for (int i = 0; i<msg_write->length; i++) {
-						msg_write->msg[i] = pipe_ptr->message.msg[i];
-					}
-
-					return 1;
+					//puts("Local receive - set message request table\n");
+					insert_message_request(producer_task, consumer_task, net_address);
 				}
 
-			} else {
+			} else { //If the receive is from a remote proc
 
 				//*************** Deadlock avoidance ************************
 				//Só testa se tiver algo na rede PS pq o CS vai via sinal de req
@@ -674,8 +708,8 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 					return 0;
 				}
 				//***********************************************************
-
-				send_message_request(producer_task, consumer_task, producer_PE, net_address, 0);
+				//puts("Remote receive - send message request\n");
+				send_message_request(producer_task, consumer_task, producer_PE, net_address);
 
 			}
 
@@ -683,13 +717,15 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 
 			schedule_after_syscall = 1;
 
+			//Used for DAPE purposes
 			current->communication_time = HAL_get_tick();
-			//putsv("Request ", current->communication_time);
+
+
+			//putsv("\nRECVMESSAGE - consumer waiting at time: ", current->communication_time);
 
 			//current->computation_time = current->communication_time - current->computation_time;
 			current->total_comp += current->communication_time - current->computation_time;
 			//puts("["); puts(itoa(current->id)); puts("] Comp --> "); puts(itoa(current->computation_time)); puts("\n");
-
 
 			return 0;
 
@@ -803,7 +839,7 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 			//If both the task are at same PE then:
 			if (consumer_PE == net_address){
 
-				puts("Local send service from task "); puts(itoa(producer_task)); putsv(" to task ", consumer_task);
+				//puts("Local send service from task "); puts(itoa(producer_task)); putsv(" to task ", consumer_task);
 
 				//If target is not waiting message return 0 and schedules target to it consume the message
 				if (!write_local_service_to_task(consumer_task, msg_address_src, arg2)){
@@ -932,7 +968,6 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 	int need_scheduling, code_lenght, app_ID, task_loc, latency = 0;
 	unsigned int app_tasks_location[MAX_TASKS_APP];
-	PipeSlot * slot_ptr;
 	Message * msg_ptr;
 	unsigned int * tgt_message_addr;
 	TCB * tcb_ptr = 0;
@@ -940,74 +975,79 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 	need_scheduling = 0;
 
+	//puts("New Handle packet: "); puts(itoh(p->service)); puts("\n");
+
 	switch (p->service) {
 
 	case MESSAGE_REQUEST: //This case is the most complicated of the HeMPS if you understand it, so you understand all task communication protocol
 	//This case sincronizes the communication messages also in case of task migration, the migration allows several scenarios, that are handled inside this case
 
+		//putsv("\nMESSAGE_REQUEST recebido da consumer at time: ", HAL_get_tick());
 		//Gets the location of the producer task
 		task_loc = get_task_location(p->producer_task);
 
-		/*if (task_loc == -1){
-			puts("**** ERROR **** task location -1\n");
-			while(1);
-		}*/
+		//If the producer task still executing here
+		if (task_loc == net_address){
 
-		//Test if the task was migrated to this processor but have message produced in the old processor
-		//In this case is necessary to forward the message request to the old processor
-		if (searchTCB(p->producer_task) && task_loc != net_address){
+			//Test if the producer task have something produced for consumer
 
-			if (p->insert_request || task_loc == -1)
-				insert_message_request(p->producer_task, p->consumer_task, p->requesting_processor);
-			else
-				//MESSAGE_REQUEST by pass
-				send_message_request(p->producer_task, p->consumer_task, task_loc, p->requesting_processor, 0);
+			//Gets TCB of producer task
+			tcb_ptr = searchTCB(p->producer_task);
 
-			break;
-		}
-
-		//Remove msg from PIPE, if there is no message, them slot_ptr will be 0
-		//Note that this line, is below to the by pass above, becase we need to avoid that the a message be removed if still there are other messages in pipe of the old proc
-		slot_ptr = remove_PIPE(p->producer_task, p->consumer_task);
-
-		//Test if there is no message in PIPE
-		if (slot_ptr == 0){
-
-			//Test if the producer task is running at this processor, this conditions work togheter to the first by pass condition (above).
-			if (task_loc == net_address){
-
-				insert_message_request(p->producer_task, p->consumer_task, p->requesting_processor);
-
-			} else { //If not, the task was migrated and the requester message_request need to be forwarded to the correct producer proc
-
-				//If there is no more messages in the pipe of the producer, update the location of the migrated task at the remote proc
-				if ( search_PIPE_producer(p->producer_task) == 0)
-					request_update_task_location(p->requesting_processor, p->producer_task, task_loc);
-
-				//MESSAGE_REQUEST by pass with flag insert in pipe enabled (there is no more message for the requesting task in this processor)
-				send_message_request(p->producer_task, p->consumer_task, task_loc, p->requesting_processor, 1);
+			while (tcb_ptr == 0){
+				puts("ERROR tcb_ptr is suposed to be something\n");
 			}
 
-		//message found, send it!!
-		} else if (p->requesting_processor != net_address){
+			//Test if the producer task already produced something to the consumer, sending the message_delivery
+			if (tcb_ptr->send_buffer != 0 && tcb_ptr->send_target == p->consumer_task){
 
-			send_message_delivery(p->producer_task, p->consumer_task, p->requesting_processor, &slot_ptr->message);
+				msg_ptr = (Message *) tcb_ptr->send_buffer;
 
-		//This else is executed when this slave received a own MESSAGE_REQUEST due a task migration by pass
-		} else {
+				send_message_delivery(p->producer_task, p->consumer_task, p->requesting_processor, msg_ptr);
 
-			tcb_ptr = searchTCB(p->consumer_task);
+				//Waits the message be tranfered
+				while(HAL_is_send_active(PS_SUBNET));
 
-			write_local_msg_to_task(tcb_ptr, slot_ptr->message.length, slot_ptr->message.msg);
+				//Sets the producer buffer info free
+				tcb_ptr->send_buffer = 0;
+
+				tcb_ptr->send_target = -1;
+
+				//Release the producer to run,
+				//This line make the send function to return 1
+				tcb_ptr->reg[0] = 1;
+
+				tcb_ptr->scheduling_ptr->waiting_msg = 0;
+
+				//putsv("Enviando MESSAGE_DELIVERY, producer release at time: ", HAL_get_tick());
+
+				need_scheduling = 1;//Need scheduling since prod was released
+
+			} else { //If not, stores the message request
+				//putsv("Request armazenado: ", HAL_get_tick());
+				insert_message_request(p->producer_task, p->consumer_task, p->requesting_processor);
+			}
+
+		} else { //This means that task was migrated to another PE since its location is diferent
+
+			//MESSAGE_REQUEST by pass
+			send_message_request(p->producer_task, p->consumer_task, task_loc, p->requesting_processor);
+
 		}
 
 		break;
 
 	case  MESSAGE_DELIVERY:
 
+		//putsv("\nMESSAGE_DELIVERY recebido da producer at time: ", HAL_get_tick());
+
 		tcb_ptr = searchTCB(p->consumer_task);
 
-		msg_ptr = (Message *)(tcb_ptr->offset | tcb_ptr->reg[3]);
+		while (tcb_ptr->recv_buffer == 0 || tcb_ptr->recv_source != p->producer_task){
+			puts("ERROR message delivery send to an invalid producer\n");
+		}
+
+		msg_ptr = (Message *)(tcb_ptr->recv_buffer);
 
 		if (subnet == PS_SUBNET){ //Read by PS
 
@@ -1049,9 +1089,14 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		}
 
+		//Release the consumer buffer info
+		tcb_ptr->recv_buffer = 0;
+		tcb_ptr->recv_source = -1;
+
 		tcb_ptr->reg[0] = 1;
 
 		tcb_ptr->scheduling_ptr->waiting_msg = 0;
+		//putsv("Liberou consumer to execute at time: ", HAL_get_tick());
 		//puts("Task not waitining anymeore 1\n");
 
 		if (tcb_ptr->add_ctp)
@@ -1296,7 +1341,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 	case SET_NOC_SWITCHING_PRODUCER:
 
-		//puts("++++++ CTP_CLEAR_TO_PRODUCER\n");
+		puts("++++++ CTP_CLEAR_TO_PRODUCER\n");
 
 		if (p->cs_mode) {
 			ctp_ptr = add_ctp(p->producer_task, p->consumer_task, DMNI_SEND_OP, p->cs_net);
