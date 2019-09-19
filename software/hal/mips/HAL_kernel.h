@@ -12,7 +12,7 @@
 #define SOFTWARE_HAL_H_
 
 #include "../../../include/kernel_pkg.h"
-#include "../../kernel/modules/task_control.h" //Included only due reference to TCB pointer
+#include "../../kernel/modules/TCB.h" //Included only due reference to TCB pointer
 //HAL_model_properties.h"
 
 /*Onique global variable used by more then 1 module, holds the address XY of the current PE*/

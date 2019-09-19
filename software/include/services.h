@@ -49,7 +49,6 @@
 #define 	RT_CONSTRANTS_OTHER_CLUSTER		0x00000285
 #define		NEW_APP_REQ						0x00000290 //Injector to Mestre (carries num_tasks)
 #define		APP_REQ_ACK						0x00000300 //Mestre to Injector (carries cluster addr)
-#define 	NEW_CS_CTP						0x00000310
 #define 	CLEAR_CS_CTP					0x00000320
 #define 	SERVICE_TASK_MESSAGE			0x00000350
 #define 	SET_NOC_SWITCHING_CONSUMER		0x00000360

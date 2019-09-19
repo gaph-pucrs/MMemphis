@@ -20,8 +20,8 @@
 
 #include "../../hal/mips/HAL_kernel.h"
 #include "../../include/api.h"
-#include "task_control.h"
 #include "packet.h"
+#include "TCB.h"
 
 
 #define REQUEST_SIZE	 MAX_LOCAL_TASKS*(MAX_TASKS_APP-1) //50	//!< Size of the message request array in fucntion of the maximum number of local task and max task per app

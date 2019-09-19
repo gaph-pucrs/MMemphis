@@ -11,13 +11,14 @@
  * This module is only used by slave kernel
  */
 
-#include "communication.h"
-#include "task_location.h"
-#include "task_migration.h"
+#include "task_communication.h"
+
 #include "utils.h"
-#include "ctp.h"
 #include "../../include/services.h"
 #include "../../hal/mips/HAL_kernel.h"
+#include "enforcer_mapping.h"
+#include "enforcer_migration.h"
+#include "enforcer_sdn.h"
 
 
 MessageRequest message_request[REQUEST_SIZE];	//!< message request array

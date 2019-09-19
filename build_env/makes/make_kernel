@@ -20,18 +20,16 @@ HAL_NAME		  = HAL_kernel
 HAL_KERNEL_SRC = $(addsuffix .c, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) ) $(addsuffix .h, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) )
 HAL_KERNEL_TGT = $(addsuffix .o, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) )
 
-#------------- MODULES KERNEL -------------
+#------------- MODULES KERNEL -----------
 MODULES_DIR = kernel/modules/
-MODULES_NAMES = utils packet pending_service communication task_control task_location task_migration task_scheduler ctp
-
+MODULES_NAMES = utils packet pending_service task_communication TCB monitor enforcer_mapping enforcer_migration enforcer_sdn task_scheduler
 
 MODULES_SRC = $(addsuffix .c, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) ) $(addsuffix .h, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) )
 MODULES_TGT = $(addsuffix .o, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) )
 
-#------------- MAIN KERNEL -------------
+#------------- MAIN KERNEL --------------
 KERNEL 	  		  = kernel
 KERNEL_SRC 		  = kernel/kernel.c 
-KERNEL_H	      = kernel/kernel.h
 KERNEL_TGT 	 = $(addsuffix .o, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) ) $(addsuffix .o, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) )
 
 default: $(KERNEL).txt 
@@ -40,12 +38,11 @@ $(HAL_KERNEL_TGT): $(HAL_KERNEL_SRC)
 	@printf "${RED}Compiling HAL %s ...${NC}\n" "$*.c"
 	$(GCC_MIPS) -o $*.o $*.c
 
-
 $(MODULES_TGT): $(HAL_KERNEL_TGT) $(MODULES_SRC)
 	@printf "${RED}Compiling Module %s ...${NC}\n" "$*.c"
 	$(GCC_MIPS) -o $*.o $*.c
 
-$(KERNEL).txt: $(HAL_KERNEL_TGT) $(MODULES_TGT) $(KERNEL_SRC) $(KERNEL_H) $(BOOT_SRC)
+$(KERNEL).txt: $(HAL_KERNEL_TGT) $(MODULES_TGT) $(KERNEL_SRC) $(BOOT_SRC)
 	@printf "${RED}Compiling Kernel: %s ...${NC}\n" "$(KERNEL).c"
 	$(AS_MIPS) --defsym sp_addr=$(PAGE_SP_INIT) -o $(BOOT).o $(BOOT_SRC)
 	$(GCC_MIPS) -o $(KERNEL).o $(KERNEL_SRC)

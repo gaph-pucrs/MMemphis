@@ -12,7 +12,7 @@
  * This module is used by the slave kernel
  */
 
-#include "task_control.h"
+#include "TCB.h"
 
 #include "../../hal/mips/HAL_kernel.h"
 #include "../../include/services.h"

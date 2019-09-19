@@ -19,8 +19,8 @@
 #include "../../hal/mips/HAL_kernel.h"
 #include "../../include/services.h"
 #include "packet.h"
+#include "TCB.h"
 #include "utils.h"
-#include "task_control.h"
 
 Scheduling scheduling[MAX_LOCAL_TASKS];			//!<Scheduling array with its size equal to the max number of task that can execute into the processor
 

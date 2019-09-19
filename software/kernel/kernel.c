@@ -11,37 +11,31 @@
  * Kernel slave is the system slave used to execute user's tasks.
  *
  * \detailed
- * kernel_slave is the core of the OS running into the slave processors.
- * Its job is to runs the user's task. It communicates whit the kernel_master to receive new tasks
- * and also notifying its finish.
+ * kernel_slave is the core of the OS running into processors.
+ * Its job is to runs the user's task.
  * The kernel_slave file uses several modules that implement specific functions
  */
 
-#include "kernel.h"
+#include "../hal/mips/HAL_kernel.h"
 #include "../include/api.h"
 #include "../include/management_api.h"
 #include "../include/services.h"
-#include "modules/task_location.h"
 #include "modules/packet.h"
-#include "modules/communication.h"
 #include "modules/pending_service.h"
-#include "modules/ctp.h"
+#include "modules/task_communication.h"
 #include "modules/task_scheduler.h"
 #include "modules/utils.h"
+#include "modules/enforcer_mapping.h"
+#include "modules/enforcer_sdn.h"
+#include "modules/monitor.h"
 #if MIGRATION_ENABLED
-#include "modules/task_migration.h"
+#include "modules/enforcer_migration.h"
 #endif
 
 //Globals
 unsigned int 	interrput_mask;				//!< Stores the bit set allowing interruption, this variable is set within main()
-unsigned int 	last_idle_time;				//!< Store the last idle time duration
-unsigned int 	last_slack_time_report;		//!< Store time at the last slack time update sent to manager
-unsigned int 	total_slack_time;			//!< Store the total of the processor idle time
-TCB 			idle_tcb;					//!< TCB pointer used to run idle task
+TCB 			idle_tcb;					//!< TCB used to run idle task
 TCB *			current;					//!< TCB pointer used to store the current task executing into processor (referenced at assembly - HAL_kernel_asm)
-
-
-unsigned int 	last_task_profiling_update;	//!< Used to store the last time that the profiling was sent to manager
 
 /*Function skeletons*/
 void send_service_api_message(int, unsigned int, unsigned int *, unsigned int);
@@ -82,209 +76,6 @@ int write_local_service_to_task(unsigned int consumer_id, unsigned int * msg_dat
 	return 1;
 }
 
-/** Assembles and sends a TASK_TERMINATED packet to the master kernel
- *  \param terminated_task Terminated task TCB pointer
- */
-//void send_task_terminated(TCB * terminated_task, int perc){/*<--- perc**apagar trecho de end simulation****/
-void send_task_terminated(TCB * terminated_task){
-
-	unsigned int message[3];
-	unsigned int master_addr, master_id;
-
-	message[0] = TASK_TERMINATED;
-	message[1] = terminated_task->id; //p->task_ID
-	message[2] = terminated_task->master_address;
-
-	master_addr = terminated_task->master_address & 0xFFFF;
-	master_id = terminated_task->master_address >> 16;
-
-	if (master_addr == net_address){
-
-		write_local_service_to_task(master_id, message, 3);
-
-	} else {
-
-		send_service_api_message(master_id, master_addr, message, 3);
-
-
-		puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
-		putsv("Master id: ", master_id);
-
-		while(HAL_is_send_active(PS_SUBNET));
-	}
-	puts("Sended\n");
-
-
-}
-
-/** Assembles and sends a CTP_CS_ACK packet to the master kernel, signalizing
- * that the CS release or stablisment was accomplished
- *  \param producer_task Task ID of the CTP's producer task
- *  \param consumert_task Task ID of the CTP's consumer task
- *  \param subnet Subnet ID
- *  \param cs_mode Flag indicating to release or stablish a CS connection (1 - stablish, 0 - release)
- */
-void send_NoC_switching_ack(int producer_task, int consumert_task, int subnet, int cs_mode){
-
-	ServiceHeader * p;
-	TCB * prod_tcb_ptr;
-
-	prod_tcb_ptr = searchTCB(producer_task);
-
-	if (!prod_tcb_ptr){
-		puts("ERROR, not TCB found in send_cs_ack\n");
-		for(;;);
-	}
-
-	p = get_service_header_slot();
-
-	p->header = prod_tcb_ptr->master_address;
-
-	p->service = NOC_SWITCHING_PRODUCER_ACK;
-
-	p->producer_task = producer_task;
-
-	p->consumer_task = consumert_task;
-
-	p->cs_net = subnet;
-
-	p->cs_mode = cs_mode;
-
-	send_packet(p, 0, 0);
-
-
-	//Sends the ACK to the consumer also
-	if (cs_mode) {//Only send if the mode is establish
-
-		//puts("Enviou NOC_SWITCHING_PRODUCER_ACK para consumer\n");
-		p = get_service_header_slot();
-
-		p->header = get_task_location(consumert_task);
-
-		p->service = NOC_SWITCHING_PRODUCER_ACK;
-
-		p->producer_task = producer_task;
-
-		p->consumer_task = consumert_task;
-
-		p->cs_net = subnet;
-
-		p->cs_mode = cs_mode;
-
-		send_packet(p, 0, 0);
-	}
-
-	//puts("send ACK to manager\n");
-}
-
-/** Assembles and sends a TASK_ALLOCATED packet to the master kernel
- *  \param allocated_task Allocated task TCB pointer
- */
-void send_task_allocated(TCB * allocated_task){
-
-	unsigned int master_addr, master_task_id;
-	unsigned int message[2];
-
-	//Gets the task ID
-	master_task_id = allocated_task->master_address >> 16;
-	//Gets the task localion
-	master_addr = allocated_task->master_address & 0xFFFF;
-
-	message[0] = TASK_ALLOCATED;
-	message[1] = allocated_task->id;
-
-	if (master_addr == net_address){
-
-		puts("WRITE TASK ALLOCATED local\n");
-		write_local_service_to_task(master_task_id, message, 2);
-
-	} else {
-
-		send_service_api_message(master_task_id, master_addr, message, 2);
-
-		while(HAL_is_send_active(PS_SUBNET));
-
-		puts("Sending task allocated\n");
-	}
-
-}
-
-
-/** Assembles and sends a SLACK_TIME_REPORT packet to the master kernel
- */
-void send_slack_time_report(){
-
-	return;
-
-	unsigned int time_aux;
-
-	ServiceHeader * p = get_service_header_slot();
-
-	p->header = cluster_master_address;
-
-	p->service = SLACK_TIME_REPORT;
-
-	time_aux = HAL_get_tick();
-
-	p->cpu_slack_time = ( (total_slack_time*100) / (time_aux - last_slack_time_report) );
-
-	//putsv("Slack time sent = ", (total_slack_time*100) / (time_aux - last_slack_time_report));
-
-	total_slack_time = 0;
-
-	last_slack_time_report = time_aux;
-
-	send_packet(p, 0, 0);
-}
-
-/** Assembles and sends a UPDATE_TASK_LOCATION packet to a slave processor. Useful because task migration
- * \param target_proc Target slave processor which the packet will be sent
- * \param task_id Task ID that have its location updated
- * \param new_task_location New location (slave processor address) of the task
- */
-void request_update_task_location(unsigned int target_proc, unsigned int task_id, unsigned int new_task_location){
-
-	ServiceHeader *p = get_service_header_slot();
-	int master_address;
-
-	//Request to manager to update the task location for all tasks
-	master_address = remove_pending_migration_task(task_id);
-
-	if (master_address != -1)
-		send_task_migrated(task_id, new_task_location, master_address);
-
-	//In some cases with simultaneous task migration, the manager can sent the update location
-	//to a old processor, in this case the onw slave update the task location
-	if (target_proc != net_address){
-
-		p->header = target_proc;
-
-		p->service = UPDATE_TASK_LOCATION;
-
-		p->task_ID = task_id;
-
-		p->allocated_processor = new_task_location;
-
-		send_packet(p, 0, 0);
-	}
-
-	if (target_proc != new_task_location){
-
-		p = get_service_header_slot();
-
-		p->header = new_task_location;
-
-		p->service = UPDATE_TASK_LOCATION;
-
-		p->task_ID = task_id;
-
-		p->allocated_processor = new_task_location;
-
-		send_packet(p, 0, 0);
-	}
-
-}
-
 
 void send_service_api_message(int consumer_task, unsigned int targetPE, unsigned int * src_message, unsigned int msg_size){
 
@@ -317,61 +108,6 @@ void send_service_api_message(int consumer_task, unsigned int targetPE, unsigned
 
 }
 
-void send_latency_miss(TCB * target_task, int producer_task, int producer_proc){
-
-	ServiceHeader * p = get_service_header_slot();
-
-	p->header = target_task->master_address;
-
-	p->service = LATENCY_MISS_REPORT;
-
-	p->producer_task = producer_task;
-
-	p->consumer_task = target_task->id;
-
-	p->target_processor = producer_proc;
-
-	send_packet(p, 0, 0);
-
-}
-
-
-void send_config_router(int target_proc, int input_port, int output_port, int cs_net){
-
-  volatile unsigned int config_pkt[3];
-
-	//5 is a value used by software to distinguish between the LOCAL_IN e LOCAL_OUT port
-	//At the end of all, the port 5 not exists inside the router, and the value is configured to 4.
-	if (input_port == 5)
-		input_port = 4;
-	else if (output_port == 5)
-		output_port = 4;
-
-	if (target_proc == net_address){
-
-		config_subnet(input_port, output_port, cs_net);
-
-	} else {
-
-		config_pkt[0] = 0x10000 | target_proc;
-
-		config_pkt[1] = 1;
-
-		config_pkt[2] = (input_port << 13) | (output_port << 10) | (2 << cs_net) | 0;
-
-		DMNI_send_data((unsigned int)config_pkt, 3 , PS_SUBNET);
-
-		while (HAL_is_receive_active((1 << PS_SUBNET)));
-
-	}
-#if CS_DEBUG
-	puts("\n********* Send config router ********* \n");
-	puts("target_proc = "); puts(itoh(target_proc));
-	puts("\ninput port = "); puts(itoa(input_port));
-	puts("\noutput_port = "); puts(itoa(output_port));
-	puts("\ncs_net = "); puts(itoa(cs_net)); puts("\n***********************\n");
-#endif
-}
 
 
 /** Syscall handler. It is called when a task calls a function defined into the api.h file
@@ -382,11 +118,7 @@ void send_config_router(int target_proc, int input_port, int output_port, int cs
  */
 int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg1, unsigned int arg2) {
 
-	TCB * tcb_ptr;
 	unsigned int * msg_address_src;//, * msg_address_tgt;
-	int consumer_task;
-	int producer_task;
-	int consumer_PE;
 	int appID;
 
 
@@ -511,6 +243,8 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 
 			return 1;
 
+
+/*Here starts the support for the management task API used for MA task*/
 		case CFGROUTER:
 
 			if (HAL_is_send_active(PS_SUBNET))
@@ -527,58 +261,41 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 			return 1;
 
 		case INCOMINGPACKET:
+
 			return (HAL_get_irq_status() >= IRQ_INIT_NOC);
 
 		case GETNETADDRESS:
+
 			return net_address;
+
 		case ADDTASKLOCATION:
+
 			add_task_location(arg0, arg1);
 			//puts("Added task id "); puts(itoa(arg0)); puts(" at loc "); puts(itoh(arg1)); puts("\n");
 			break;
+
 		case REMOVETASKLOCATION:
+
 			remove_task_location(arg0);
+
 			break;
+
 		case GETTASKLOCATION:
+
 			return get_task_location(arg0);
+
 		case SETMYID:
+
 			current->id = arg0;
 			//putsv("Task id changed to: ", current->id);
 			break;
-		case SETTASLRELEASE:
 
-			msg_address_src = (unsigned int *) (current->offset | arg0);
-			//msg_size = arg1
+		case SETTASKRELEASE:
 
-			consumer_task = msg_address_src[3];
-
-			putsv("TASK_RELEASE\nTask ID: ", consumer_task);
-
-			tcb_ptr = searchTCB(consumer_task);
-
-			appID = consumer_task >> 8;
-
-			tcb_ptr->data_lenght = msg_address_src[9];
-
-			puts("Data lenght: "); puts(itoh(tcb_ptr->data_lenght)); puts("\n");
-
-			tcb_ptr->bss_lenght = msg_address_src[11];
-
-			puts("BSS lenght: "); puts(itoh(tcb_ptr->data_lenght)); puts("\n");
-
-			tcb_ptr->text_lenght = tcb_ptr->text_lenght - tcb_ptr->data_lenght;
-
-			if (tcb_ptr->scheduling_ptr->status == BLOCKED){
-				tcb_ptr->scheduling_ptr->status = READY;
-			}
-
-			putsv("app task number: ", msg_address_src[8]);
-
-			for(int i=0; i<msg_address_src[8]; i++){
-				add_task_location(appID << 8 | i, msg_address_src[CONSTANT_PKT_SIZE+i]);
-				puts("Add task "); puts(itoa(appID << 8 | i)); puts(" loc "); puts(itoh(msg_address_src[CONSTANT_PKT_SIZE+i])); puts("\n");
-			}
+			set_task_release((current->offset | arg0), 0);
 
 			break;
+
 		default:
 			putsv("Syscall code unknow: ", service);
 			while(1);
@@ -592,20 +309,13 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
  */
 int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
-	int need_scheduling, code_lenght, app_ID, task_loc;
-	unsigned int app_tasks_location[MAX_TASKS_APP];
-	unsigned int * tgt_message_addr;
-	TCB * tcb_ptr = 0;
-	CTP * ctp_ptr = 0;
-
-	need_scheduling = 0;
+	int need_scheduling = 0;
 
 	//puts("New Handle packet: "); puts(itoh(p->service)); puts("\n");
 
 	switch (p->service) {
 
-	case MESSAGE_REQUEST: //This case is the most complicated of the HeMPS if you understand it, so you understand all task communication protocol
-	//This case sincronizes the communication messages also in case of task migration, the migration allows several scenarios, that are handled inside this case
+	case MESSAGE_REQUEST:
 
 		need_scheduling = handle_message_request(p);
 
@@ -623,40 +333,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 	case TASK_ALLOCATION:
 
-		tcb_ptr = search_free_TCB();
-
-		tcb_ptr->pc = 0;
-
-		tcb_ptr->id = p->task_ID;
-
-		puts("Task id: "); puts(itoa(tcb_ptr->id)); putsv(" allocated at ", HAL_get_tick());
-
-		code_lenght = p->code_size;
-
-		tcb_ptr->text_lenght = code_lenght;
-
-		tcb_ptr->master_address = p->master_ID;
-
-		puts("Master address: "); puts(itoh(tcb_ptr->master_address)); puts("\n");
-
-		tcb_ptr->remove_ctp = 0;
-
-		tcb_ptr->add_ctp = 0;
-
-		tcb_ptr->is_service_task = 0;
-
-		tcb_ptr->proc_to_migrate = -1;
-
-		tcb_ptr->scheduling_ptr->remaining_exec_time = MAX_TIME_SLICE;
-
-		DMNI_read_data(tcb_ptr->offset, code_lenght);
-
-		if ((tcb_ptr->id >> 8) == 0){//Task of APP 0 (mapping) dont need to be released to start its execution
-			tcb_ptr->scheduling_ptr->status = READY;
-		} else { //For others task
-			tcb_ptr->scheduling_ptr->status = BLOCKED;
-			send_task_allocated(tcb_ptr);
-		}
+		handle_task_allocation(p);
 
 		if (current == &idle_tcb){
 			need_scheduling = 1;
@@ -666,35 +343,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 	case TASK_RELEASE:
 
-		tcb_ptr = searchTCB(p->task_ID);
-
-		if(tcb_ptr->id == 1026)
-			putsv("TASK_RELEASE\nTask ID: ", p->task_ID);
-
-		app_ID = p->task_ID >> 8;
-
-		tcb_ptr->data_lenght = p->data_size;
-
-		//puts("Data lenght: "); puts(itoh(tcb_ptr->data_lenght)); puts("\n");
-
-		tcb_ptr->bss_lenght = p->bss_size;
-
-		//puts("BSS lenght: "); puts(itoh(tcb_ptr->data_lenght)); puts("\n");
-
-		tcb_ptr->text_lenght = tcb_ptr->text_lenght - tcb_ptr->data_lenght;
-
-		if (tcb_ptr->scheduling_ptr->status == BLOCKED){
-			tcb_ptr->scheduling_ptr->status = READY;
-		}
-
-		//putsv("app task number: ", p->app_task_number);
-
-		DMNI_read_data( (unsigned int) app_tasks_location, p->app_task_number);
-
-		for (int i = 0; i < p->app_task_number; i++){
-			add_task_location(app_ID << 8 | i, app_tasks_location[i]);
-			//puts("Add task "); puts(itoa(app_ID << 8 | i)); puts(" loc "); puts(itoh(app_tasks_location[i])); puts("\n");
-		}
+		set_task_release((unsigned int)p, 1); //last arg equal to 1 means that the data source comes from NoC
 
 		if (current == &idle_tcb){
 			need_scheduling = 1;
@@ -725,41 +374,26 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 			disturbing_reader();
 		}*/
 
-		app_ID = net_address >> 8;
-		task_loc = net_address & 0xFF;
-		app_ID += task_loc;
-
-		last_task_profiling_update = (int)(APL_WINDOW/app_ID);
-		//putsv("last_task_profiling_update = ", last_task_profiling_update);
+		init_profiling_window();
 
 		break;
 
 #if MIGRATION_ENABLED
-		case TASK_MIGRATION:
-		case MIGRATION_CODE:
-		case MIGRATION_TCB:
-		case MIGRATION_TASK_LOCATION:
-		case MIGRATION_MSG_REQUEST:
-		case MIGRATION_STACK:
-		case MIGRATION_DATA_BSS:
+	case TASK_MIGRATION:
+	case MIGRATION_CODE:
+	case MIGRATION_TCB:
+	case MIGRATION_TASK_LOCATION:
+	case MIGRATION_MSG_REQUEST:
+	case MIGRATION_STACK:
+	case MIGRATION_DATA_BSS:
 
 			need_scheduling = handle_migration(p);
 
 			break;
 #endif
 
-	/*case NEW_CS_CTP:
-
-		add_ctp(p->producer_task, p->consumer_task, p->dmni_op, p->cs_net);
-
-		break;*/
-
-	case CLEAR_CS_CTP:
-
-		remove_ctp(p->cs_net, p->dmni_op);
-
-		break;
-
+/*These services concerns to the MA task, thus they are bypassed to the respective task using the function handle_MA_message
+ *These services could be visible only at MA task scope, however, they still here to allow the debugging to work properly*/
 	case TASK_TERMINATED:
 	case TASK_ALLOCATED:
 	case APP_TERMINATED:
@@ -774,65 +408,23 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case LOAN_PROCESSOR_DELIVERY:
 	case LOAN_PROCESSOR_RELEASE:
 
-		//puts("\nAPI\n");
 		handle_MA_message(p->consumer_task, p->msg_lenght);
 
 		need_scheduling = 1;
 
 		break;
 
+	case CLEAR_CS_CTP:
+
+		remove_ctp(p->cs_net, p->dmni_op);
+
+		break;
+
 	case SET_NOC_SWITCHING_CONSUMER:
-
-		//puts("===== CLEAR_CS_TASK\n");
-
-		tcb_ptr = searchTCB(p->consumer_task);
-
-		if (p->cs_mode)  //Stablish Circuit-Switching
-
-			tcb_ptr->add_ctp = p->cs_net << 16 | p->producer_task;
-
-		else  //Stablish Packet-Switching
-
-			tcb_ptr->remove_ctp = p->producer_task;
-
-
-		set_ctp_producer_adress(p->allocated_processor);
-
-		//Test if the task is not waiting for a message
-		if (!tcb_ptr->scheduling_ptr->waiting_msg){
-
-			check_ctp_reconfiguration(tcb_ptr);
-		}
-
-		break;
-
 	case SET_NOC_SWITCHING_PRODUCER:
-
-		puts("++++++ CTP_CLEAR_TO_PRODUCER\n");
-
-		if (p->cs_mode) {
-			ctp_ptr = add_ctp(p->producer_task, p->consumer_task, DMNI_SEND_OP, p->cs_net);
-		} else
-			remove_ctp(p->cs_net, DMNI_SEND_OP);
-
-
-		send_NoC_switching_ack(p->producer_task, p->consumer_task, p->cs_net, p->cs_mode);
-
-		if (p->cs_mode){
-			//puts("Ready to go at producer\n");
-			ctp_ptr->ready_to_go = 1;
-		}
-
-		break;
-
 	case NOC_SWITCHING_PRODUCER_ACK:
 
-		ctp_ptr = get_ctp_ptr(p->cs_net, DMNI_RECEIVE_OP);
-
-		ctp_ptr->ready_to_go = 1;
-
-		//puts("Ready to go at consumer\n");
-		//puts("READY TO GO RECEIVED, producer "); puts(itoa(ctp_ptr->producer_task)); putsv(" consumer ", ctp_ptr->consumer_task);
+		handle_dynamic_CS_setup(p);
 
 		break;
 
@@ -883,15 +475,12 @@ void OS_scheduler() {
 
 		current = &idle_tcb;	// schedules the idle task
 
-		last_idle_time = HAL_get_tick();
+		reset_last_idle_time();
 
         HAL_set_scheduling_report(IDLE);
 
 #if ENABLE_APL_SLAVE
-        if(abs(last_idle_time-last_task_profiling_update) > APL_WINDOW){
-        	send_learned_profile(last_idle_time-last_task_profiling_update);
-			last_task_profiling_update = last_idle_time;
-		}
+        check_profiling_need();
 #endif
 	}
 
@@ -920,7 +509,7 @@ void OS_interruption_handler(unsigned int status) {
 	HAL_set_scheduling_report(INTERRUPTION);
 
 	if (current == &idle_tcb){
-		total_slack_time += HAL_get_tick() - last_idle_time;
+		compute_idle_time();
 	} else {
 		//current->computation_time = HAL_get_tick() - current->computation_time;
 		current->total_comp += HAL_get_tick() - current->computation_time;
@@ -1012,7 +601,7 @@ void OS_interruption_handler(unsigned int status) {
 
 	} else if (current == &idle_tcb){
 
-		last_idle_time = HAL_get_tick();
+		reset_last_idle_time();
 
 		HAL_set_scheduling_report(IDLE);
 
@@ -1051,11 +640,7 @@ int main(){
 	idle_tcb.id = 0;
 	idle_tcb.offset = 0;
 
-	total_slack_time = 0;
-
-	last_slack_time_report = 0;
-
-	last_idle_time = HAL_get_tick();
+	reset_last_idle_time();
 
 	current = &idle_tcb;
 

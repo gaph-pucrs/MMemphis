@@ -13,10 +13,11 @@
  * A ctp is used in CS mode. When a task belowing to a ctp need to send or receive a packet, the kernel
  * access this structure to be aware about the other task of the ctp pair
  */
-#include "ctp.h"
+#include "enforcer_sdn.h"
+
 #include "../../hal/mips/HAL_kernel.h"
 #include "../../include/services.h"
-#include "packet.h"
+#include "enforcer_mapping.h"
 #include "utils.h"
 
 #define MAX_CTP	(SUBNETS_NUMBER-1) * 2 //!< Maximum number of ctp into a slave processor
@@ -189,4 +190,167 @@ void check_ctp_reconfiguration(TCB * tcb_ptr){
 	else if (tcb_ptr->remove_ctp)
 		remove_ctp_online(tcb_ptr);
 }
+
+void send_config_router(int target_proc, int input_port, int output_port, int cs_net){
+
+  volatile unsigned int config_pkt[3];
+
+	//5 is a value used by software to distinguish between the LOCAL_IN e LOCAL_OUT port
+	//At the end of all, the port 5 not exists inside the router, and the value is configured to 4.
+	if (input_port == 5)
+		input_port = 4;
+	else if (output_port == 5)
+		output_port = 4;
+
+	if (target_proc == net_address){
+
+		config_subnet(input_port, output_port, cs_net);
+
+	} else {
+
+		config_pkt[0] = 0x10000 | target_proc;
+
+		config_pkt[1] = 1;
+
+		config_pkt[2] = (input_port << 13) | (output_port << 10) | (2 << cs_net) | 0;
+
+		DMNI_send_data((unsigned int)config_pkt, 3 , PS_SUBNET);
+
+		while (HAL_is_receive_active((1 << PS_SUBNET)));
+
+	}
+#if CS_DEBUG
+	puts("\n********* Send config router ********* \n");
+	puts("target_proc = "); puts(itoh(target_proc));
+	puts("\ninput port = "); puts(itoa(input_port));
+	puts("\noutput_port = "); puts(itoa(output_port));
+	puts("\ncs_net = "); puts(itoa(cs_net)); puts("\n***********************\n");
+#endif
+}
+
+/** Assembles and sends a CTP_CS_ACK packet to the master kernel, signalizing
+ * that the CS release or stablisment was accomplished
+ *  \param producer_task Task ID of the CTP's producer task
+ *  \param consumert_task Task ID of the CTP's consumer task
+ *  \param subnet Subnet ID
+ *  \param cs_mode Flag indicating to release or stablish a CS connection (1 - stablish, 0 - release)
+ */
+void send_NoC_switching_ack(int producer_task, int consumert_task, int subnet, int cs_mode){
+
+	ServiceHeader * p;
+	TCB * prod_tcb_ptr;
+
+	prod_tcb_ptr = searchTCB(producer_task);
+
+	if (!prod_tcb_ptr){
+		puts("ERROR, not TCB found in send_cs_ack\n");
+		for(;;);
+	}
+
+	p = get_service_header_slot();
+
+	p->header = prod_tcb_ptr->master_address;
+
+	p->service = NOC_SWITCHING_PRODUCER_ACK;
+
+	p->producer_task = producer_task;
+
+	p->consumer_task = consumert_task;
+
+	p->cs_net = subnet;
+
+	p->cs_mode = cs_mode;
+
+	send_packet(p, 0, 0);
+
+
+	//Sends the ACK to the consumer also
+	if (cs_mode) {//Only send if the mode is establish
+
+		//puts("Enviou NOC_SWITCHING_PRODUCER_ACK para consumer\n");
+		p = get_service_header_slot();
+
+		p->header = get_task_location(consumert_task);
+
+		p->service = NOC_SWITCHING_PRODUCER_ACK;
+
+		p->producer_task = producer_task;
+
+		p->consumer_task = consumert_task;
+
+		p->cs_net = subnet;
+
+		p->cs_mode = cs_mode;
+
+		send_packet(p, 0, 0);
+	}
+
+	//puts("send ACK to manager\n");
+}
+
+
+void handle_dynamic_CS_setup(volatile ServiceHeader * p){
+
+	TCB * tcb_ptr = 0;
+	CTP * ctp_ptr = 0;
+
+	switch (p->service) {
+
+	case SET_NOC_SWITCHING_CONSUMER:
+
+		tcb_ptr = searchTCB(p->consumer_task);
+
+		if (p->cs_mode)  //Stablish Circuit-Switching
+
+			tcb_ptr->add_ctp = p->cs_net << 16 | p->producer_task;
+
+		else  //Stablish Packet-Switching
+
+			tcb_ptr->remove_ctp = p->producer_task;
+
+
+		set_ctp_producer_adress(p->allocated_processor);
+
+		//Test if the task is not waiting for a message
+		if (!tcb_ptr->scheduling_ptr->waiting_msg){
+
+			check_ctp_reconfiguration(tcb_ptr);
+		}
+
+		break;
+
+	case SET_NOC_SWITCHING_PRODUCER:
+
+		puts("++++++ CTP_CLEAR_TO_PRODUCER\n");
+
+		if (p->cs_mode) {
+			ctp_ptr = add_ctp(p->producer_task, p->consumer_task, DMNI_SEND_OP, p->cs_net);
+		} else
+			remove_ctp(p->cs_net, DMNI_SEND_OP);
+
+
+		send_NoC_switching_ack(p->producer_task, p->consumer_task, p->cs_net, p->cs_mode);
+
+		if (p->cs_mode){
+			//puts("Ready to go at producer\n");
+			ctp_ptr->ready_to_go = 1;
+		}
+
+		break;
+
+	case NOC_SWITCHING_PRODUCER_ACK:
+
+		ctp_ptr = get_ctp_ptr(p->cs_net, DMNI_RECEIVE_OP);
+
+		ctp_ptr->ready_to_go = 1;
+
+		//puts("Ready to go at consumer\n");
+		//puts("READY TO GO RECEIVED, producer "); puts(itoa(ctp_ptr->producer_task)); putsv(" consumer ", ctp_ptr->consumer_task);
+
+		break;
+	}
+
+}
+
+
 

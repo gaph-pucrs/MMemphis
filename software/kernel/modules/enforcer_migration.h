@@ -15,7 +15,7 @@
 
 #include "../../../include/kernel_pkg.h"
 #include "packet.h"
-#include "task_control.h"
+#include "TCB.h"
 
 
 int handle_migration(volatile ServiceHeader *);

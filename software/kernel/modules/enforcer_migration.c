@@ -11,14 +11,14 @@
  * This module implements function relative to task migration. This module is used by slave kernel
  *
  */
-#include "task_migration.h"
+#include "enforcer_migration.h"
 
 #include "../../include/services.h"
 #include "../../hal/mips/HAL_kernel.h"
-#include "task_location.h"
-#include "task_control.h"
 #include "task_scheduler.h"
-#include "communication.h"
+#include "enforcer_mapping.h"
+#include "task_communication.h"
+#include "TCB.h"
 #include "utils.h"
 
 #define TASK_MIGRATION_DEBUG	0		//!<When enable shows puts related to task migration

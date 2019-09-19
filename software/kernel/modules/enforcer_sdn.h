@@ -17,7 +17,8 @@
 #ifndef CTP_H_
 #define CTP_H_
 
-#include "task_control.h"
+#include "TCB.h"
+#include "packet.h"
 
 /**
  * \brief This structure store CTP information used in CS communication
@@ -44,5 +45,11 @@ int get_subnet(int, int, int);
 void check_ctp_reconfiguration(TCB *);
 
 void set_ctp_producer_adress(unsigned int);
+
+void send_config_router(int, int, int, int);
+
+void send_NoC_switching_ack(int, int, int subnet, int);
+
+void handle_dynamic_CS_setup(volatile ServiceHeader *);
 
 #endif /* CTP_H_ */
