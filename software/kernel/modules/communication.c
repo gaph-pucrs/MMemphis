@@ -590,21 +590,142 @@ void receive_IO(){
 //TODO
 }
 
-void handle_MA_message(){
+void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
+	TCB * consumer_tcb_ptr;
+	unsigned int * cons_data;
+
+	consumer_tcb_ptr = searchTCB(consumer_task);
+
+	//Por esse motivo cada execução de uma MA task nunca pode ser interrompida
+	while (consumer_tcb_ptr->recv_buffer == 0 || consumer_tcb_ptr->scheduling_ptr->waiting_msg == 0){
+		puts("ERROR message delivery send to an invalid producer\n");
+	}
+
+	cons_data = consumer_tcb_ptr->recv_buffer;
+
+	DMNI_read_data( (unsigned int) cons_data, msg_size);
+
+	consumer_tcb_ptr->recv_buffer = 0;
+
+	HAL_release_waiting_task(consumer_tcb_ptr);
+
+	//TODO test
 
 }
 
 //Muito similar ao send_message
-void send_MA(){
+int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, unsigned int consumer_task){
+	unsigned int producer_task;
+	int consumer_PE;
+	unsigned int appID;
+	unsigned int * prod_data, * cons_data;
+	ServiceHeader * p;
+
+	if (HAL_is_send_active(PS_SUBNET)){
+		return 0;
+	}
+
+	producer_task = running_task->id;
+	appID = producer_task >> 8;
+	consumer_task = (appID << 8) | consumer_task;
+
+	consumer_PE = get_task_location(consumer_task);
+
+	//Test if the consumer task is not allocated
+	if (consumer_PE == -1){
+		//Task is blocked until its a TASK_RELEASE packet
+		running_task->scheduling_ptr->status = BLOCKED;
+		return 0;
+	}
+
+	if (consumer_PE == net_address){
+
+		TCB * consumer_tcb_ptr = searchTCB(consumer_task);
+
+		//This mean that task is with a message pending to handle, set Send to sleep
+		//When a producer can writes on recv_buffer it set it as zero to signal to another producers (local producers) that the buffer was fullfuled
+		//if (consumer_tcb_ptr->recv_buffer == 0 || consumer_tcb_ptr->scheduling_ptr->waiting_msg == 0){
+		if (consumer_tcb_ptr->recv_buffer == 0){
+			//Set the producer as waiting task
+
+			running_task->send_buffer = running_task->offset | msg_addr;
+			running_task->send_target = msg_size; //Reuse of send_target to store send size
+
+			//Scheduler after syscall because the producer cannot send the message
+			HAL_enable_scheduler_after_syscall();
+
+			//Return zero because Send cannot be performed
+			return 0;
+
+		} else { //If the local buffer is valid writes on it
+
+			//Get the addresses
+			prod_data = (unsigned int *) running_task->send_buffer;
+			cons_data = (unsigned int *) consumer_tcb_ptr->recv_buffer;
+
+			//memcopy
+			for(int i=0; i<msg_size; i++){
+				prod_data[i] = cons_data[i];
+			}
+
+			//Mark that consumer was populated with a message or not called yet
+			consumer_tcb_ptr->recv_buffer = 0;
+
+			//Release consumer to run
+			HAL_release_waiting_task(consumer_tcb_ptr);
+
+			//Clear the buffer of producer
+			running_task->send_buffer = 0;
+			running_task->send_target = -1;
+
+		}
+
+
+	} else { //If consumer is in a remote PE then send the data throught the network
+
+		prod_data = (unsigned int *) running_task->send_buffer;
+
+		p = get_service_header_slot();
+
+		p->header = consumer_PE;
+
+		p->service = prod_data[0]; //Index 0 always stores the service
+
+		//This if is only usefull for graphical debugger, to it can monitor TASK_TERMINATED packets properly
+		if(p->service == TASK_TERMINATED){
+			p->task_ID = prod_data[1];
+		}
+
+		p->consumer_task = consumer_task;
+
+		p->msg_lenght = msg_size;
+
+		send_packet(p, (unsigned int) prod_data, msg_size);
+	}
+
+	return 1;
 	//Search if task is local
 	//IF LOCAL
 	//
 }
 
 //Sets task to wait
-void receive_MA(){
+void receive_MA(TCB * running_task, unsigned int msg_addr){
 	//Stores task buffer and set it as waiting
-}
 
+	while(running_task->recv_buffer != 0){
+		puts("ERROR recv buffer MA should be zero\n");
+	}
+
+	running_task->recv_buffer = running_task->offset | msg_addr;
+
+	running_task->scheduling_ptr->waiting_msg = 1;
+
+	HAL_enable_scheduler_after_syscall();
+
+}
+//Return 0
+
+//HAL_interrupt_mask_set(interrput_mask); //TODO put this after calling this function at kernel
 
 
