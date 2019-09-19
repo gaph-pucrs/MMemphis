@@ -493,84 +493,14 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 
 		case WRITESERVICE:
 
-			//Enable to schedule after syscall and interruptions since task will be blocked anyway
-			HAL_enable_scheduler_after_syscall();
-
-			if (HAL_is_send_active(PS_SUBNET)){
-				puts("Preso no WRITESERVICE\n");
-				return 0;
-			}
-
-			//Test if the task has permission to use service API
-			if (!current->is_service_task){
-				puts("Task is not a service task YET\n");
-				return 0;
-			}
-
-			//Extracts the ID of producer and consumer task
-			producer_task =  current->id;
-			consumer_task = (int) arg0;
-			//putsv("Producer task: ", producer_task);
-			//putsv("Consumer task: ", consumer_task);
-			appID = producer_task >> 8;
-			consumer_task = (appID << 8) | consumer_task;
-
-			//Gets the PE location of the consumer task if the to_kernel mode is false
-			if (arg0 & TO_KERNEL) {//Test if the address is to kernel
-				consumer_PE = arg0 & 0xFFFF;
-				putsv("Send to kernel: ", consumer_PE);
-			} else
-				consumer_PE = get_task_location(consumer_task);
-
-			//Test if the consumer task is not allocated yet, this means that master does not sent TASK_RELEASE yet
-			if (consumer_PE == -1){
-				//Task is blocked until its a TASK_RELEASE packet
-				current->scheduling_ptr->status = BLOCKED;
-				puts("WARNING: Task blocked\n");
-				return 0;
-			}
-			//Stores the address of producer task message
-			msg_address_src = (unsigned int *) (current->offset | arg1);
-
-			//If both the task are at same PE then:
-			if (consumer_PE == net_address){
-
-				//puts("Local send service from task "); puts(itoa(producer_task)); putsv(" to task ", consumer_task);
-
-				//If target is not waiting message return 0 and schedules target to it consume the message
-				if (!write_local_service_to_task(consumer_task, msg_address_src, arg2)){
-					HAL_enable_scheduler_after_syscall();
-					return 0;
-				}
-
-			} else { //Else send the message to the remote task
-
-				//if (HAL_is_send_active(PS_SUBNET))
-				//	return 0;
-				send_service_api_message(consumer_task, consumer_PE, msg_address_src, arg2);
-			}
-
-			return 1;
+			return send_MA(current, arg1, arg2, arg0);
 
 		case READSERVICE:
 
 			//puts("\nREADSERVICE\n");
+			receive_MA(current, arg0);
 
-			HAL_enable_scheduler_after_syscall();
-
-			if (!current->is_service_task)
-				return 0;
-
-			//consumer_task =  current->id;
-			//producer_task = (int) arg1;
-
-			/*putsv("Address passed: ", arg0);
-			putsv("Full address: ", (current->offset) | arg0);
-			putsv("Offset: ", (current->offset));*/
-
-			current->scheduling_ptr->waiting_msg = 1;
-			//putsv("Task is waiting message: ", (unsigned int)current);
-
+			//Allows interruptions
 			HAL_interrupt_mask_set(interrput_mask);
 
 			return 0;
@@ -845,27 +775,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case LOAN_PROCESSOR_RELEASE:
 
 		//puts("\nAPI\n");
-
-		tcb_ptr = searchTCB(p->consumer_task); //Task ID 0 is the hadlock service ID
-
-		if (tcb_ptr == 0){
-			putsv("ERROR: tcb at SERVICE_TASK_MESSAGE_DELIVERY is null: ", p->consumer_task);
-			while(1);
-		}
-		if (tcb_ptr->is_service_task == 0){
-			puts("ERROR: Task at SERVICE_TASK_MESSAGE_DELIVERY is not a service task\n");
-			while(1);
-		}
-		if (tcb_ptr->scheduling_ptr->waiting_msg == 0){
-			putsv("ERROR: Task at SERVICE_TASK_MESSAGE_DELIVERY is not waiting message: ", tcb_ptr->id);
-			while(1);
-		}
-
-		tgt_message_addr = (unsigned int *) (tcb_ptr->offset | tcb_ptr->reg[3]);
-
-		DMNI_read_data( (unsigned int) tgt_message_addr, p->msg_lenght);
-
-		HAL_release_waiting_task(tcb_ptr);
+		handle_MA_message(p->consumer_task, p->msg_lenght);
 
 		need_scheduling = 1;
 

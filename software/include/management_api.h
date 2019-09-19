@@ -32,14 +32,13 @@
 #define NI_STATUS_RESPONSE			1004
 
 //Kernel Mode addess
-#define	TO_KERNEL					0x10000
+//#define	TO_KERNEL					0x10000
 
 extern int SystemCall();
 
 #define RequestServiceMode()				SystemCall(REQSERVICEMODE, 0, 0, 0)
 #define SendService(target, msg, uint_size) while(!SystemCall(WRITESERVICE, target, (unsigned int *)msg, uint_size))
 #define ReceiveService(msg)					while(!SystemCall(READSERVICE, 	(unsigned int *)msg, 0, 0))
-//#define ReceiveIO(target, msg, uint_size)
 #define Puts(str) 							while(!SystemCall(PUTS, 		(char*)str,			0, 0))
 #define ConfigRouter(target, ports, subnet)	while(!SystemCall(CFGROUTER, 	target, ports, subnet))
 #define	NoCSendFree()						SystemCall(NOCSENDFREE, 	0, 0, 0)
@@ -50,15 +49,6 @@ extern int SystemCall();
 #define GetTaskLocation(task_id)			SystemCall(GETTASKLOCATION, task_id, 0, 0)
 #define SetMyID(new_id)						SystemCall(SETMYID, new_id, 0, 0)
 #define SetTaskRelease(message, size)		SystemCall(SETTASLRELEASE, message, size, 0)
-
-typedef struct {
-	unsigned int task_id;
-	unsigned int task_address;
-	unsigned int service;
-	unsigned int msg_size;
-	unsigned int * msg;
-} ServiceMessage;
-
 
 
 #endif /* _SERVICE_API_H_ */

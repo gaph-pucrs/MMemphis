@@ -58,6 +58,13 @@ int handle_message_delivery(volatile ServiceHeader *, int);
 
 int handle_message_request(volatile ServiceHeader *);
 
+/*MA API functions*/
+int send_MA(TCB *, unsigned int, unsigned int, unsigned int);
+
+void receive_MA(TCB *, unsigned int);
+
+void handle_MA_message(unsigned int, unsigned int);
+
 
 
 #endif /* SOFTWARE_INCLUDE_COMMUNICATION_COMMUNICATION_H_ */

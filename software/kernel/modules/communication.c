@@ -383,6 +383,7 @@ int handle_message_delivery(volatile ServiceHeader * p, int subnet){
 }
 
 int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consumer_task){
+
 	unsigned int producer_task;
 	unsigned int appID;
 	int consumer_PE;
@@ -492,6 +493,7 @@ int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consume
 
 
 int receive_message(TCB * running_task, unsigned int msg_addr, unsigned int producer_task){
+
 	unsigned int consumer_task;
 	unsigned int appID;
 	int producer_PE;
@@ -591,8 +593,8 @@ void receive_IO(){
 }
 
 void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
+
 	TCB * consumer_tcb_ptr;
-	unsigned int * cons_data;
 
 	consumer_tcb_ptr = searchTCB(consumer_task);
 
@@ -601,29 +603,40 @@ void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
 		puts("ERROR message delivery send to an invalid producer\n");
 	}
 
-	cons_data = consumer_tcb_ptr->recv_buffer;
-
-	DMNI_read_data( (unsigned int) cons_data, msg_size);
+	DMNI_read_data(consumer_tcb_ptr->recv_buffer, msg_size);
 
 	consumer_tcb_ptr->recv_buffer = 0;
 
 	HAL_release_waiting_task(consumer_tcb_ptr);
 
-	//TODO test
-
 }
 
 //Muito similar ao send_message
 int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, unsigned int consumer_task){
+
 	unsigned int producer_task;
 	int consumer_PE;
 	unsigned int appID;
 	unsigned int * prod_data, * cons_data;
 	ServiceHeader * p;
 
+	//Scheduler after syscall because the producer cannot send the message
+	HAL_enable_scheduler_after_syscall();
+
 	if (HAL_is_send_active(PS_SUBNET)){
 		return 0;
 	}
+
+	/*if (!running_task->is_service_task){
+		puts("Task is not a service task YET\n");
+		return 0;
+	}*/
+
+	/*putsv("msg_addr: ", msg_addr);
+	putsv("msg_size: ", msg_size);
+	putsv("Prod_task: ", running_task->id);
+	putsv("Consumer task: ", consumer_task);*/
+
 
 	producer_task = running_task->id;
 	appID = producer_task >> 8;
@@ -640,6 +653,7 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 
 	if (consumer_PE == net_address){
 
+		puts("Same PE\n");
 		TCB * consumer_tcb_ptr = searchTCB(consumer_task);
 
 		//This mean that task is with a message pending to handle, set Send to sleep
@@ -651,10 +665,8 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 			running_task->send_buffer = running_task->offset | msg_addr;
 			running_task->send_target = msg_size; //Reuse of send_target to store send size
 
-			//Scheduler after syscall because the producer cannot send the message
-			HAL_enable_scheduler_after_syscall();
-
-			//Return zero because Send cannot be performed
+			puts("Send buffer size - return 0\n");
+			//Return zero because Send cannot be performed, Send not enter in waiting because there is not a message_request to wakeup it
 			return 0;
 
 		} else { //If the local buffer is valid writes on it
@@ -678,12 +690,16 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 			running_task->send_buffer = 0;
 			running_task->send_target = -1;
 
+			puts("Write on receiver\n");
+
 		}
 
 
 	} else { //If consumer is in a remote PE then send the data throught the network
 
-		prod_data = (unsigned int *) running_task->send_buffer;
+		puts("Sending message\n");
+
+		prod_data = (unsigned int *) (running_task->offset | msg_addr);
 
 		p = get_service_header_slot();
 
@@ -704,28 +720,21 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 	}
 
 	return 1;
-	//Search if task is local
-	//IF LOCAL
-	//
+
 }
 
 //Sets task to wait
 void receive_MA(TCB * running_task, unsigned int msg_addr){
-	//Stores task buffer and set it as waiting
 
 	while(running_task->recv_buffer != 0){
 		puts("ERROR recv buffer MA should be zero\n");
 	}
 
-	running_task->recv_buffer = running_task->offset | msg_addr;
+	running_task->recv_buffer = (running_task->offset | msg_addr);
 
 	running_task->scheduling_ptr->waiting_msg = 1;
 
 	HAL_enable_scheduler_after_syscall();
 
 }
-//Return 0
-
-//HAL_interrupt_mask_set(interrput_mask); //TODO put this after calling this function at kernel
-
 
