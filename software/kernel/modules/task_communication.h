@@ -65,6 +65,9 @@ void receive_MA(TCB *, unsigned int);
 
 void handle_MA_message(unsigned int, unsigned int);
 
+void send_service_to_MA(int, unsigned int, unsigned int *, unsigned int);
+
+int write_local_service_to_MA(unsigned int, unsigned int *, int);
 
 
 #endif /* SOFTWARE_INCLUDE_COMMUNICATION_COMMUNICATION_H_ */

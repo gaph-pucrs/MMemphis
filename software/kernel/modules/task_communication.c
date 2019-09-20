@@ -477,7 +477,7 @@ int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consume
 			while (HAL_is_send_active(PS_SUBNET));
 
 		}
-	} else { //message not requested yet, set producer as blocked
+	} else { //message not requested yet, set producer as waiting
 
 		//putsv("\nSENDMESSAGE - producer wating at time: ", HAL_get_tick());
 
@@ -593,6 +593,71 @@ void receive_IO(){
 //TODO
 }
 
+int write_local_service_to_MA(unsigned int consumer_id, unsigned int * msg_data, int msg_lenght){
+
+	TCB * task_tcb_ptr;
+	unsigned int * msg_address_tgt;
+
+	task_tcb_ptr = searchTCB(consumer_id);
+
+	if (task_tcb_ptr == 0){
+		putsv("ERROR: tcb at SERVICE_TASK_MESSAGE_DELIVERY is null: ", task_tcb_ptr->id);
+		while(1);
+	}
+	if (task_tcb_ptr->is_service_task == 0){
+		puts("ERROR: Task at SERVICE_TASK_MESSAGE_DELIVERY is not a service task\n");
+		while(1);
+	}
+
+	//If target is not waiting message return 0 and schedules target to it consume the message
+	if (task_tcb_ptr->scheduling_ptr->waiting_msg == 0){
+		return 0;
+	}
+
+	msg_address_tgt = (unsigned int *) (task_tcb_ptr->offset | task_tcb_ptr->reg[3]);
+
+	//Copies the message from producer to consumer
+	for(int i=0; i<msg_lenght; i++){
+		msg_address_tgt[i] = msg_data[i];
+	}
+
+	HAL_release_waiting_task(task_tcb_ptr);
+	//puts("Task not waitining anymeore 2\n");
+
+	return 1;
+}
+
+void send_service_to_MA(int consumer_task, unsigned int targetPE, unsigned int * src_message, unsigned int msg_size){
+
+	ServiceHeader * p = get_service_header_slot();
+
+	p->header = targetPE;
+
+	//p->service = SERVICE_TASK_MESSAGE;
+	p->service = src_message[0]; //Service
+
+	//This if is only usefull for graphical debugger, to it can monitor TASK_TERMINATED packets properly
+	if(p->service == TASK_TERMINATED){
+		p->task_ID = src_message[1];
+	}
+
+	p->consumer_task = consumer_task;
+
+	p->msg_lenght = msg_size;
+
+	/*putsv("Msg lenght: ", p->msg_lenght);
+	putsv("targetPE: ", targetPE);
+	for(int j=0; j<p->msg_lenght; j++){
+		putsv("",src_message[j]);
+	}*/
+
+	send_packet(p, (unsigned int) src_message, msg_size);
+
+	//SE ISSO ESTIVER DESCOMENTANDO ENTAO O CONTROLE DE SOBRESCRITA DE MEMORIA E FEITA PELA APLICACAO
+	//while(HAL_is_send_active(PS_SUBNET));
+
+}
+
 void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
 
 	TCB * consumer_tcb_ptr;
@@ -619,7 +684,6 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 	int consumer_PE;
 	unsigned int appID;
 	unsigned int * prod_data, * cons_data;
-	ServiceHeader * p;
 
 	//Scheduler after syscall because the producer cannot send the message
 	HAL_enable_scheduler_after_syscall();
@@ -654,7 +718,6 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 
 	if (consumer_PE == net_address){
 
-		puts("Same PE\n");
 		TCB * consumer_tcb_ptr = searchTCB(consumer_task);
 
 		//This mean that task is with a message pending to handle, set Send to sleep
@@ -666,15 +729,18 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 			running_task->send_buffer = running_task->offset | msg_addr;
 			running_task->send_target = msg_size; //Reuse of send_target to store send size
 
-			puts("Send buffer size - return 0\n");
 			//Return zero because Send cannot be performed, Send not enter in waiting because there is not a message_request to wakeup it
 			return 0;
 
 		} else { //If the local buffer is valid writes on it
 
+
 			//Get the addresses
 			prod_data = (unsigned int *) running_task->send_buffer;
 			cons_data = (unsigned int *) consumer_tcb_ptr->recv_buffer;
+
+			//Poderia usar essa funcao mas ela precisa ser melhorada
+			//write_local_service_to_MA(consumer_tcb_ptr->id, prod_data, msg_size);
 
 			//memcopy
 			for(int i=0; i<msg_size; i++){
@@ -691,33 +757,15 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 			running_task->send_buffer = 0;
 			running_task->send_target = -1;
 
-			puts("Write on receiver\n");
-
 		}
 
 
 	} else { //If consumer is in a remote PE then send the data throught the network
 
-		puts("Sending message\n");
-
 		prod_data = (unsigned int *) (running_task->offset | msg_addr);
 
-		p = get_service_header_slot();
+		send_service_to_MA(consumer_task, consumer_PE, prod_data, msg_size);
 
-		p->header = consumer_PE;
-
-		p->service = prod_data[0]; //Index 0 always stores the service
-
-		//This if is only usefull for graphical debugger, to it can monitor TASK_TERMINATED packets properly
-		if(p->service == TASK_TERMINATED){
-			p->task_ID = prod_data[1];
-		}
-
-		p->consumer_task = consumer_task;
-
-		p->msg_lenght = msg_size;
-
-		send_packet(p, (unsigned int) prod_data, msg_size);
 	}
 
 	return 1;

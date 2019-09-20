@@ -16,6 +16,7 @@
 #include "enforcer_mapping.h"
 #include "../../hal/mips/HAL_kernel.h"
 #include "../../include/services.h"
+#include "task_communication.h"
 #include "utils.h"
 
 TaskLocation task_location[MAX_TASK_LOCATION];	//!<array of TaskLocation
@@ -199,11 +200,11 @@ void send_task_allocated(TCB * allocated_task){
 	if (master_addr == net_address){
 
 		puts("WRITE TASK ALLOCATED local\n");
-		write_local_service_to_task(master_task_id, message, 2);
+		write_local_service_to_MA(master_task_id, message, 2);
 
 	} else {
 
-		send_service_api_message(master_task_id, master_addr, message, 2);
+		send_service_to_MA(master_task_id, master_addr, message, 2);
 
 		while(HAL_is_send_active(PS_SUBNET));
 
@@ -231,12 +232,11 @@ void send_task_terminated(TCB * terminated_task){
 
 	if (master_addr == net_address){
 
-		write_local_service_to_task(master_id, message, 3);
+		write_local_service_to_MA(master_id, message, 3);
 
 	} else {
 
-		send_service_api_message(master_id, master_addr, message, 3);
-
+		send_service_to_MA(master_id, master_addr, message, 3);
 
 		puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
 		putsv("Master id: ", master_id);
