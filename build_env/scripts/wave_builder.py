@@ -10,7 +10,7 @@ ENABLE_CPU              = True
 ENABLE_CPU_ROUTER_CFG   = False
 ENABLE_DMNI             = True
 ENABLE_CS               = True
-ENABLE_PS               = False
+ENABLE_PS               = True
 
 def generate_wave(testcase_path, yaml_reader):
     

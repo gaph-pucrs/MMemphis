@@ -227,7 +227,7 @@ void send_task_release(Application * app){
 	for (int i =0; i<app->tasks_number; i++){
 
 		message[msg_size++] = app->tasks[i].allocated_proc;
-		//Puts("Send task "); Puts(itoa(app->app_ID << 8 | i)); Puts(" loc "); Puts(itoh(app->tasks[i].allocated_proc)); Puts("\n");
+		//Puts("Send task release"); Puts(itoa(app->app_ID << 8 | i)); Puts(" loc "); Puts(itoh(app->tasks[i].allocated_proc)); Puts("\n");
 	}
 
 	//putsv("MEssage size: ", msg_size);
@@ -414,7 +414,6 @@ void main(){
 	unsigned int data_message[MAX_MAPPING_MSG];
 
 	for(;;){
-
 		ReceiveService(data_message);
 		handle_message(data_message);
 

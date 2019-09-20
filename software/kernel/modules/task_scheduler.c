@@ -392,6 +392,7 @@ void inline update_real_time(unsigned int current_time){
 Scheduling * LST(unsigned int current_time){
 
 	Scheduling * scheduled_task, * task;
+	TCB * tcb_ptr;
 	unsigned int end_period;
 
 	instant_overhead = current_time;
@@ -409,15 +410,33 @@ Scheduling * LST(unsigned int current_time){
 	//Initializes scheduled_task pointer as zero
 	scheduled_task = 0;
 
-	//Search for a real-time task with the LEAST SLACK TIME
+	//Search for a service task ready to execute
 	for(int i=0; i<MAX_LOCAL_TASKS; i++){
 
-		task = &scheduling[i];
+		task = &scheduling[round_robin()];
 
-		if (task->deadline != NO_DEADLINE && task->status == READY && !task->waiting_msg){
+		tcb_ptr = (TCB *)task->tcb_ptr;
 
-			if (scheduled_task == 0 || (task->slack_time < scheduled_task->slack_time) ){
-				scheduled_task = task;
+		if (tcb_ptr->is_service_task && task->status == READY && !task->waiting_msg){
+
+			scheduled_task = task;
+
+			break;
+		}
+	}
+	//End new code added specifically to set service task as high priority. Please remove the IF above to return to the previous version
+
+	//Search for a real-time task with the LEAST SLACK TIME
+	if (scheduled_task == 0){
+		for(int i=0; i<MAX_LOCAL_TASKS; i++){
+
+			task = &scheduling[i];
+
+			if (task->deadline != NO_DEADLINE && task->status == READY && !task->waiting_msg){
+
+				if (scheduled_task == 0 || (task->slack_time < scheduled_task->slack_time) ){
+					scheduled_task = task;
+				}
 			}
 		}
 	}

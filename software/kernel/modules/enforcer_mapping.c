@@ -142,6 +142,8 @@ void set_task_release(unsigned int source_addr, char from_noc){
 
 	} else {
 
+		puts("Release manual\n");
+
 		data_addr = (unsigned int *) source_addr;
 
 		task_id 		= data_addr[3];//This index is at same position than p->task_ID
@@ -153,6 +155,11 @@ void set_task_release(unsigned int source_addr, char from_noc){
 		data_addr = &data_addr[CONSTANT_PKT_SIZE];
 
 	}
+
+	/*putsv("Task ID: ", task_id);
+	putsv("data_size: ", data_size);
+	putsv("bss_size: ", bss_size);
+	putsv("app_task_number: ", app_task_number);*/
 
 	/*Code section that actually performs the task release functionality*/
 
@@ -176,7 +183,7 @@ void set_task_release(unsigned int source_addr, char from_noc){
 
 	for (int i = 0; i < app_task_number; i++){
 		add_task_location(app_ID << 8 | i, data_addr[i]);
-		puts("Add task "); puts(itoa(app_ID << 8 | i)); puts(" loc "); puts(itoh(app_tasks_location[i])); puts("\n");
+		puts("Add task "); puts(itoa(app_ID << 8 | i)); puts(" loc "); puts(itoh(data_addr[i])); puts("\n");
 	}
 
 }
@@ -199,7 +206,7 @@ void send_task_allocated(TCB * allocated_task){
 
 	if (master_addr == net_address){
 
-		puts("WRITE TASK ALLOCATED local\n");
+		puts("Escrita local: send_task_allocated\n");
 		write_local_service_to_MA(master_task_id, message, 2);
 
 	} else {
@@ -231,6 +238,8 @@ void send_task_terminated(TCB * terminated_task){
 	master_id = terminated_task->master_address >> 16;
 
 	if (master_addr == net_address){
+
+		puts("Escrita local: send_task_terminated\n");
 
 		write_local_service_to_MA(master_id, message, 3);
 

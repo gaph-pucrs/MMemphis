@@ -262,6 +262,7 @@ int handle_message_request(volatile ServiceHeader * p){
 
 			prod_send_msg = (Message *) prod_tcb_ptr->send_buffer;
 
+			//puts("Enviou delivery pelo handle request\n")
 			send_message_delivery(p->producer_task, p->consumer_task, p->requesting_processor, prod_send_msg);
 
 			//Waits the message be tranfered
@@ -411,6 +412,9 @@ int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consume
 
 	while (running_task->send_buffer != 0){
 		puts("ERROR send buffer not zero\n");
+		putsv("Task id: ", running_task->id);
+		putsv("Is service task: ", running_task->is_service_task);
+		putsv("Waiting: ", running_task->scheduling_ptr->waiting_msg);
 	}
 
 	/*Points the message in the task page. Address composition: offset + msg address*/
@@ -429,22 +433,22 @@ int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consume
 		if (msg_req_ptr->requester_proc == net_address){ //Test if the consumer is local or remote
 
 			//Writes to the consumer page address (local consumer)
-			TCB * requesterTCB = searchTCB(consumer_task);
+			TCB * cons_tcb_ptr = searchTCB(consumer_task);
 
-			while (requesterTCB->recv_buffer == 0 || requesterTCB->recv_source != producer_task){
+			while (cons_tcb_ptr->recv_buffer == 0 || cons_tcb_ptr->recv_source != producer_task){
 				puts("ERROR recv buffer not zero\n");
 			}
 
 			//puts("Message found - Write local message\n");
-			write_local_msg_to_task(requesterTCB, prod_msg_ptr->length, prod_msg_ptr->msg);
+			write_local_msg_to_task(cons_tcb_ptr, prod_msg_ptr->length, prod_msg_ptr->msg);
 
 			/*Erase the produced message info since the message was transmitted*/
 			running_task->send_buffer = 0;
 			running_task->send_target = -1;
 #if MIGRATION_ENABLED
-			if (requesterTCB->proc_to_migrate != -1){
+			if (cons_tcb_ptr->proc_to_migrate != -1){
 
-				migrate_dynamic_memory(requesterTCB);
+				migrate_dynamic_memory(cons_tcb_ptr);
 
 				HAL_enable_scheduler_after_syscall();
 			}
@@ -593,38 +597,36 @@ void receive_IO(){
 //TODO
 }
 
-int write_local_service_to_MA(unsigned int consumer_id, unsigned int * msg_data, int msg_lenght){
+void write_local_service_to_MA(unsigned int consumer_id, unsigned int * msg_data, int msg_lenght){
 
 	TCB * task_tcb_ptr;
 	unsigned int * msg_address_tgt;
 
 	task_tcb_ptr = searchTCB(consumer_id);
 
-	if (task_tcb_ptr == 0){
+	while (task_tcb_ptr == 0){
 		putsv("ERROR: tcb at SERVICE_TASK_MESSAGE_DELIVERY is null: ", task_tcb_ptr->id);
-		while(1);
-	}
-	if (task_tcb_ptr->is_service_task == 0){
-		puts("ERROR: Task at SERVICE_TASK_MESSAGE_DELIVERY is not a service task\n");
-		while(1);
 	}
 
 	//If target is not waiting message return 0 and schedules target to it consume the message
-	if (task_tcb_ptr->scheduling_ptr->waiting_msg == 0){
-		return 0;
+	while (task_tcb_ptr->scheduling_ptr->waiting_msg == 0 || task_tcb_ptr->recv_buffer == 0){
+		puts("ERROR: Recev task should be waiting something\n");
 	}
 
-	msg_address_tgt = (unsigned int *) (task_tcb_ptr->offset | task_tcb_ptr->reg[3]);
+	msg_address_tgt = (unsigned int *) task_tcb_ptr->recv_buffer;
 
 	//Copies the message from producer to consumer
 	for(int i=0; i<msg_lenght; i++){
 		msg_address_tgt[i] = msg_data[i];
 	}
 
+	//puts("LOCAL TASK FEEDED1\n");
+
+	task_tcb_ptr->recv_buffer = 0;
+
 	HAL_release_waiting_task(task_tcb_ptr);
 	//puts("Task not waitining anymeore 2\n");
 
-	return 1;
 }
 
 void send_service_to_MA(int consumer_task, unsigned int targetPE, unsigned int * src_message, unsigned int msg_size){
@@ -672,6 +674,8 @@ void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
 	DMNI_read_data(consumer_tcb_ptr->recv_buffer, msg_size);
 
 	consumer_tcb_ptr->recv_buffer = 0;
+
+	//puts("LOCAL TASK FEEDED2\n");
 
 	HAL_release_waiting_task(consumer_tcb_ptr);
 
@@ -734,19 +738,20 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 
 		} else { //If the local buffer is valid writes on it
 
+			puts("Escrita local: send_MA\n");
 
 			//Get the addresses
 			prod_data = (unsigned int *) running_task->send_buffer;
 			cons_data = (unsigned int *) consumer_tcb_ptr->recv_buffer;
 
-			//Poderia usar essa funcao mas ela precisa ser melhorada
+			//Poderia usar essa funcao mas ela eh mto overhead
 			//write_local_service_to_MA(consumer_tcb_ptr->id, prod_data, msg_size);
 
 			//memcopy
 			for(int i=0; i<msg_size; i++){
 				prod_data[i] = cons_data[i];
 			}
-
+			//puts("LOCAL TASK FEEDED3\n");
 			//Mark that consumer was populated with a message or not called yet
 			consumer_tcb_ptr->recv_buffer = 0;
 

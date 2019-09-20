@@ -20,7 +20,7 @@ int get_local_mapper_index(unsigned int pos){
 	return pos;
 }
 
-void instantiate_mapping_app(){
+void instantiate_mapping_tasks(){
 
 	unsigned int cluster_id = 0;
 	Cluster * cl_ptr;
@@ -126,9 +126,9 @@ void handle_i_am_alive(unsigned int source_addr){
 		/*Sending MAPPING COMPLETE to APP INJECTOR*/
 		message = get_message_slot();
 		message[0] = APP_INJECTOR;
-		message[1] = 1;
+		message[1] = 2;//Payload should be 1, but is 2 in order to turn around a corner case in traffic monitor of Deloream for packets with payload 1
 		message[2] = APP_MAPPING_COMPLETE;
-		SendRaw(message, 3);
+		SendRaw(message, 4);
 	}
 
 }
@@ -256,9 +256,9 @@ void handle_app_allocated(unsigned int * msg){
 
 	message = get_message_slot();
 	message[0] = APP_INJECTOR;
-	message[1] = 1; //Payload
+	message[1] = 2; //Payload should be 1, but is 2 in order to turn around a corner case in traffic monitor of Deloream for packets with payload 1
 	message[2] = APP_MAPPING_COMPLETE; //Service
-	SendRaw(message, 3);
+	SendRaw(message, 4);
 	Puts("Sent APP_MAPPING_COMPLETE\n");
 
 }
@@ -291,7 +291,12 @@ void main(){
 
 	Echo("Initializing Global Mapper\n");
 	init_message_slots();
-	instantiate_mapping_app();
+	instantiate_mapping_tasks();
+	//instantiate_sdn_tasks();
+	//instantiate_dvfs_tasks();
+	//instantiate_monitoring_tasks();
+	//instantiate_decision_tasks();
+	//instantiate_adaptation_tasks();
 
 	unsigned int data_message[MAX_MAPPING_MSG];
 
