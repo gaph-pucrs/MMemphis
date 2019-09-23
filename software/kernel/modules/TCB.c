@@ -78,10 +78,7 @@ void init_TCBs(){
 		tcbs[i].remove_ctp = 0;
 		tcbs[i].add_ctp = 0;
 		tcbs[i].is_service_task = 0;
-		tcbs[i].send_buffer = 0;
 		tcbs[i].recv_buffer = 0;
-		tcbs[i].send_target = -1;
-		tcbs[i].recv_source = -1;
 
 		//Inicializes learning profile
 		tcbs[i].communication_time = 0;

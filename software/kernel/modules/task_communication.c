@@ -20,6 +20,8 @@
 #include "enforcer_migration.h"
 #include "enforcer_sdn.h"
 
+#define DEBUG_USER_COMM	0
+
 
 MessageRequest message_request[REQUEST_SIZE];	//!< message request array
 
@@ -149,8 +151,10 @@ void write_local_msg_to_task(TCB * consumer_tcb_ptr, int msg_lenght, int * msg_d
 	for (int i=0; i<msg_ptr->length; i++)
 		msg_ptr->msg[i] = msg_data[i];
 
+#if DEBUG_USER_COMM
+	puts("write local msg - CONS released waiting\n");
+#endif
 	HAL_release_waiting_task(consumer_tcb_ptr);
-	//puts("Task not waitining anymeore 3\n");
 
 	//CTP reconfiguration
 	check_ctp_reconfiguration(consumer_tcb_ptr);
@@ -237,6 +241,7 @@ void send_message_delivery(int producer_task, int consumer_task, int consumer_PE
 
 
 int handle_message_request(volatile ServiceHeader * p){
+
 	int producer_PE;
 	TCB * prod_tcb_ptr;
 	Message * prod_send_msg;
@@ -257,35 +262,8 @@ int handle_message_request(volatile ServiceHeader * p){
 			puts("ERROR prod_tcb_ptr is suposed to be something\n");
 		}
 
-		//Test if the producer task already produced something to the consumer, sending the message_delivery
-		if (prod_tcb_ptr->send_buffer != 0 && prod_tcb_ptr->send_target == p->consumer_task){
-
-			prod_send_msg = (Message *) prod_tcb_ptr->send_buffer;
-
-			//puts("Enviou delivery pelo handle request\n")
-			send_message_delivery(p->producer_task, p->consumer_task, p->requesting_processor, prod_send_msg);
-
-			//Waits the message be tranfered
-			while(HAL_is_send_active(PS_SUBNET));
-
-			//Sets the producer buffer info free
-			prod_tcb_ptr->send_buffer = 0;
-
-			prod_tcb_ptr->send_target = -1;
-
-			//Release the producer to run,
-			//This line make the send function to return 1
-
-			HAL_release_waiting_task(prod_tcb_ptr);
-
-			//putsv("Enviando MESSAGE_DELIVERY, producer release at time: ", HAL_get_tick());
-
-			return 1;//Need scheduling since prod was released
-
-		} else { //If not, stores the message request
-			//putsv("Request armazenado: ", HAL_get_tick());
-			insert_message_request(p->producer_task, p->consumer_task, p->requesting_processor);
-		}
+		//putsv("Request added: ", HAL_get_tick());
+		insert_message_request(p->producer_task, p->consumer_task, p->requesting_processor);
 
 	} else { //This means that task was migrated to another PE since its location is diferent
 
@@ -300,7 +278,6 @@ int handle_message_request(volatile ServiceHeader * p){
 
 int handle_message_delivery(volatile ServiceHeader * p, int subnet){
 
-	int need_scheduling_ret = 0;
 	int latency;
 	TCB * cons_tcb_ptr;
 	Message * recv_msg_ptr;
@@ -309,11 +286,11 @@ int handle_message_delivery(volatile ServiceHeader * p, int subnet){
 
 	cons_tcb_ptr = searchTCB(p->consumer_task);
 
-	while (cons_tcb_ptr->recv_buffer == 0 || cons_tcb_ptr->recv_source != p->producer_task){
-		puts("ERROR message delivery send to an invalid producer\n");
+	while (cons_tcb_ptr->recv_buffer == 0){
+		puts("ERROR message delivery send to an invalid consumer\n");
 	}
 
-	recv_msg_ptr = (Message *)(cons_tcb_ptr->recv_buffer);
+	recv_msg_ptr = (Message *) cons_tcb_ptr->recv_buffer;
 
 	if (subnet == PS_SUBNET){ //Read by PS
 
@@ -322,6 +299,8 @@ int handle_message_delivery(volatile ServiceHeader * p, int subnet){
 
 		//In PS get the msg_lenght from service header
 		recv_msg_ptr->length = p->msg_lenght;
+
+		//puts("Data is being consumed\n");
 
 		DMNI_read_data((unsigned int)recv_msg_ptr->msg, recv_msg_ptr->length);
 
@@ -357,41 +336,43 @@ int handle_message_delivery(volatile ServiceHeader * p, int subnet){
 
 	//Release the consumer buffer info
 	cons_tcb_ptr->recv_buffer = 0;
-	cons_tcb_ptr->recv_source = -1;
 
 	HAL_release_waiting_task(cons_tcb_ptr);
+
+	//puts("End of MESSAGE_DELIVERY handling - task_released\n");
 
 	//putsv("Liberou consumer to execute at time: ", HAL_get_tick());
 	//puts("Task not waitining anymeore 1\n");
 
 	check_ctp_reconfiguration(cons_tcb_ptr);
 
+	cons_tcb_ptr->total_comm += HAL_get_tick() - cons_tcb_ptr->communication_time;
+
 #if MIGRATION_ENABLED
 	if (cons_tcb_ptr->proc_to_migrate != -1){
 		//puts("Migrou no delivery\n");
 		migrate_dynamic_memory(cons_tcb_ptr);
-		need_scheduling_ret = 1;
+		return 1;
 
-	} else
+	}
 #endif
 
-	//putsv("Delivery ", HAL_get_tick());
-	//puts("Delivery\n");
-	cons_tcb_ptr->total_comm += HAL_get_tick() - cons_tcb_ptr->communication_time;
-	//puts("["); puts(itoa(cons_tcb_ptr->id)); puts("] Comm ==> "); puts(itoa(cons_tcb_ptr->total_comm)); puts("\n");
-
-
-	return need_scheduling_ret;
+	return 0;
 }
 
 int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consumer_task){
 
 	unsigned int producer_task;
 	unsigned int appID;
-	int consumer_PE;
 	int subnet_ret;
 	Message * prod_msg_ptr;
 	MessageRequest * msg_req_ptr;
+	TCB * cons_tcb_ptr;
+
+	if (HAL_is_send_active(PS_SUBNET)){
+		HAL_enable_scheduler_after_syscall();
+		return 0;
+	}
 
 	producer_task =  running_task->id;
 
@@ -399,30 +380,11 @@ int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consume
 	//Consumer task already has the absolute task id, this line creates the full id: app id | task id
 	consumer_task = (appID << 8) | consumer_task;
 
-	//puts("WRITEPIPE - prod: "); puts(itoa(producer_task)); putsv(" consumer ", consumer_task);
+#if DEBUG_USER_COMM
+	puts("\nSEND MSG - prod: "); puts(itoa(producer_task)); putsv(" cons ", consumer_task);
+#endif
 
-	consumer_PE = get_task_location(consumer_task);
-
-	//Test if the consumer task is not allocated
-	if (consumer_PE == -1){
-		//Task is blocked until its a TASK_RELEASE packet
-		running_task->scheduling_ptr->status = BLOCKED;
-		return 0;
-	}
-
-	while (running_task->send_buffer != 0){
-		puts("ERROR send buffer not zero\n");
-		putsv("Task id: ", running_task->id);
-		putsv("Is service task: ", running_task->is_service_task);
-		putsv("Waiting: ", running_task->scheduling_ptr->waiting_msg);
-	}
-
-	/*Points the message in the task page. Address composition: offset + msg address*/
-	running_task->send_buffer = (running_task->offset) | msg_addr;
-	/*Set the consumer id of the message */
-	running_task->send_target = consumer_task;
-
-	prod_msg_ptr = (Message *) running_task->send_buffer;
+	prod_msg_ptr = (Message *) (running_task->offset |  msg_addr);
 
 	//Searches if there is a message request to the produced message
 	msg_req_ptr = remove_message_request(producer_task, consumer_task);
@@ -433,26 +395,31 @@ int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consume
 		if (msg_req_ptr->requester_proc == net_address){ //Test if the consumer is local or remote
 
 			//Writes to the consumer page address (local consumer)
-			TCB * cons_tcb_ptr = searchTCB(consumer_task);
+			cons_tcb_ptr = searchTCB(consumer_task);
 
-			while (cons_tcb_ptr->recv_buffer == 0 || cons_tcb_ptr->recv_source != producer_task){
+			while (cons_tcb_ptr->recv_buffer == 0){
 				puts("ERROR recv buffer not zero\n");
 			}
 
-			//puts("Message found - Write local message\n");
 			write_local_msg_to_task(cons_tcb_ptr, prod_msg_ptr->length, prod_msg_ptr->msg);
 
-			/*Erase the produced message info since the message was transmitted*/
-			running_task->send_buffer = 0;
-			running_task->send_target = -1;
+			cons_tcb_ptr->recv_buffer = 0;
+
 #if MIGRATION_ENABLED
 			if (cons_tcb_ptr->proc_to_migrate != -1){
 
 				migrate_dynamic_memory(cons_tcb_ptr);
 
 				HAL_enable_scheduler_after_syscall();
+
+				//Cuidado que se migrar nesse ponto a tarefa nao recebera o return 1
+				//Arrumar depois
 			}
 #endif
+#if DEBUG_USER_COMM
+			puts("END SEN - Message found - Write local message\n");
+#endif
+			return 1;
 
 		} else { //remote request task
 
@@ -468,31 +435,26 @@ int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consume
 			}
 			//**********************************************************
 
-			//puts("Message found - send message delivery\n");
+#if DEBUG_USER_COMM
+			puts("END SEN - Message found - send message delivery\n");
+#endif
 			send_message_delivery(producer_task, consumer_task, msg_req_ptr->requester_proc, prod_msg_ptr);
-
-			/*Erase the produced message info since the message was transmitted*/
-			running_task->send_buffer = 0;
-			running_task->send_target = -1;
 
 			//putsv("\nSENDMESSAGE - Enviando delivery at time: ", HAL_get_tick());
 
 			//This is to avoid that the producer task overwrites the send_buffer before message is sent
 			while (HAL_is_send_active(PS_SUBNET));
 
+			return 1;
 		}
-	} else { //message not requested yet, set producer as waiting
-
-		//putsv("\nSENDMESSAGE - producer wating at time: ", HAL_get_tick());
-
-
-		running_task->scheduling_ptr->waiting_msg = 1;
-
-		//Cals syscall in order to make other task to execute
-		HAL_enable_scheduler_after_syscall();
 	}
+#if DEBUG_USER_COMM
+	puts("END SEDN, request not found\n");
+#endif
+	//Returns zero to the Send and call scheduler to allows another task to execute
+	HAL_enable_scheduler_after_syscall();
 
-	return 1;
+	return 0;
 
 }
 
@@ -506,12 +468,19 @@ int receive_message(TCB * running_task, unsigned int msg_addr, unsigned int prod
 	TCB * prod_tcb_ptr;
 	Message * prod_msg_ptr;
 
+	if (HAL_is_send_active(PS_SUBNET)){
+		HAL_enable_scheduler_after_syscall();
+		return 0;
+	}
+
 	consumer_task =  running_task->id;
 
 	appID = consumer_task >> 8;
 	producer_task = (appID << 8) | producer_task;
 
-	//puts("READPIPE - prod: "); puts(itoa(producer_task)); putsv(" consumer ", consumer_task);
+#if DEBUG_USER_COMM
+	puts("\nRECV MSG - prod: "); puts(itoa(producer_task)); putsv(" cons ", consumer_task);
+#endif
 
 	producer_PE = get_task_location(producer_task);
 
@@ -522,39 +491,17 @@ int receive_message(TCB * running_task, unsigned int msg_addr, unsigned int prod
 		return 0;
 	}
 
-	running_task->recv_buffer = running_task->offset | msg_addr;
-	running_task->recv_source = producer_task;
-
+	while (running_task->recv_buffer != 0){
+		puts("ERROR receive buffer needs to be zero\n");
+	}
 
 	if (producer_PE == net_address){ //Receive is local
 
-		prod_tcb_ptr = searchTCB(producer_task);
+#if DEBUG_USER_COMM
+		puts("Local receive - insert message request table\n");
+#endif
+		insert_message_request(producer_task, consumer_task, net_address);
 
-		if (prod_tcb_ptr->send_target == consumer_task && prod_tcb_ptr->send_buffer != 0){
-
-			prod_msg_ptr = (Message*) prod_tcb_ptr->send_buffer;
-
-			//puts("Local receive - write message\n");
-
-			write_local_msg_to_task(running_task, prod_msg_ptr->length, prod_msg_ptr->msg);
-
-			//Clear the receive buffer info since message was received
-			running_task->recv_buffer = 0;
-			running_task->recv_source = -1;
-
-			//Clear the producer buffer info since message was transmitted
-			prod_tcb_ptr->send_buffer = 0;
-			prod_tcb_ptr->send_target = -1;
-
-			//Alows producer to restore its execution after Send, since the message was transmitted
-			HAL_release_waiting_task(prod_tcb_ptr);
-
-			return 1; //Exit the receive returnin 1
-
-		} else {
-			//puts("Local receive - set message request table\n");
-			insert_message_request(producer_task, consumer_task, net_address);
-		}
 
 	} else { //If the receive is from a remote proc
 
@@ -565,20 +512,27 @@ int receive_message(TCB * running_task, unsigned int msg_addr, unsigned int prod
 			return 0;
 		}
 		//***********************************************************
-		//puts("Remote receive - send message request\n");
+#if DEBUG_USER_COMM
+		puts("Remote receive - send message request\n");
+#endif
 		send_message_request(producer_task, consumer_task, producer_PE, net_address);
 
 	}
 
+	//Stores the receiver buffer
+	running_task->recv_buffer = running_task->offset | msg_addr;
+
+	//putsv("END RECVMESSAGE- Message recv_buffer register: ", (running_task->recv_buffer));
+
 	running_task->scheduling_ptr->waiting_msg = 1;
+#if DEBUG_USER_COMM
+	puts("END RECV: task "); puts(itoa(running_task->id)); puts(" is waiting\n");
+#endif
 
 	HAL_enable_scheduler_after_syscall();
 
 	//Used for DAPE purposes
 	running_task->communication_time = HAL_get_tick();
-
-
-	//putsv("\nRECVMESSAGE - consumer waiting at time: ", running_task->communication_time);
 
 	//running_task->computation_time = running_task->communication_time - running_task->computation_time;
 	running_task->total_comp += running_task->communication_time - running_task->computation_time;
@@ -729,11 +683,9 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 		//if (consumer_tcb_ptr->recv_buffer == 0 || consumer_tcb_ptr->scheduling_ptr->waiting_msg == 0){
 		if (consumer_tcb_ptr->recv_buffer == 0){
 			//Set the producer as waiting task
-
-			running_task->send_buffer = running_task->offset | msg_addr;
-			running_task->send_target = msg_size; //Reuse of send_target to store send size
-
 			//Return zero because Send cannot be performed, Send not enter in waiting because there is not a message_request to wakeup it
+			HAL_enable_scheduler_after_syscall();
+
 			return 0;
 
 		} else { //If the local buffer is valid writes on it
@@ -741,11 +693,8 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 			puts("Escrita local: send_MA\n");
 
 			//Get the addresses
-			prod_data = (unsigned int *) running_task->send_buffer;
+			prod_data = (unsigned int *) (running_task->offset | msg_addr);
 			cons_data = (unsigned int *) consumer_tcb_ptr->recv_buffer;
-
-			//Poderia usar essa funcao mas ela eh mto overhead
-			//write_local_service_to_MA(consumer_tcb_ptr->id, prod_data, msg_size);
 
 			//memcopy
 			for(int i=0; i<msg_size; i++){
@@ -758,10 +707,7 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 			//Release consumer to run
 			HAL_release_waiting_task(consumer_tcb_ptr);
 
-			//Clear the buffer of producer
-			running_task->send_buffer = 0;
-			running_task->send_target = -1;
-
+			return 1;
 		}
 
 

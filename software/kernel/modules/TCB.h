@@ -28,10 +28,7 @@ typedef struct {
     unsigned int pc;            	//!<program counter
     unsigned int offset;        	//!<initial address of the task code in page
     int       	 id;            	//!<identifier
-    int 		 send_target;		//!<Task ID of the consumer
-    unsigned int send_buffer;		//!<Buffer pointer of sending message
     unsigned int recv_buffer;		//!<Buffer pointer of requested message
-    int 		 recv_source;		//!<Task ID of the producer
 
 	unsigned int text_lenght;   	//!<Memory TEXT section lenght in bytes
     unsigned int data_lenght;		//!<Memory DATA section lenght in bytes
