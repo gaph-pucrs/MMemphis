@@ -121,6 +121,8 @@ extern unsigned int net_address;
 #define HAL_set_scheduling_report(code)	*(volatile unsigned int*)(SCHEDULING_REPORT)=(code)
 #define HAL_set_time_slice(t_slice)		*(volatile unsigned int*)(TIME_SLICE)=(t_slice)
 #define HAL_handle_CS_request(req_st)	*(volatile unsigned int*)(HANDLE_CS_REQUEST)=(req_st)
+#define HAL_add_request_debug(v)		*(volatile unsigned int*)(ADD_REQUEST_DEBUG)=(v)
+#define HAL_remv_request_debug(v)		*(volatile unsigned int*)(REM_REQUEST_DEBUG)=(v)
 
 /*** Externs of the HAL function implemented in assembly (file HAL_kernel_asm.S) ***/
 extern void HAL_run_scheduled_task(unsigned int);

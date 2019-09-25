@@ -57,6 +57,7 @@ int insert_message_request(int producer_task, int consumer_task, int requester_p
 
     		//Only for debug purposes
     		//MemoryWrite(ADD_REQUEST_DEBUG, (producer_task << 16) | (consumer_task & 0xFFFF));
+    		HAL_add_request_debug((producer_task << 16) | (consumer_task & 0xFFFF));
 
     		return 1;
 		}
@@ -95,6 +96,7 @@ MessageRequest * remove_message_request(int producer_task, int consumer_task) {
 
         	//Only for debug purposes
         	//MemoryWrite(REM_REQUEST_DEBUG, (producer_task << 16) | (consumer_task & 0xFFFF));
+        	HAL_remv_request_debug((producer_task << 16) | (consumer_task & 0xFFFF));
 
             //return message_request[i].requester_proc;
         	return &message_request[i];
@@ -244,28 +246,28 @@ int handle_message_request(volatile ServiceHeader * p){
 
 	int producer_PE;
 	TCB * prod_tcb_ptr;
-	Message * prod_send_msg;
 
-	//putsv("\nMESSAGE_REQUEST recebido da consumer at time: ", HAL_get_tick());
-	//Gets the location of the producer task
-	producer_PE = get_task_location(p->producer_task);
+#if DEBUG_USER_COMM
+	puts("MESSAGE_REQUEST from "); puts(itoa(p->consumer_task)); puts(" to ");
+	puts(itoa(p->producer_task)); puts(" req proc "); puts(itoh(p->requesting_processor)); puts("\n");
+#endif
+
+	//Gets TCB of producer task
+	prod_tcb_ptr = searchTCB(p->producer_task);
 
 	//If the producer task still executing here
-	if (producer_PE == net_address){
-
-		//Test if the producer task have something produced for consumer
-
-		//Gets TCB of producer task
-		prod_tcb_ptr = searchTCB(p->producer_task);
-
-		while (prod_tcb_ptr == 0){
-			puts("ERROR prod_tcb_ptr is suposed to be something\n");
-		}
+	if (prod_tcb_ptr){
 
 		//putsv("Request added: ", HAL_get_tick());
 		insert_message_request(p->producer_task, p->consumer_task, p->requesting_processor);
 
-	} else { //This means that task was migrated to another PE since its location is diferent
+	} else { //This means that task was migrated to another PE since its prod_tcb_ptr is null
+
+		producer_PE = get_task_location(p->producer_task);
+
+		while(producer_PE == net_address || producer_PE == -1){
+			puts("ERROR: request by pass\n");
+		}
 
 		//MESSAGE_REQUEST by pass
 		send_message_request(p->producer_task, p->consumer_task, producer_PE, p->requesting_processor);
@@ -465,8 +467,6 @@ int receive_message(TCB * running_task, unsigned int msg_addr, unsigned int prod
 	unsigned int appID;
 	int producer_PE;
 	int subnet_ret;
-	TCB * prod_tcb_ptr;
-	Message * prod_msg_ptr;
 
 	if (HAL_is_send_active(PS_SUBNET)){
 		HAL_enable_scheduler_after_syscall();
