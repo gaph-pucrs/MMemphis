@@ -601,11 +601,6 @@ void send_service_to_MA(int consumer_task, unsigned int targetPE, unsigned int *
 
 	p->msg_lenght = msg_size;
 
-	/*putsv("Msg lenght: ", p->msg_lenght);
-	putsv("targetPE: ", targetPE);
-	for(int j=0; j<p->msg_lenght; j++){
-		putsv("",src_message[j]);
-	}*/
 
 	send_packet(p, (unsigned int) src_message, msg_size);
 
@@ -650,17 +645,6 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 		return 0;
 	}
 
-	/*if (!running_task->is_service_task){
-		puts("Task is not a service task YET\n");
-		return 0;
-	}*/
-
-	/*putsv("msg_addr: ", msg_addr);
-	putsv("msg_size: ", msg_size);
-	putsv("Prod_task: ", running_task->id);
-	putsv("Consumer task: ", consumer_task);*/
-
-
 	producer_task = running_task->id;
 	appID = producer_task >> 8;
 	consumer_task = (appID << 8) | consumer_task;
@@ -679,8 +663,6 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 		TCB * consumer_tcb_ptr = searchTCB(consumer_task);
 
 		//This mean that task is with a message pending to handle, set Send to sleep
-		//When a producer can writes on recv_buffer it set it as zero to signal to another producers (local producers) that the buffer was fullfuled
-		//if (consumer_tcb_ptr->recv_buffer == 0 || consumer_tcb_ptr->scheduling_ptr->waiting_msg == 0){
 		if (consumer_tcb_ptr->recv_buffer == 0){
 			//Set the producer as waiting task
 			//Return zero because Send cannot be performed, Send not enter in waiting because there is not a message_request to wakeup it
@@ -690,7 +672,7 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 
 		} else { //If the local buffer is valid writes on it
 
-			puts("Escrita local: send_MA\n");
+			//puts("Escrita local: send_MA\n");
 
 			//Get the addresses
 			prod_data = (unsigned int *) (running_task->offset | msg_addr);
@@ -700,7 +682,7 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 			for(int i=0; i<msg_size; i++){
 				prod_data[i] = cons_data[i];
 			}
-			//puts("LOCAL TASK FEEDED3\n");
+
 			//Mark that consumer was populated with a message or not called yet
 			consumer_tcb_ptr->recv_buffer = 0;
 

@@ -32,7 +32,7 @@
 #define NI_STATUS_RESPONSE			1004
 
 //Kernel Mode addess
-//#define	TO_KERNEL					0x10000
+#define	TO_KERNEL					0x10000
 
 extern int SystemCall();
 
