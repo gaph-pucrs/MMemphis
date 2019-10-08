@@ -8,9 +8,8 @@
 #ifndef APPLICATIONS_MAN_CONTROL_APPLICATION_PROCESSORS_H_
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_PROCESSORS_H_
 
+#include "../../common_include.h"
 #include "globals.h"
-#include "resoucer_controller.h"
-#include "../common_include.h"
 
 /**
  * \brief This structure store variables used to manage the processors attributed by the kernel master
@@ -229,8 +228,8 @@ void init_procesors(){
 
 	unsigned int x_final, y_final;
 
-	x_final = XCLUSTER + cluster_x_offset;
-	y_final = YCLUSTER + cluster_y_offset;
+	x_final = MAPPING_XCLUSTER + cluster_x_offset;
+	y_final = MAPPING_YCLUSTER + cluster_y_offset;
 
 	for(int i=0; i<MAX_PROCESSORS; i++){
 		processors[i].address = -1;

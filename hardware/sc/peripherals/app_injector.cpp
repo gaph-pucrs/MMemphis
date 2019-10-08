@@ -446,7 +446,7 @@ void app_injector::receive_packet(){
 							EA_receive_packet = RECEIVE_MAPPING_COMPLETE;
 							break;
 						default:
-							cout << "ERROR: packet received unknown\n" << endl;
+							cout << "ERROR: packet received unknown at time " << current_time << "\n" << endl;
 							break;
 					}
 

@@ -12,12 +12,11 @@
 
 /*Definitions*/
 #define MAX_TASKS_APP			20
-#define MAX_CLUSTER_TASKS		(MAX_LOCAL_TASKS * XCLUSTER * YCLUSTER)
-#define MAX_PROCESSORS			(XCLUSTER*YCLUSTER)
+#define MAX_CLUSTER_TASKS		(MAX_LOCAL_TASKS * MAPPING_XCLUSTER * MAPPING_YCLUSTER)
+#define MAX_PROCESSORS			(MAPPING_XCLUSTER*MAPPING_YCLUSTER)
 #define CONSTANT_PKT_SIZE		13
 
 /*Global Variables*/
-unsigned int 	global_task_ID = 0; 					//!< Stores the global mapper ID at task level
 unsigned int 	cluster_position = 0;					//!< Stores the XY cluster positioning
 unsigned int 	my_task_ID = 0;							//!< Stores the local mapper ID at task level
 unsigned int 	net_address = 0;						//!< Stores the XY address of running processor

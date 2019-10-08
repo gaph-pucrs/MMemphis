@@ -5,8 +5,38 @@
  *      Author: ruaro
  */
 #include "common_include.h"
-#include "global_mapper_modules/cluster_controller.h"
+#include "mapping_includes/global_mapper/cluster_controller.h"
 
+
+#define 	MAX_MA_TASKS		(MAX_SDN_TASKS+MAX_MAPPING_TASKS)
+#define		MAPPING_TASK_REPO_ID	1
+#define		SDN_TASK_REPO_ID		2
+
+
+int ma_tasks_location[MAX_MA_TASKS];
+
+/*Common Useful functions*/
+void send_task_allocation_message(unsigned int task_id, unsigned int allocated_proc, unsigned int master_addr){
+
+	unsigned int * message;
+
+	message = get_message_slot();
+	message[0] = APP_INJECTOR; //Destination
+	message[1] = 4; //Packet size
+	message[2] = APP_ALLOCATION_REQUEST; //Service
+	message[3] = task_id; //Repository task ID
+	message[4] = master_addr; //Master address
+	message[5] = allocated_proc;
+
+	//Send message to Peripheral
+	SendRaw(message, 6);
+
+	while(!NoCSendFree());
+
+	//Puts("Requesting task "); Puts(itoa(task_id)); Puts(" allocated at proc "); Puts(itoh(allocated_proc));
+	//Puts(" belowing to master "); Puts(itoh(master_addr)); Puts("\n");
+
+}
 
 int get_local_mapper_index(unsigned int pos){
 	int tx, ty;
@@ -15,61 +45,183 @@ int get_local_mapper_index(unsigned int pos){
 	ty = pos & 0xFF;
 
 	//Converts address in ID
-	pos = (tx + ty*(XDIMENSION/XCLUSTER)); //PLus 1 because the global mapper uses ID 0
+	pos = (tx + ty*(XDIMENSION/MAPPING_XCLUSTER)); //PLus 1 because the global mapper uses ID 0
 
 	return pos;
 }
 
-void instantiate_mapping_tasks(){
+void map_management_tasks(){
 
-	unsigned int cluster_id = 0;
-	Cluster * cl_ptr;
+	//Create an array with the tasks location.
+	//Map task to PE
+	//Fills the array
+	//Format of task localtion  task_class | task_id  ||  proc
+	int ma_task_index = 0;
+	int cluster_index;
+	int task_loc_aux;
+	int x_aux, y_aux;
+	int task_class, task_id;
+	short int PE_usage[XDIMENSION][YDIMENSION];
 
-	for(int y=0; y<CLUSTER_Y_SIZE; y++){
-		for(int x=0; x<CLUSTER_X_SIZE; x++){
+	Puts("\nInitializing map_management_tasks\n\n");
 
-			cl_ptr = &clusters[cluster_id];
+	//Initializes the ma_tasks_location
+	for(int i=0; i<MAX_MA_TASKS; i++){
+		ma_tasks_location[i] = -1;
+	}
 
-			/*Initialize Clusters*/
-			cl_ptr->x_pos = x;
-			cl_ptr->y_pos = y;
-			//Aqui o mapeamentos dos lcoal mapper eh definido
-			cl_ptr->free_resources = (x*XCLUSTER << 8) | (y*YCLUSTER); //Reusing of this variable only for initialization
+	for(int y=0; y<YDIMENSION; y++){
+		for(int x=0; x<XDIMENSION; x++){
+			PE_usage[x][y] = MAX_LOCAL_TASKS;
+		}
+	}
+	PE_usage[0][0] = 0;//Decrements because GM is allocated in this position
 
-			//Puts("Cluster id "); Puts(itoa(cluster_id)); Puts("\nLocated at proc: "); Puts(itoh(cl_ptr->free_resources)); Puts("\n");
+	ma_tasks_location[ma_task_index++] = 0;//The location of global mapper
 
-			if (x == 0 && y == 0)
-				//Esse +1 eh pq no PE 0x0 vai ficar o global mapper e o local mapper0x0 deve ficar em um PE diferente, portanto movi +1 pra direita
-				cl_ptr->free_resources = ((x*XCLUSTER << 8)+1) | (y*YCLUSTER);
+	//**************************** Instantiate the Mapping MA tasks ********************************************
+	Puts("\nStarting MAPPING MA instatiation\n");
+	task_id = 0; //Initializes task ID
+	task_class = 0;
+	for(int y=0; y<MAPPING_Y_CLUSTER_NUM; y++){
+		for(int x=0; x<MAPPING_X_CLUSTER_NUM; x++){
 
+			x_aux = (x*MAPPING_XCLUSTER);
+			y_aux = (y*MAPPING_YCLUSTER);
+
+			//Puts("PE "); Puts(itoh(x_aux<<8|y_aux)); Puts(" has free resources of "); Puts(itoa(PE_usage[x_aux][y_aux])); Puts("\n");
+			//Heuristic that tries to find a PE to the MA task
+			while(PE_usage[x_aux][y_aux] < 1){
+				for(int xi = x_aux; xi < (x_aux+MAPPING_XCLUSTER); xi++){
+					for(int yi = y_aux; yi < (y_aux+MAPPING_YCLUSTER); yi++){
+						//Puts("Trying PE "); Puts(itoh(xi<<8|yi)); Puts("\n");
+						if (PE_usage[xi][yi] > 0){
+							x_aux = xi;
+							y_aux = yi;
+							xi = (x_aux+MAPPING_XCLUSTER); //Breaks the first loop
+							break;
+						}
+					}
+				}
+			}
+
+			task_loc_aux = (x_aux << 8) | y_aux;
 			//Request to the injector to load the local_mapper inside the PEs
-			send_task_allocation_message(1, cl_ptr->free_resources, 0);
+			//Task ID of local mappers are always 1
+			send_task_allocation_message(MAPPING_TASK_REPO_ID, task_loc_aux, 0);
 
-			cluster_id++;
+			//Remove one resource from the selected PE
+			PE_usage[x_aux][y_aux]--;
+
+			//Allocate cluster resources
+			cluster_index = get_cluster_index_from_PE(task_loc_aux);
+			allocate_cluster_resource(cluster_index, 1);
+
+			Puts("Task mapping id "); Puts(itoa(task_id)); Puts(" allocated at proc ");
+			Puts(itoh(task_loc_aux)); Puts("\n");
+
+			//Compose the full information of task location and stores into the array
+			task_loc_aux = (task_class << 24) | (task_id << 16) | task_loc_aux;
+			ma_tasks_location[ma_task_index++] = task_loc_aux;
+
+			//Increments the task ID
+			task_id++;
+
+			//Decrements the total number of available resources of the system
+			total_mpsoc_resources--;
+
 		}
 	}
 
-	total_mpsoc_resources -= (cluster_id + 1);
-	putsv("total_mpsoc_resources: ", total_mpsoc_resources);
+	//**************************** Instantiate the SDN MA asks *****************************************
+	Puts("\nStarting SDN MA instatiation\n");
+	task_id = 0; //Initializes task ID
+	task_class = 1;
+	for(int y=0; y<SDN_Y_CLUSTER_NUM; y++){
+		for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
+
+			x_aux = (x*SDN_XCLUSTER);
+			y_aux = (y*SDN_YCLUSTER);
+
+			//Heuristic that tries to find a PE to the MA task
+			//Puts("PE "); Puts(itoh(x_aux<<8|y_aux)); Puts(" has free resources of "); Puts(itoa(PE_usage[x_aux][y_aux])); Puts("\n");
+			while(PE_usage[x_aux][y_aux] < 1){
+				for(int xi = x_aux; xi < (x_aux+SDN_XCLUSTER); xi++){
+					for(int yi = y_aux; yi < (y_aux+SDN_YCLUSTER); yi++){
+						//Puts("Trying PE "); Puts(itoh(xi<<8|yi)); Puts("\n");
+						if (PE_usage[xi][yi] > 0){
+							x_aux = xi;
+							y_aux = yi;
+							xi = (x_aux+SDN_XCLUSTER); //Breaks the first loop
+							break;
+						}
+					}
+				}
+			}
+
+			task_loc_aux = (x_aux << 8) | y_aux;
+			//Request to the injector to load the local_mapper inside the PEs
+			//Task ID of local mappers are always 1
+			send_task_allocation_message(SDN_TASK_REPO_ID, task_loc_aux, 0);
+
+			//Remove one resource from the selected PE
+			PE_usage[x_aux][y_aux]--;
+
+			//Allocate cluster resources
+			cluster_index = get_cluster_index_from_PE(task_loc_aux);
+			allocate_cluster_resource(cluster_index, 1);
+
+			Puts("Task SDN id "); Puts(itoa(task_id)); Puts(" allocated at proc ");
+			Puts(itoh(task_loc_aux)); Puts("\n");
+
+			//Compose the full information of task location and stores into the array
+			task_loc_aux = (task_class << 24) | (task_id << 16) | task_loc_aux;
+			ma_tasks_location[ma_task_index++] = task_loc_aux;
+
+			//Increments the task ID
+			task_id++;
+
+			//Decrements the total number of available resources of the system
+			total_mpsoc_resources--;
+		}
+	}
+
+
+
+	putsv("\ntotal_mpsoc_resources: ", total_mpsoc_resources);
 
 	//Adiciona a si mesmo na tabela da task location
 	AddTaskLocation(0, 0);
 
 	//Verificar dimensoes do cluster
 	//Requisitar app locais informando o seu ID no INIT
+
+	for(int i=0; i<MAX_MA_TASKS;i++){
+		Puts("Task MA "); Puts(itoa(ma_tasks_location[i] >> 16)); Puts(" allocated at "); Puts(itoh(ma_tasks_location[i] & 0xFFFF)); Puts("\n");
+	}
+
+	Puts("\nEnd map_management_tasks\n\n");
 }
 
 
-void handle_i_am_alive(unsigned int source_addr){
+void handle_i_am_alive(unsigned int source_addr, unsigned int repo_id_class){
 	static unsigned int received_i_am_alive_counter = 0;
 	char error_flag = 1;
 	unsigned int * message;
 	unsigned int index = 0;
 
-	//Puts("handle_i_am_alive from "); Puts(itoa(source_addr)); Puts("\n");
+	Puts("handle_i_am_alive from "); Puts(itoa(source_addr)); Puts(" repo id class "); Puts(itoa(repo_id_class)); Puts("\n");
 
-	for(int i=0; i < CLUSTER_NUMBER; i++ ){
-		//Mapping in progress is being reused here, only for initializaiton, after that, the variable stores if a cluster is performing mapping or not
+
+	received_i_am_alive_counter++;
+
+	if (received_i_am_alive_counter == (MAX_MA_TASKS-1)){ //Minus 1 due the global mapper
+
+		Puts("Initializing local mappers\n");
+	}
+
+
+	/*for(int i=0; i < CLUSTER_NUMBER; i++ ){
 		if (clusters[i].free_resources == source_addr){
 
 			//Adiciona o ID do cluster ao seu endereco verdadeiro
@@ -118,18 +270,18 @@ void handle_i_am_alive(unsigned int source_addr){
 			AddTaskLocation(i+1, clusters[i].free_resources);
 			//From this moment this variable <free_resources> starts to store its real meaning
 			if (i==0) //If the cluster has ID 0, remove two resources from its cluster
-				clusters[i].free_resources = (MAX_LOCAL_TASKS * XCLUSTER * YCLUSTER) - 2;
+				clusters[i].free_resources = (MAX_LOCAL_TASKS * MAPPING_XCLUSTER * MAPPING_YCLUSTER) - 2;
 			else
-				clusters[i].free_resources = (MAX_LOCAL_TASKS * XCLUSTER * YCLUSTER) - 1;
-		}
+				clusters[i].free_resources = (MAX_LOCAL_TASKS * MAPPING_XCLUSTER * MAPPING_YCLUSTER) - 1;
+		}*/
 
 		/*Sending MAPPING COMPLETE to APP INJECTOR*/
-		message = get_message_slot();
+		/*message = get_message_slot();
 		message[0] = APP_INJECTOR;
 		message[1] = 2;//Payload should be 1, but is 2 in order to turn around a corner case in traffic monitor of Deloream for packets with payload 1
 		message[2] = APP_MAPPING_COMPLETE;
-		SendRaw(message, 4);
-	}
+		SendRaw(message, 4);*/
+	//}
 
 }
 
@@ -267,7 +419,7 @@ void handle_message(unsigned int * data_msg){
 
 	switch (data_msg[0]) {
 		case INIT_I_AM_ALIVE:
-			handle_i_am_alive(data_msg[1]);
+			handle_i_am_alive(data_msg[1], data_msg[2]);
 			break;
 		case NEW_APP_REQ:
 			handle_new_app_req(data_msg[1], data_msg[2]);
@@ -291,14 +443,15 @@ void main(){
 
 	Echo("Initializing Global Mapper\n");
 	init_message_slots();
-	instantiate_mapping_tasks();
-	//instantiate_sdn_tasks();
-	//instantiate_dvfs_tasks();
-	//instantiate_monitoring_tasks();
-	//instantiate_decision_tasks();
-	//instantiate_adaptation_tasks();
+	intilize_clusters();
+	map_management_tasks();
+	//init_sdn_tasks();
+	//init_dvfs_tasks();
+	//init_monitoring_tasks();
+	//init_decision_tasks();
+	//init_adaptation_tasks();
 
-	unsigned int data_message[MAX_MAPPING_MSG];
+	unsigned int data_message[MAX_MANAG_MSG_SIZE];
 
 	for(;;){
 

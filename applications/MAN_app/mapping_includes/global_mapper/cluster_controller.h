@@ -8,7 +8,7 @@
 #ifndef APPLICATIONS_MAN_CONTROL_APPLICATION_CLUSTER_CONTROLLER_H_
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_CLUSTER_CONTROLLER_H_
 
-#include "../common_include.h"
+#include "../../common_include.h"
 
 typedef struct {
 	int x_pos;					//!< Stores the application id
@@ -17,10 +17,32 @@ typedef struct {
 } Cluster;
 
 
+#define MAPPING_CLUSTER_NUMBER	(MAPPING_X_CLUSTER_NUM*MAPPING_Y_CLUSTER_NUM)
+#define SDN_CLUSTER_NUMBER		(MAPPING_X_CLUSTER_NUM*MAPPING_Y_CLUSTER_NUM)
+
 /*Global Variables*/
-Cluster clusters[CLUSTER_NUMBER];
+Cluster clusters[MAPPING_CLUSTER_NUMBER];
 unsigned int total_mpsoc_resources = (MAX_LOCAL_TASKS * XDIMENSION * YDIMENSION);
 unsigned int pending_app_req = 0;
+
+
+void intilize_clusters(){
+	unsigned int cluster_id = 0;
+	Cluster * cl_ptr;
+
+	for(int y=0; y<MAPPING_X_CLUSTER_NUM; y++){
+		for(int x=0; x<MAPPING_Y_CLUSTER_NUM; x++){
+			cl_ptr = &clusters[cluster_id];
+			//XY holds the address of the PE at most at bottom-left of each cluster
+			cl_ptr->x_pos = x;
+			cl_ptr->y_pos = y;
+			cl_ptr->free_resources = (MAX_LOCAL_TASKS * MAPPING_XCLUSTER * MAPPING_YCLUSTER);
+			cluster_id++;
+		}
+	}
+	Puts("Clusters initialized\n");
+}
+
 
 /**Selects a cluster to insert an application
  * \param app_task_number Number of task of requered application
@@ -31,7 +53,7 @@ int search_cluster(int app_task_number) {
 	int selected_cluster = -1;
 	int freest_cluster = 0;
 
-	for (int i=0; i<CLUSTER_NUMBER; i++){
+	for (int i=0; i<MAPPING_CLUSTER_NUM; i++){
 
 		if (clusters[i].free_resources > freest_cluster){
 			selected_cluster = i;
@@ -40,6 +62,19 @@ int search_cluster(int app_task_number) {
 	}
 
 	return selected_cluster;
+}
+
+int get_cluster_index_from_PE(unsigned int pe_addr){
+
+	int x,y;
+
+	x = pe_addr >> 8;
+	y = pe_addr & 0xFF;
+
+	y = (int) y / MAPPING_Y_CLUSTER_NUM;
+	x = (int) y / MAPPING_X_CLUSTER_NUM;
+
+	return ((y*MAPPING_X_CLUSTER_NUM)+x);
 }
 
 

@@ -8,30 +8,18 @@
 #ifndef NOC_MANAGER_H_
 #define NOC_MANAGER_H_
 
+#include "../common_include.h"
 #include <management_api.h>
-
-/** Used only to emulate a bigger many-core*/
-#define XDIMENSION 3
-#define YDIMENSION 3
-#define XCLUSTER 3
-#define YCLUSTER 3
-#define SUBNETS_NUMBER 2
-#define SPLIT 0
-/***********************************************/
 
 #define SDN_DEBUG 1
 #define PATH_DEBUG 1
 
-#define CLUSTER_X_NUMBER	(XDIMENSION/XCLUSTER)
-#define CLUSTER_Y_NUMBER	(YDIMENSION/YCLUSTER)
+#define NC_NUMBER		((XDIMENSION*YDIMENSION)/(SDN_XCLUSTER*SDN_YCLUSTER))
 
-
-#define NC_NUMBER		((XDIMENSION*YDIMENSION)/(XCLUSTER*YCLUSTER))
-
-#define MAX_NC_PATHS		(2*XCLUSTER*YCLUSTER-XCLUSTER-YCLUSTER)
+#define MAX_NC_PATHS		(2*SDN_XCLUSTER*SDN_YCLUSTER-SDN_XCLUSTER-SDN_YCLUSTER)
 
 #define CS_NETS 		SUBNETS_NUMBER
-#define ROUTER_NUMBER	(XCLUSTER*YCLUSTER)
+#define ROUTER_NUMBER	(SDN_XCLUSTER*SDN_YCLUSTER)
 #define PORT_NUMBER		6
 
 #define EAST		0
@@ -43,33 +31,6 @@
 
 unsigned int x_offset, y_offset;
 
-char *itoa(unsigned int num)
-{
-   static char buf[12];
-   static char buf2[12];
-   int i,j;
-
-   if (num==0)
-   {
-      buf[0] = '0';
-      buf[1] = '\0';
-      return &buf[0];
-   }
-
-   for(i=0;i<11 && num!=0;i++)
-   {
-      buf[i]=(char)((num%10)+'0');
-      num/=10;
-   }
-   buf2[i] = '\0';
-   j = 0;
-   i--;
-   for(;i>=0;i--){
-         buf2[i]=buf[j];
-         j++;
-   }
-   return &buf2[0];
-}
 
 int pow_base2(int pow){
 	int res = 1;
@@ -81,11 +42,6 @@ int pow_base2(int pow){
 	return res;
 }
 
-int abs(int num){
-	if(num<0) return -num;
-	else return num;
-}
-
 /******************************** CS CONTROLLER FUNCTIONS *********************************************/
 
 //Gets the CS path size
@@ -93,7 +49,7 @@ unsigned int hops_count;
 
 //------ Variaveis globais -------
 //(ROUTER_NUMBER * CS_NETS * PORT_NUMBER) bytes
-char cs_inport[XCLUSTER][YCLUSTER][CS_NETS][PORT_NUMBER];
+char cs_inport[SDN_XCLUSTER][SDN_YCLUSTER][CS_NETS][PORT_NUMBER];
 
 //Lista dos vizinhos, utilizanda dentro da funcao hadlock
 // 2 * (ROUTER_NUMBER) bytes
@@ -105,7 +61,7 @@ int last_nlist;
 unsigned short int plist[ROUTER_NUMBER];
 int last_plist;
 
-char detour[XCLUSTER][YCLUSTER];
+char detour[SDN_XCLUSTER][SDN_YCLUSTER];
 
 unsigned int subnet_selector = 0;
 
@@ -126,9 +82,9 @@ int print_path_size = 0;
 //unsigned int cluster_border_input[NC_NUMBER][5];
 //cluster_border_input stores if a router has its input free and is propagable
 //The function is_PE_propagable feeds this array
-unsigned short int 	cluster_border_input[CLUSTER_X_NUMBER][CLUSTER_Y_NUMBER][CS_NETS][4];
-unsigned short int 	cluster_border_output[CLUSTER_X_NUMBER][CLUSTER_Y_NUMBER][CS_NETS][4];
-char				available_controllers[CLUSTER_X_NUMBER][CLUSTER_Y_NUMBER][CS_NETS];
+unsigned short int 	cluster_border_input[SDN_X_CLUSTER_NUM][SDN_Y_CLUSTER_NUM][CS_NETS][4];
+unsigned short int 	cluster_border_output[SDN_X_CLUSTER_NUM][SDN_Y_CLUSTER_NUM][CS_NETS][4];
+char				available_controllers[SDN_X_CLUSTER_NUM][SDN_Y_CLUSTER_NUM][CS_NETS];
 
 
 unsigned int 		cluster_path[NC_NUMBER];
@@ -140,13 +96,13 @@ unsigned short int 	max_Y_border_occuptation;
 //Local data
 unsigned short int subnet_utilization[CS_NETS];
 //Global Routing
-unsigned short int global_subnet_utilization[CLUSTER_X_NUMBER][CLUSTER_Y_NUMBER][CS_NETS];
+unsigned short int global_subnet_utilization[SDN_X_CLUSTER_NUM][SDN_Y_CLUSTER_NUM][CS_NETS];
 
 
 //########################################
 //Hadlock function that enable it to find either at global or local level
-unsigned int MAX_GRID_X = XCLUSTER; //default values
-unsigned int MAX_GRID_Y = YCLUSTER; //default values
+unsigned int MAX_GRID_X = SDN_XCLUSTER; //default values
+unsigned int MAX_GRID_Y = SDN_YCLUSTER; //default values
 unsigned char is_global_search = 0;  //default values
 //#######################################
 
@@ -156,14 +112,14 @@ int x_cluster_addr, y_cluster_addr; //Identifies the X and Y addr;
 int cluster_addr; //Identifies
 
 void enable_global_routing(){
-	MAX_GRID_X = CLUSTER_X_NUMBER;
-	MAX_GRID_Y = CLUSTER_Y_NUMBER;
+	MAX_GRID_X = SDN_X_CLUSTER_NUM;
+	MAX_GRID_Y = SDN_Y_CLUSTER_NUM;
 	is_global_search = 1;
 }
 
 void enable_local_routing(){
-	MAX_GRID_X = XCLUSTER;
-	MAX_GRID_Y = YCLUSTER;
+	MAX_GRID_X = SDN_XCLUSTER;
+	MAX_GRID_Y = SDN_YCLUSTER;
 	is_global_search = 0;
 }
 
@@ -202,8 +158,8 @@ void clear_search(){
 	last_nlist = 0;
 	last_plist = 0;
 
-	for(int i=0; i<XCLUSTER; i++){
-		for(int j=0; j<YCLUSTER; j++){
+	for(int i=0; i<SDN_XCLUSTER; i++){
+		for(int j=0; j<SDN_YCLUSTER; j++){
 			detour[i][j] = -1;
 		}
 	}
@@ -213,8 +169,8 @@ void clear_search(){
  */
 void initit_cluster_borders(){
 	
-	for(int x=0; x<CLUSTER_X_NUMBER; x++){
-		for(int y=0; y<CLUSTER_Y_NUMBER; y++){
+	for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
+		for(int y=0; y<SDN_Y_CLUSTER_NUM; y++){
 			for(int s=0; s<CS_NETS; s++){
 				for(int j=0; j<4; j++){
 					cluster_border_input[x][y][s][j] = 0;
@@ -224,8 +180,8 @@ void initit_cluster_borders(){
 		}
 	}
 
-	max_X_border_occuptation = (unsigned short int) (pow_base2(XCLUSTER) - 1);
-	max_Y_border_occuptation = (unsigned short int) (pow_base2(YCLUSTER) - 1);
+	max_X_border_occuptation = (unsigned short int) (pow_base2(SDN_XCLUSTER) - 1);
+	max_Y_border_occuptation = (unsigned short int) (pow_base2(SDN_YCLUSTER) - 1);
 
 }
 
@@ -234,8 +190,8 @@ void init_search_path(){
 
 	Puts("\nInitializing search path\n");
 
-	for(int x=0; x<XCLUSTER; x++)
-		for (int y=0; y<YCLUSTER; y++ )
+	for(int x=0; x<SDN_XCLUSTER; x++)
+		for (int y=0; y<SDN_YCLUSTER; y++ )
 			for(int k=0; k<PORT_NUMBER; k++)
 				for(int p=0; p<CS_NETS; p++)
 					cs_inport[x][y][p][k] = -1;
@@ -315,9 +271,9 @@ void print_port(int p){
 
 void print_router_status(int subnet){
 	Puts("\n\n\t\tE\tW\tN\tS\tLOUT\tLIN\n");
-	for(int x=0; x<XCLUSTER; x++){
+	for(int x=0; x<SDN_XCLUSTER; x++){
 
-		for(int y=0; y<YCLUSTER; y++){
+		for(int y=0; y<SDN_YCLUSTER; y++){
 
 			Puts("Router "); Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(" : ");
 
@@ -725,7 +681,7 @@ int CS_connection_release(int source_x, int source_y, int target_x, int target_y
 				break;
 		}
 
-		if (Nx < 0 || Nx > XCLUSTER-1 || Ny < 0 || Ny > YCLUSTER-1){
+		if (Nx < 0 || Nx > SDN_XCLUSTER-1 || Ny < 0 || Ny > SDN_YCLUSTER-1){
 			subnet_utilization[mp] -= hops_count;
 #if SDN_DEBUG
 			Puts("\nRelease2 updated subnet utilization to: "); Puts(itoa(subnet_utilization[mp])); Puts("\n");

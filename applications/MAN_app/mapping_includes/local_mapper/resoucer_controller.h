@@ -9,8 +9,8 @@
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_RESOUCER_CONTROLLER_H_
 
 #include "application.h"
-#include "globals.h"
 #include "processors.h"
+#include "globals.h"
 
 
 int diamond_search_initial(int);
@@ -126,7 +126,7 @@ int application_mapping(int app_id){
 		}
 
 	} else {
-		initial_app_pe = (cluster_x_offset << 8 | (cluster_y_offset + YCLUSTER -1));
+		initial_app_pe = (cluster_x_offset << 8 | (cluster_y_offset + MAPPING_YCLUSTER -1));
 		//Puts("Very first time\n");
 	}
 
@@ -228,8 +228,8 @@ int diamond_search_initial(int begining_core){
 
 	//Puts("xi: "); Puts(itoh(cluster_x_offset));
 
-	max_x = (XCLUSTER+cluster_x_offset);
-	max_y = (YCLUSTER+cluster_y_offset);
+	max_x = (MAPPING_XCLUSTER+cluster_x_offset);
+	max_y = (MAPPING_YCLUSTER+cluster_y_offset);
 	min_x = (int) cluster_x_offset;
 	min_y = (int) cluster_y_offset;
 

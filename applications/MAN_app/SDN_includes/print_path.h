@@ -17,7 +17,7 @@ int printPathSize = 0;
 
 typedef struct {
 	int cluster_addr;
-	unsigned int path[XCLUSTER*YCLUSTER];
+	unsigned int path[XCLUSTER*SDN_YCLUSTER];
 	int size;
 }PrintPath;
 

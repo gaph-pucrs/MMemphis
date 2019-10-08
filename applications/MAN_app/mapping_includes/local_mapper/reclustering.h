@@ -9,8 +9,8 @@
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_RECLUSTERING_H_
 
 #include "application.h"
-#include "globals.h"
 #include "resoucer_controller.h"
+#include "globals.h"
 
 #define RECLUSTERING_DEBUG	0		//!<When enable compile the puts in this file
 
@@ -48,8 +48,8 @@ unsigned int starting_y_cluster_size;	//!<Starting Y size of cluster when reclus
  */
 void init_reclustering(){
 
-	starting_x_cluster_size = XCLUSTER;
-	starting_y_cluster_size = YCLUSTER;
+	starting_x_cluster_size = MAPPING_XCLUSTER;
+	starting_y_cluster_size = MAPPING_YCLUSTER;
 
 #if RECLUSTERING_DEBUG
 	Puts("starting_x_cluster_size: "); Puts(itoa(starting_x_cluster_size)); Puts("\n");
@@ -58,10 +58,10 @@ void init_reclustering(){
 
 	reclustering.active = 0;
 
-	if ((XDIMENSION/XCLUSTER) > (YDIMENSION/YCLUSTER)) {
-		max_neighbors_level = (XDIMENSION/XCLUSTER) - 1;
+	if ((XDIMENSION/MAPPING_XCLUSTER) > (YDIMENSION/MAPPING_YCLUSTER)) {
+		max_neighbors_level = (XDIMENSION/MAPPING_XCLUSTER) - 1;
 	} else {
-		max_neighbors_level = (YDIMENSION/YCLUSTER) - 1;
+		max_neighbors_level = (YDIMENSION/MAPPING_YCLUSTER) - 1;
 	}
 }
 
@@ -189,11 +189,11 @@ void fires_reclustering_protocol(){
 #endif
 
 	//Walks for every cluster inside the level
-	for(int y=0; y<CLUSTER_Y_SIZE; y++){
-		for(int x=0; x<CLUSTER_X_SIZE; x++){
+	for(int y=0; y<MAPPING_Y_CLUSTER_NUM; y++){
+		for(int x=0; x<MAPPING_X_CLUSTER_NUM; x++){
 
-			other_x = x * XCLUSTER;
-			other_y = y * YCLUSTER;
+			other_x = x * MAPPING_XCLUSTER;
+			other_y = y * MAPPING_YCLUSTER;
 
 #if RECLUSTERING_DEBUG
 			//putsv("current_position: ", (x << 8 | y));

@@ -174,9 +174,9 @@ void handle_token_grant(){
 #if SDN_DEBUG
 void print_input_borders(int subnet){
 	Puts("\nSUBNET: "); Puts(itoa(subnet)); Puts("\nInput border:\n\t\tE\tW\tN\tS\n");
-	for(int x=0; x<CLUSTER_X_NUMBER; x++){
+	for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
 
-		for(int y=0; y<CLUSTER_Y_NUMBER; y++){
+		for(int y=0; y<SDN_Y_CLUSTER_NUM; y++){
 
 			Puts("Cluster "); Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(" : ");
 
@@ -191,9 +191,9 @@ void print_input_borders(int subnet){
 
 void print_output_borders(int subnet){
 	Puts("\nSUBNET: "); Puts(itoa(subnet)); Puts("\nOutput border:\n\t\tE\tW\tN\tS\n");
-	for(int x=0; x<CLUSTER_X_NUMBER; x++){
+	for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
 
-		for(int y=0; y<CLUSTER_Y_NUMBER; y++){
+		for(int y=0; y<SDN_Y_CLUSTER_NUM; y++){
 
 			Puts("Cluster "); Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(" : ");
 
@@ -211,8 +211,8 @@ void print_subnet_utilization(){
 	for(int s=0; s<CS_NETS; s++){ //4 is the number of border in each cluster
 		Puts("\t"); Puts(itoa(s));
 	}
-	for(int x=0; x<CLUSTER_X_NUMBER; x++){
-		for(int y=0; y<CLUSTER_Y_NUMBER; y++){
+	for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
+		for(int y=0; y<SDN_Y_CLUSTER_NUM; y++){
 			Puts("\nCluster "); Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(" : ");
 			for(int s=0; s<CS_NETS; s++){ //4 is the number of border in each cluster
 				Puts("\t"); Puts(itoa(global_subnet_utilization[x][y][s]));
@@ -273,7 +273,7 @@ unsigned short int is_PE_propagable(int x, int y, int border, int s){
 		return 1;
 
 	//Test if router can send to EAST
-	if (x < (XCLUSTER-1) && cs_inport[x+1][y][s][WEST] == -1)
+	if (x < (SDN_XCLUSTER-1) && cs_inport[x+1][y][s][WEST] == -1)
 		return 1;
 
 	//Test if router can send to SOUTH
@@ -281,7 +281,7 @@ unsigned short int is_PE_propagable(int x, int y, int border, int s){
 		return 1;
 
 	//Test if router can send to NORTH
-	if (y < (YCLUSTER-1) && cs_inport[x][y+1][s][SOUTH] == -1)
+	if (y < (SDN_YCLUSTER-1) && cs_inport[x][y+1][s][SOUTH] == -1)
 		return 1;
 
 	return 0;
@@ -293,14 +293,14 @@ unsigned short int is_PE_reachable(int x, int y, int s){
 	if (x > 0 && cs_inport[x][y][s][WEST] == -1)
 		return 1;
 
-	if (x < (XCLUSTER-1) && cs_inport[x][y][s][EAST] == -1)
+	if (x < (SDN_XCLUSTER-1) && cs_inport[x][y][s][EAST] == -1)
 		return 1;
 
 	//Test if PE is at NORTH corner
 	if (y > 0 && cs_inport[x][y][s][SOUTH] == -1)
 		return 1;
 
-	if (y < (YCLUSTER-1) && cs_inport[x][y][s][NORTH] == -1)
+	if (y < (SDN_YCLUSTER-1) && cs_inport[x][y][s][NORTH] == -1)
 		return 1;
 
 	return 0;
@@ -379,8 +379,8 @@ void send_update_border_request(){
 
 	controllers_response_counter = 1;
 
-	for(int x=0; x<CLUSTER_X_NUMBER; x++){
-		for (int y = 0; y<CLUSTER_Y_NUMBER; y++){
+	for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
+		for (int y = 0; y<SDN_Y_CLUSTER_NUM; y++){
 
 
 			clust_addr_aux = x << 8 | y; //Composes the cluster address
@@ -473,9 +473,10 @@ void send_global_mode_release(int path_success){
 	controllers_response_counter = 1;
 
 	my_inport = -1;
+	my_outport = -1;
 
-	for(int x=0; x<CLUSTER_X_NUMBER; x++){
-		for (int y = 0; y<CLUSTER_Y_NUMBER; y++){
+	for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
+		for (int y = 0; y<SDN_Y_CLUSTER_NUM; y++){
 
 			inport = -1;
 			//Searches if the cluster belongs to the path
@@ -672,7 +673,7 @@ void handle_detailed_routing_response(int response, int source_controller, unsig
 	}
 }
 
-//					XCLUSTER		x_offset			input_port		//target_x
+//					SDN_XCLUSTER		x_offset			input_port		//target_x
 void heuristic(int border_lenght, int addr_offset, int port_status, int * addr, int axis_ref){
 	unsigned int bit_mask, curr_addr;
 	int min_axis_ref, curr_axis_ref;
@@ -760,7 +761,7 @@ void detailed_routing(unsigned int * msg){
 
 		switch (entry_border) {
 			case EAST:
-				source_x = x_offset + XCLUSTER-1;
+				source_x = x_offset + SDN_XCLUSTER-1;
 				source_y = -1;
 				input_status = cluster_border_output[x_cluster_addr+1][y_cluster_addr][selected_subnet][WEST] | cluster_border_input[x_cluster_addr][y_cluster_addr][selected_subnet][EAST];
 				break;
@@ -771,7 +772,7 @@ void detailed_routing(unsigned int * msg){
 				break;
 			case NORTH:
 				source_x = -1;//Recebe -1 pois sera calculado pelo algoritmo abaixo
-				source_y = y_offset + YCLUSTER-1;//Como o ponto de entrada ira varia no eixo X, o eixo Y ja pode ser definido
+				source_y = y_offset + SDN_YCLUSTER-1;//Como o ponto de entrada ira varia no eixo X, o eixo Y ja pode ser definido
 				input_status = cluster_border_output[x_cluster_addr][y_cluster_addr+1][selected_subnet][SOUTH] | cluster_border_input[x_cluster_addr][y_cluster_addr][selected_subnet][NORTH];
 				break;
 			case SOUTH:
@@ -792,14 +793,14 @@ void detailed_routing(unsigned int * msg){
 		if (entry_border == NORTH || entry_border == SOUTH){
 
 			//printf("\nEntry border is NORTH or SOUTH");
-			heuristic(XCLUSTER, x_offset, input_status, &source_x, ref_x);
+			heuristic(SDN_XCLUSTER, x_offset, input_status, &source_x, ref_x);
 
 		} else { // Se a borda de entrada e LESTE OU OESTE
 
 			//printf("\nEntry border is LEST or OESTE");
 			//printf("\nMin_y: %d", min_y);
 			//printf("\nMax_y: %d", max_y);
-			heuristic(YCLUSTER, y_offset, input_status, &source_y, ref_y);
+			heuristic(SDN_YCLUSTER, y_offset, input_status, &source_y, ref_y);
 
 		}
 
@@ -814,7 +815,7 @@ void detailed_routing(unsigned int * msg){
 		switch (exit_boder) {
 			case EAST:
 				output_status = cluster_border_output[x_cluster_addr][y_cluster_addr][selected_subnet][EAST] | cluster_border_input[x_cluster_addr+1][y_cluster_addr][selected_subnet][WEST];
-				target_x = x_offset + XCLUSTER-1;
+				target_x = x_offset + SDN_XCLUSTER-1;
 				target_y = -1;
 				break;
 			case WEST:
@@ -825,7 +826,7 @@ void detailed_routing(unsigned int * msg){
 			case NORTH:
 				output_status = cluster_border_output[x_cluster_addr][y_cluster_addr][selected_subnet][NORTH] | cluster_border_input[x_cluster_addr][y_cluster_addr+1][selected_subnet][SOUTH];
 				target_x = -1;//Recebe -1 pois sera calculado pelo algoritmo abaixo
-				target_y = y_offset + YCLUSTER -1;//Como o ponto de entrada ira varia no eixo X, o eixo Y ja pode ser definido
+				target_y = y_offset + SDN_YCLUSTER -1;//Como o ponto de entrada ira varia no eixo X, o eixo Y ja pode ser definido
 				break;
 			case SOUTH:
 				output_status = cluster_border_output[x_cluster_addr][y_cluster_addr][selected_subnet][SOUTH] | cluster_border_input[x_cluster_addr][y_cluster_addr-1][selected_subnet][NORTH];
@@ -844,14 +845,14 @@ void detailed_routing(unsigned int * msg){
 
 			//printf("\n Exit border is NORTH or SOUTH");
 
-			heuristic(XCLUSTER, x_offset, output_status, &target_x, ref_x);
+			heuristic(SDN_XCLUSTER, x_offset, output_status, &target_x, ref_x);
 
 		} else { // Se a borda de entrada e LESTE OU OESTE
 
 			//printf("\n Exit border is LEST or OESTE");
 			//printf("\nMin_y: %d", min_y);
 			//printf("\nMax_y: %d", max_y);
-			heuristic(YCLUSTER, y_offset, output_status, &target_y, ref_y);
+			heuristic(SDN_YCLUSTER, y_offset, output_status, &target_y, ref_y);
 
 		}
 
@@ -943,17 +944,17 @@ void global_routing(){
 	unsigned int curr_x, curr_y, inport, outport;
 	unsigned int clust_addr_aux, hadlock_ret, index;
 	int lower_util, curr_util, curr_path_size;
-	unsigned int local_message[SDN_MSG_SIZE];//message is the array used to send to anothers controllers, local_message is the array used to execute the detailed_cluster algorithm
+	unsigned int local_message[MAX_MANAG_MSG_SIZE];//message is the array used to send to anothers controllers, local_message is the array used to execute the detailed_cluster algorithm
 	unsigned int * message;
 
 	//1. Discover source cluster
-	source_cluster_x = (global_path_request.source >> 8) / XCLUSTER;
-	source_cluster_y = (global_path_request.source & 0xFF) / YCLUSTER;
+	source_cluster_x = (global_path_request.source >> 8) / SDN_XCLUSTER;
+	source_cluster_y = (global_path_request.source & 0xFF) / SDN_YCLUSTER;
 
 	//2.Discover target cluster
-	target_cluster_x = (global_path_request.target >> 8) / XCLUSTER;
-	target_cluster_y = (global_path_request.target & 0xFF) / YCLUSTER;
-	//cluster_id = aux_x + (aux_y * CLUSTER_X_NUMBER);
+	target_cluster_x = (global_path_request.target >> 8) / SDN_XCLUSTER;
+	target_cluster_y = (global_path_request.target & 0xFF) / SDN_YCLUSTER;
+	//cluster_id = aux_x + (aux_y * SDN_X_CLUSTER_NUM);
 #if SDN_DEBUG
 	Puts("\n------------------ GLOBAL ROUTING ------------------- \n");
 	Puts("\nCoordinator "); Puts(itoa(cluster_addr)); Puts(" starting GLOBAL ROUTING \nSource "); Puts(itoa((global_path_request.source >> 8))); Puts("x");
@@ -1178,33 +1179,33 @@ void build_border_status(){
 
 			switch (border) {
 				case EAST:
-					x = XCLUSTER-1;
-					for(int i=0; i < YCLUSTER; i++){
-						y = (YCLUSTER-1)-i;
+					x = SDN_XCLUSTER-1;
+					for(int i=0; i < SDN_YCLUSTER; i++){
+						y = (SDN_YCLUSTER-1)-i;
 						cluster_border_input[nc_x][nc_y][subnet][border] |= !is_PE_propagable(x, y, EAST, subnet) << i;
 						cluster_border_output[nc_x][nc_y][subnet][border] |= !is_PE_reachable(x, y, subnet) << i;
 					}
 					break;
 				case WEST:
 					x = 0;
-					for(int i=0; i < YCLUSTER; i++){
-						y = (YCLUSTER-1)-i;
+					for(int i=0; i < SDN_YCLUSTER; i++){
+						y = (SDN_YCLUSTER-1)-i;
 						cluster_border_input[nc_x][nc_y][subnet][border] |= !is_PE_propagable(x, y, WEST, subnet) << i;
 						cluster_border_output[nc_x][nc_y][subnet][border] |= !is_PE_reachable(x, y, subnet) << i;
 					}
 					break;
 				case NORTH:
-					y = YCLUSTER-1;
-					for(int i=0; i < XCLUSTER; i++){
-						x = (XCLUSTER-1)-i;
+					y = SDN_YCLUSTER-1;
+					for(int i=0; i < SDN_XCLUSTER; i++){
+						x = (SDN_XCLUSTER-1)-i;
 						cluster_border_input[nc_x][nc_y][subnet][border] |= !is_PE_propagable(x, y, NORTH, subnet) << i;
 						cluster_border_output[nc_x][nc_y][subnet][border] |= !is_PE_reachable(x, y, subnet) << i;
 					}
 					break;
 				case SOUTH:
 					y = 0;
-					for(int i=0; i < XCLUSTER; i++){
-						x = (XCLUSTER-1)-i;
+					for(int i=0; i < SDN_XCLUSTER; i++){
+						x = (SDN_XCLUSTER-1)-i;
 						cluster_border_input[nc_x][nc_y][subnet][border] |= !is_PE_propagable(x, y, SOUTH, subnet) << i;
 						cluster_border_output[nc_x][nc_y][subnet][border] |= !is_PE_reachable(x, y, subnet) << i;
 					}
@@ -1320,8 +1321,8 @@ void handle_update_border_ack(unsigned int * msg){
 		Puts("Starting global routing\n");
 #endif
 
-		for(int x=0; x<CLUSTER_X_NUMBER; x++){
-			for(int y=0; y<CLUSTER_Y_NUMBER; y++){
+		for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
+			for(int y=0; y<SDN_Y_CLUSTER_NUM; y++){
 				for(int s=0; s<CS_NETS; s++){
 					available_controllers[x][y][s] = 1;
 				}
@@ -1448,13 +1449,13 @@ int is_local_connection(int source_x, int source_y, int target_x, int target_y){
 
 	//If this condition is true, them the PE is within the controller region
 	if (	source_x < x_offset 				||
-			source_x >= (x_offset + XCLUSTER) 	||
+			source_x >= (x_offset + SDN_XCLUSTER) 	||
 			source_y < y_offset					||
-			source_y >= (y_offset + YCLUSTER)	||
+			source_y >= (y_offset + SDN_YCLUSTER)	||
 			target_x < x_offset 				||
-			target_x >= (x_offset + XCLUSTER) 	||
+			target_x >= (x_offset + SDN_XCLUSTER) 	||
 			target_y < y_offset					||
-			target_y >= (y_offset + YCLUSTER)){
+			target_y >= (y_offset + SDN_YCLUSTER)){
 		return 0;
 	}
 
@@ -1747,18 +1748,18 @@ void new_local_path(ConnectionRequest * conn_request_ptr){
 
 void init_cluster_address_offset(unsigned int id){
 	unsigned int layers_above, cluster_per_layer;
-	cluster_per_layer = (XDIMENSION / XCLUSTER);
+	cluster_per_layer = (XDIMENSION / SDN_XCLUSTER);
 	layers_above = id / cluster_per_layer;
-	y_offset = layers_above * YCLUSTER;
-	x_offset = (id - (cluster_per_layer * layers_above)) * XCLUSTER;
+	y_offset = layers_above * SDN_YCLUSTER;
+	x_offset = (id - (cluster_per_layer * layers_above)) * SDN_XCLUSTER;
 
-	x_cluster_addr = x_offset / XCLUSTER;//Representa a coordernada X do cluster
-	y_cluster_addr = y_offset / YCLUSTER;//Representa a coordernada Y do cluster
+	x_cluster_addr = x_offset / SDN_XCLUSTER;//Representa a coordernada X do cluster
+	y_cluster_addr = y_offset / SDN_YCLUSTER;//Representa a coordernada Y do cluster
 	cluster_addr = x_cluster_addr << 8 | y_cluster_addr;
 	Puts("XDIMENSION: "); Puts(itoa(XDIMENSION)); Puts("\n");
 	Puts("YDIMENSION: "); Puts(itoa(YDIMENSION)); Puts("\n");
-	Puts("XCLUSTER: "); Puts(itoa(XCLUSTER)); Puts("\n");
-	Puts("YCLUSTER: "); Puts(itoa(YCLUSTER)); Puts("\n\n");
+	Puts("SDN_XCLUSTER: "); Puts(itoa(SDN_XCLUSTER)); Puts("\n");
+	Puts("SDN_YCLUSTER: "); Puts(itoa(SDN_YCLUSTER)); Puts("\n\n");
 
 #if SDN_DEBUG
 	Puts("CLuster offset = "); Puts(itoa(x_offset)); Puts("x"); Puts(itoa(y_offset)); Puts("\n");
@@ -1773,10 +1774,11 @@ int main(){
 	RequestServiceMode();
 	cluster_id = CLUSTER_ID;
     Puts("\n*************** NoC-Controller "); Puts(itoa(cluster_id)); Puts(" initialized! ******************\n");
+    init_message_slots();
+    initialize_MA_task();
     init_search_path();
     initit_cluster_borders();
     init_cluster_address_offset(cluster_id);
-    init_communication();
 
     controller_status = IDLE;
 #if SDN_DEBUG
@@ -1786,7 +1788,7 @@ int main(){
     ConnectionRequest * conn_request = 0;
 
     //Data message
-    unsigned int data_message[SDN_MSG_SIZE];
+    unsigned int data_message[MAX_MANAG_MSG_SIZE];
 
     for(;;){
 

@@ -8,8 +8,8 @@
 #ifndef APPLICATIONS_MAN_CONTROL_APPLICATION_APPLICATION_H_
 #define APPLICATIONS_MAN_CONTROL_APPLICATION_APPLICATION_H_
 
+#include "../../common_include.h"
 #include "globals.h"
-#include "../common_include.h"
 
 
 //Application status

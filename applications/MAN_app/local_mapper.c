@@ -4,27 +4,11 @@
  *  Created on: Jul 2, 2019
  *      Author: ruaro
  */
-#include "local_mapper_modules/resoucer_controller.h"
 #include "common_include.h"
-#include "local_mapper_modules/application.h"
-#include "local_mapper_modules/processors.h"
-#include "local_mapper_modules/reclustering.h"
-
-
-void initialize(){
-
-	unsigned int * message = get_message_slot();
-
-	AddTaskLocation(global_task_ID,global_task_ID);
-	net_address = GetNetAddress();	//Task Address
-
-
-	message[0] = INIT_I_AM_ALIVE;		//Task Service
-	message[1] = net_address;	//Task Address
-
-	//Puts("Sending I AM ALIVE to global mapper\n");
-	SendService(global_task_ID, message, 2);
-}
+#include "mapping_includes/local_mapper/application.h"
+#include "mapping_includes/local_mapper/processors.h"
+#include "mapping_includes/local_mapper/reclustering.h"
+#include "mapping_includes/local_mapper/resoucer_controller.h"
 
 void initialize_ids(unsigned int * msg){
 
@@ -97,24 +81,6 @@ void send_app_allocation_request(Application * app_ptr){
 	}
 	//Send message to Peripheral
 	SendRaw(message, msg_size);
-
-	/*message = get_message_slot();
-	message[0] = APP_ALLOCATED;
-	message[1] = app_ptr->app_ID;
-	message[2] = app_ptr->tasks_number;
-	msg_size = 3;
-	for(int task = 0; task < app_ptr->tasks_number; task++){
-		task_ptr = &app_ptr->tasks[task];
-
-		if (task_ptr->borrowed_master == -1){
-			message[msg_size++] = cluster_position;
-		} else {
-			message[msg_size++] = task_ptr->borrowed_master;
-		}
-		//Puts("Task "); Puts(itoa(task_ptr->id)); Puts(" to cluster "); Puts(itoh(message[msg_size-1])); Puts("\n");
-	}
-	SendService(global_task_ID, message, msg_size);
-	Puts("APP_ALLOCATED sent\n\n");*/
 
 }
 
@@ -409,9 +375,9 @@ void main(){
 	init_message_slots();
 	initialize_applications();
 	init_reclustering();
-	initialize();
+	initialize_MA_task();
 
-	unsigned int data_message[MAX_MAPPING_MSG];
+	unsigned int data_message[MAX_MANAG_MSG_SIZE];
 
 	for(;;){
 		ReceiveService(data_message);
