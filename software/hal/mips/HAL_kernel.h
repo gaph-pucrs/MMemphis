@@ -21,7 +21,7 @@ extern unsigned int net_address;
 /*********** Hardware MMR addresses ***********/
 #define UART_WRITE        		0x20000000
 #define IRQ_MASK          		0x20000010
-//#define IRQ_STATUS        		0x20000020 - Only used in assembly
+#define IRQ_STATUS        		0x20000020
 #define TIME_SLICE       		0x20000060
 #define SYS_CALL		   		0x20000070
 #define END_SIM 		   		0x20000080
@@ -98,7 +98,8 @@ extern unsigned int net_address;
 
 /*MMR read functions*/
 #define HAL_get_tick() 					(*(volatile unsigned int*)(TICK_COUNTER))
-#define HAL_get_irq_status() 			(*(volatile unsigned int*)(IRQ_MASK))
+#define HAL_get_irq_mask() 				(*(volatile unsigned int*)(IRQ_MASK))
+#define HAL_get_irq_status() 			(*(volatile unsigned int*)(IRQ_STATUS))
 #define	HAL_get_core_addr()				(*(volatile unsigned int*)(NET_ADDRESS))
 #define HAL_is_send_active(subnet) 		((*(volatile unsigned int*)(DMNI_SEND_STATUS)) & (1 << subnet))
 #define HAL_is_receive_active(subnet) 	((*(volatile unsigned int*)(DMNI_RECEIVE_STATUS)) & (1 << subnet))

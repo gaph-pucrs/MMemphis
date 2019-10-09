@@ -139,7 +139,7 @@ unsigned int HAL_interrupt_mask_clear(unsigned int Mask) {
 
     unsigned int mask;
 
-    mask = HAL_get_irq_status() & ~Mask;
+    mask = HAL_get_irq_mask() & ~Mask;
     HAL_set_irq_mask(mask);
 
     return mask;
@@ -152,7 +152,7 @@ unsigned int HAL_interrupt_mask_set(unsigned int Mask) {
 
     unsigned int mask;
 
-    mask = HAL_get_irq_status() | Mask;
+    mask = HAL_get_irq_mask() | Mask;
     HAL_set_irq_mask(mask);
 
     return mask;

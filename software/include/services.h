@@ -62,7 +62,7 @@
 
 /*Management Application Services*/
 #define		INIT_I_AM_ALIVE					0x00000450
-#define		INIT_LOCAL						0x00000460
+#define		INITIALIZE_MA_TASK				0x00000460
 
 
 

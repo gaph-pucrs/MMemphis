@@ -63,7 +63,7 @@ void add_task_location(int task_ID, int proc){
 		if (task_location[i].id == -1){
 			task_location[i].id = task_ID;
 			task_location[i].proc_address = proc;
-			//puts("Add task location - task id "); puts(itoa(task_ID)); puts(" proc "); puts(itoh(proc)); puts("\n");
+			puts("Add task location - task id "); puts(itoa(task_ID)); puts(" proc "); puts(itoh(proc)); puts("\n");
 			return;
 		}
 	}

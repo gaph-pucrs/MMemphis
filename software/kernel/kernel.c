@@ -331,7 +331,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case NEW_APP:
 	case SERVICE_TASK_MESSAGE:
 	case INIT_I_AM_ALIVE:
-	case INIT_LOCAL:
+	case INITIALIZE_MA_TASK:
 	case LOAN_PROCESSOR_REQUEST:
 	case LOAN_PROCESSOR_DELIVERY:
 	case LOAN_PROCESSOR_RELEASE:

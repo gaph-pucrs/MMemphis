@@ -97,7 +97,7 @@ HAL_interruption:
         lw      $4,0x20($5)     		 # IRQ_STATUS - Get the status of interruption (address=0x20000020) storing in $4
         lw      $6,0x10($5)     		 # IRQ_MASK   - Get the status of mask (address=0x20000010) storing in $6
         jal     OS_interruption_handler  # Calls the OS_interruption_handler inside kernel
-        and     $4,$4,$6        		 # Creates the final value of first argument (status) of function  OS_interruption_handler
+        and     $4,$4,$6        		 # Creates the final value of first argument (status) of function  OS_interruption_handler by making an AND between IRQ and IRQ_MASK
         # Every jump in MIPS execute the always execute the instruction above jump. Some cases the compiler puts a nop after a jump. In this case the space of nop was reused to execute a usefull instruction
 
 ####################################################

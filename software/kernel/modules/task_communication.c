@@ -20,7 +20,8 @@
 #include "enforcer_migration.h"
 #include "enforcer_sdn.h"
 
-#define DEBUG_USER_COMM	0
+#define DEBUG_USER_COMM		0
+#define	DEBUG_SERVICE_COMM	0
 
 
 MessageRequest message_request[REQUEST_SIZE];	//!< message request array
@@ -601,6 +602,7 @@ void send_service_to_MA(int consumer_task, unsigned int targetPE, unsigned int *
 
 	p->msg_lenght = msg_size;
 
+	//puts("Sending service to task id "); puts(itoa(consumer_task)); puts(" at PE "); puts(itoh(targetPE)); puts("\n");
 
 	send_packet(p, (unsigned int) src_message, msg_size);
 
@@ -615,6 +617,8 @@ void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
 
 	consumer_tcb_ptr = searchTCB(consumer_task);
 
+	//putsv("Service message received - consumer ", consumer_task);
+
 	//Por esse motivo cada execução de uma MA task nunca pode ser interrompida
 	while (consumer_tcb_ptr->recv_buffer == 0 || consumer_tcb_ptr->scheduling_ptr->waiting_msg == 0){
 		puts("ERROR message delivery send to an invalid producer\n");
@@ -623,8 +627,6 @@ void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
 	DMNI_read_data(consumer_tcb_ptr->recv_buffer, msg_size);
 
 	consumer_tcb_ptr->recv_buffer = 0;
-
-	//puts("LOCAL TASK FEEDED2\n");
 
 	HAL_release_waiting_task(consumer_tcb_ptr);
 
@@ -639,9 +641,12 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 	unsigned int * prod_data, * cons_data;
 
 	//Scheduler after syscall because the producer cannot send the message
-	HAL_enable_scheduler_after_syscall();
+	//HAL_enable_scheduler_after_syscall();
 
 	if (HAL_is_send_active(PS_SUBNET)){
+#if DEBUG_SERVICE_COMM
+		puts("send active\n");
+#endif
 		return 0;
 	}
 
@@ -649,12 +654,19 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 	appID = producer_task >> 8;
 	consumer_task = (appID << 8) | consumer_task;
 
+#if DEBUG_SERVICE_COMM
+	puts("\nSEND SERVICE MSG - prod: "); puts(itoa(producer_task)); putsv(" cons ", consumer_task);
+#endif
+
 	consumer_PE = get_task_location(consumer_task);
 
 	//Test if the consumer task is not allocated
 	if (consumer_PE == -1){
 		//Task is blocked until its a TASK_RELEASE packet
 		running_task->scheduling_ptr->status = BLOCKED;
+#if DEBUG_SERVICE_COMM
+		puts("Consumer PE -1 - return 0\n");
+#endif
 		return 0;
 	}
 
@@ -664,15 +676,18 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 
 		//This mean that task is with a message pending to handle, set Send to sleep
 		if (consumer_tcb_ptr->recv_buffer == 0){
-			//Set the producer as waiting task
-			//Return zero because Send cannot be performed, Send not enter in waiting because there is not a message_request to wakeup it
+
+			//Schedules another task because send cannot be performed
 			HAL_enable_scheduler_after_syscall();
 
+#if DEBUG_SERVICE_COMM
+			puts("END SEN - Message NOT found - local message\n");
+#endif
+
+			//Return zero because Send cannot be performed
 			return 0;
 
 		} else { //If the local buffer is valid writes on it
-
-			//puts("Escrita local: send_MA\n");
 
 			//Get the addresses
 			prod_data = (unsigned int *) (running_task->offset | msg_addr);
@@ -689,6 +704,10 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 			//Release consumer to run
 			HAL_release_waiting_task(consumer_tcb_ptr);
 
+#if DEBUG_SERVICE_COMM
+			puts("END SEN - Message found - Write local message\n");
+#endif
+
 			return 1;
 		}
 
@@ -696,6 +715,10 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 	} else { //If consumer is in a remote PE then send the data throught the network
 
 		prod_data = (unsigned int *) (running_task->offset | msg_addr);
+
+#if DEBUG_SERVICE_COMM
+			puts("END SEN - Message found - send message delivery\n");
+#endif
 
 		send_service_to_MA(consumer_task, consumer_PE, prod_data, msg_size);
 

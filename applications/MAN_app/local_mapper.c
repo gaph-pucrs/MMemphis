@@ -10,12 +10,27 @@
 #include "mapping_includes/local_mapper/reclustering.h"
 #include "mapping_includes/local_mapper/resoucer_controller.h"
 
-void initialize_ids(unsigned int * msg){
+void initialize_local_mapper(unsigned int * msg){
 
-	int msg_index;
-	unsigned int id, loc;
+	unsigned int max_ma_tasks;
+	unsigned int task_id, proc_addr;
 
-	cluster_position =  msg[1];
+	Puts("\nInitialize local mapper\n");
+	Puts("Task ID: "); Puts(itoa(msg[1])); Puts("\n");
+	Puts("Offset ID: "); Puts(itoa(msg[2])); Puts("\n");
+	Puts("MAX_MA_TASKS: "); Puts(itoa(msg[3])); Puts("\n");
+
+	max_ma_tasks = msg[3];
+
+	for(int i=0; i<max_ma_tasks; i++){
+		task_id = msg[i+4] >> 16;
+		proc_addr = msg[i+4] & 0xFFFF;
+		Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(proc_addr)); Puts("\n");
+	}
+
+	return;
+
+	/*cluster_position =  msg[1];
 	cluster_x_offset = (cluster_position >> 8) * XCLUSTER;
 	cluster_y_offset = (cluster_position & 0xFF) * YCLUSTER;
 
@@ -45,7 +60,7 @@ void initialize_ids(unsigned int * msg){
 	Puts("Local mapper initialized by global mapper, address = "); Puts(itoh(cluster_position)); Puts("\n");
 	Puts("Cluster position: "); Puts(itoh(cluster_position)); Puts("\n");
 	Puts("Cluster x offset: "); Puts(itoa(cluster_x_offset)); Puts("\n");
-	Puts("Cluster y offset: "); Puts(itoa(cluster_y_offset)); Puts("\n");
+	Puts("Cluster y offset: "); Puts(itoa(cluster_y_offset)); Puts("\n");*/
 }
 
 /** Assembles and sends a APP_ALLOCATION_REQUEST packet to the global master
@@ -337,8 +352,8 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 void handle_message(unsigned int * data_msg){
 
 	switch (data_msg[0]) {
-		case INIT_LOCAL:
-			initialize_ids(data_msg);
+		case INITIALIZE_MA_TASK:
+			initialize_local_mapper(data_msg);
 			break;
 		case NEW_APP:
 			handle_new_app(data_msg);

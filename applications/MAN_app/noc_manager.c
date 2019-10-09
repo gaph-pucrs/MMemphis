@@ -1365,6 +1365,28 @@ void handle_NI_status_request(unsigned int targetPE, unsigned int req_address){
 	send(req_address, message, 3);
 }
 
+void initialize_noc_manager(unsigned int * msg){
+
+	unsigned int max_ma_tasks;
+	unsigned int task_id, proc_addr;
+
+	Puts("\nInitialize NoC manager\n");
+	Puts("Task ID: "); Puts(itoa(msg[1])); Puts("\n");
+	Puts("Offset ID: "); Puts(itoa(msg[2])); Puts("\n");
+	Puts("MAX_MA_TASKS: "); Puts(itoa(msg[3])); Puts("\n");
+
+	max_ma_tasks = msg[3];
+
+	for(int i=0; i<max_ma_tasks; i++){
+		task_id = msg[i+4] >> 16;
+		proc_addr = msg[i+4] & 0xFFFF;
+		Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(proc_addr)); Puts("\n");
+	}
+
+	return;
+
+}
+
 
 int handle_packet(unsigned int * recv_message){
 
@@ -1432,6 +1454,9 @@ int handle_packet(unsigned int * recv_message){
 			break;
 		case GLOBAL_MODE_RELEASE_ACK:
 			handle_global_mode_release_ack(recv_message);
+			break;
+		case INITIALIZE_MA_TASK:
+			initialize_noc_manager(recv_message);
 			break;
 		default:
 			Puts("ERROR message not indentified\n");
@@ -1795,12 +1820,8 @@ int main(){
 #if SDN_DEBUG
     	//Puts("\n....Waiting receive.....\n");
 #endif
-    	if (IncomingPacket()){
-    						
-    		ReceiveService(data_message);
-    		handle_packet(data_message);
-    	}
-    	
+		ReceiveService(data_message);
+		handle_packet(data_message);
     	
     	switch (controller_status) {
 			case IDLE: //At IDLE search for global and local path request, as can be seen, the global path receive more priority since are checked first
