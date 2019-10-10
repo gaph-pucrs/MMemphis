@@ -48,6 +48,8 @@ typedef struct {
 
 volatile 		MangmtMessageSlot sdn_msg_slot1, sdn_msg_slot2;	//!<Slots to prevent memory writing while is sending a packet
 unsigned int 	global_task_ID = 0; 							//!< Stores the global mapper ID at task level
+unsigned int 	S_task_ID_offset = 0;								//!< Stores the offset of task IDs where tasks of same class of management starts
+unsigned int 	S_num_x_cluster = 0;
 
 
 unsigned int * get_message_slot() {
@@ -113,9 +115,17 @@ int conv_task_ID_to_cluster_addr(unsigned int task_id, unsigned int id_offset, u
 
 }
 
+void init_generic_send_comm(unsigned int offset, unsigned int cluster_x_width){
+
+	S_task_ID_offset = offset;
+	S_num_x_cluster = (XDIMENSION / cluster_x_width);
+
+	Puts("Generic send comm intialized\nS_task_ID_offset: "); Puts(itoa(S_task_ID_offset)); Puts("\nS_num_x_cluster: "); Puts(itoa(S_num_x_cluster)); Puts("\n");
+}
 
 /** This function abstract the communication among local mappers converting destination (0x1, 1x0 ...) to task IDs
- * It only works between local mappers. To communcate with global mapper use the SendService
+ * It only works between the communication of task of the same class (betweeen two noc_manager tasks for example).
+ * To communicate with other MA tasks use the SendService
  */
 void send(unsigned int destination, unsigned int * msg, int msg_uint_size){
 	int tx, ty;
@@ -125,7 +135,7 @@ void send(unsigned int destination, unsigned int * msg, int msg_uint_size){
 
 	//Converts address in ID
 	//if (!(destination & TO_KERNEL))//Only change the destination if it is not to kernel
-	destination = (tx + ty*(XDIMENSION/XCLUSTER)) + 1; //PLus 1 because the global mapper uses ID 0
+	destination = tx + (ty*S_num_x_cluster) + S_task_ID_offset; //PLus 1 because the global mapper uses ID 0
 
 	//Puts("Package sent to ID: "); Puts(itoa(destination)); Puts("\n");
 	SendService(destination, msg, msg_uint_size);

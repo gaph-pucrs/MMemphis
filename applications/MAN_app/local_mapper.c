@@ -59,6 +59,8 @@ void initialize_local_mapper(unsigned int * msg){
 
 	//Puts("Cluster addr: "); Puts(itoh(conv_task_ID_to_cluster_addr(task_id, id_offset, SDN_X_CLUSTER_NUM))); Puts("\n");
 
+	init_generic_send_comm(id_offset, MAPPING_XCLUSTER);
+
 	Puts("Local Mapper initialized!!!!!!\n\n");
 }
 

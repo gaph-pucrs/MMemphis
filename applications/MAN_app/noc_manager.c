@@ -1395,6 +1395,8 @@ void initialize_noc_manager(unsigned int * msg){
 	//Initialize things related to SDN management
 	init_cluster_address_offset(cluster_id);
 
+	init_generic_send_comm(id_offset, SDN_XCLUSTER);
+
 	Puts("NoC Manager initialized!!!!!!\n\n");
 }
 

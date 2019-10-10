@@ -12,5 +12,8 @@ How to add a new MA task
 Please implement the properly initialization of your MA task fullfilling this minimum step (you can observe the others initializiong funciton inside noc_manager):
   a) Create a loop that reads the ma_tasl_location (array sent by global mapper into the INITIALIZE_MA_TASK packet) and call the function AddTaskLocation for each task inside this array
   
+  
+ATTENTION: MA tasks of same class (for example, two SDN tasks) cannot share the same PE (this do not make sense and also do not works because can easily create a deadlock since MA tasks use raw send and receives)
+
 This is all, hopefully your MA task will works fine after these steps.
 Any question contact marcelo.ruaro@acad.pucrs.br or fernando.moraes@pucrs.br

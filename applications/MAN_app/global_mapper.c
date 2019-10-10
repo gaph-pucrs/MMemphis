@@ -234,6 +234,37 @@ void map_management_tasks(){
 	Puts("\nEnd map_management_tasks\n\n");
 }
 
+/*void request_path(int source, int target){
+	int coordinator_addr;
+	int src_x, src_y, tgt_x, tgt_y, nc_x, nc_y;
+	unsigned int * send_message = get_message_slot();
+
+	src_x = source >> 8;
+	src_y = source & 0xFF;
+	tgt_x = target >> 8;
+	tgt_y = target & 0xFF;
+
+
+	nc_x = src_x / XCLUSTER;
+	nc_y = src_y / YCLUSTER;
+
+	coordinator_addr = (nc_x >> 8) | nc_y;
+
+	Puts("\nController addr is "); Puts(itoa(coordinator_addr >> 8)); Puts("x"); Puts(itoa(coordinator_addr & 0xFF));
+
+	send_message[0] = PATH_CONNECTION_REQUEST;
+	send_message[1] = source; //source
+	send_message[2] = target; //target
+	send_message[3] = GetMyID();
+	send_message[4] = 1;
+
+	send(coordinator_addr, send_message, 5);
+
+	Puts("\nPath request from "); Puts(itoa(src_x)); Puts("x"); Puts(itoa(src_y)); Puts(" -> "); Puts(itoa(tgt_x)); Puts("x"); Puts(itoa(tgt_y)); Puts(" sucessifully sent...\n\n");
+	putsv("Start time: ", GetTick());
+}*/
+
+
 void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 	static unsigned int received_i_am_alive_counter = 0;
 	unsigned int * message;
@@ -303,6 +334,8 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 		Puts("Message sent\n");
 
 		while(!NoCSendFree());
+
+		//request_path(0x202, 0x000);
 
 	}
 
