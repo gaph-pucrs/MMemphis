@@ -18,10 +18,8 @@
 #define INCOMINGPACKET	15
 #define	GETNETADDRESS	16
 #define	ADDTASKLOCATION	17
-#define REMOVETASKLOCATION 18
-#define	GETTASKLOCATION	19
-#define SETMYID		 	20
-#define SETTASKRELEASE	21
+#define	GETTASKLOCATION	18
+#define SETTASKRELEASE	19
 
 
 //Services definition
@@ -45,9 +43,7 @@ extern int SystemCall();
 #define IncomingPacket()					SystemCall(INCOMINGPACKET, 	0, 0, 0)
 #define GetNetAddress()						SystemCall(GETNETADDRESS, 	0, 0, 0)
 #define AddTaskLocation(task_id, location)	SystemCall(ADDTASKLOCATION, task_id, location, 0)
-#define RemoveTaskLocation(task_id)			SystemCall(REMOVETASKLOCATION, task_id, 0, 0)
 #define GetTaskLocation(task_id)			SystemCall(GETTASKLOCATION, task_id, 0, 0)
-#define SetMyID(new_id)						SystemCall(SETMYID, new_id, 0, 0)
 #define SetTaskRelease(message, size)		SystemCall(SETTASKRELEASE, message, size, 0)
 
 

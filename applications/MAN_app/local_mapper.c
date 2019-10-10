@@ -13,54 +13,53 @@
 void initialize_local_mapper(unsigned int * msg){
 
 	unsigned int max_ma_tasks;
-	unsigned int task_id, proc_addr;
+	unsigned int task_id, proc_addr, id_offset;
+	unsigned int x_aux, y_aux;
 
-	Puts("\nInitialize local mapper\n");
-	Puts("Task ID: "); Puts(itoa(msg[1])); Puts("\n");
-	Puts("Offset ID: "); Puts(itoa(msg[2])); Puts("\n");
+	task_id = msg[1];
+	id_offset = msg[2];
+
+	my_task_ID = task_id;
+
+	Puts("\n ************ Initialize Local Mapper *********** \n");
+	Puts("Task ID: "); Puts(itoa(task_id)); Puts("\n");
+	Puts("Offset ID: "); Puts(itoa(id_offset)); Puts("\n");
 	Puts("MAX_MA_TASKS: "); Puts(itoa(msg[3])); Puts("\n");
 
-	max_ma_tasks = msg[3];
+	cluster_position = conv_task_ID_to_cluster_addr(task_id, id_offset, MAPPING_X_CLUSTER_NUM);
+	cluster_x_offset = (cluster_position >> 8) * MAPPING_XCLUSTER;
+	cluster_y_offset = (cluster_position & 0xFF) * MAPPING_YCLUSTER;
 
-	for(int i=0; i<max_ma_tasks; i++){
-		task_id = msg[i+4] >> 16;
-		proc_addr = msg[i+4] & 0xFFFF;
-		Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(proc_addr)); Puts("\n");
-	}
-
-	return;
-
-	/*cluster_position =  msg[1];
-	cluster_x_offset = (cluster_position >> 8) * XCLUSTER;
-	cluster_y_offset = (cluster_position & 0xFF) * YCLUSTER;
+	Puts("Cluster position: "); Puts(itoh(cluster_position)); Puts("\n");
+	Puts("Cluster x offset: "); Puts(itoa(cluster_x_offset)); Puts("\n");
+	Puts("Cluster y offset: "); Puts(itoa(cluster_y_offset)); Puts("\n");
 
 	init_procesors();
 
-	my_task_ID = position_to_ID(cluster_position);
+	max_ma_tasks = msg[3];
 
-	//Registers the page using to the own task
-	page_used(net_address, my_task_ID);
+	//Set the proper location of all MA tasks
+	for(int i=0; i<max_ma_tasks; i++){
+		task_id = msg[i+4] >> 16;
+		proc_addr = msg[i+4] & 0xFFFF;
+		//Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(proc_addr)); Puts("\n");
+		AddTaskLocation(task_id, proc_addr);
 
-	if (cluster_position == 0x000){
-		//Sets page used for the global manager
-		page_used(0, 0);
+		//Gets the cluster of the processor and if the cluster is the current cluster, update the page used
+		x_aux = proc_addr >> 8;
+		y_aux = proc_addr & 0xFF;
+
+		x_aux = x_aux / MAPPING_XCLUSTER;
+		y_aux = y_aux / MAPPING_YCLUSTER;
+
+		if ( ((x_aux << 8) | y_aux) == cluster_position){
+			page_used(proc_addr, task_id);
+		}
 	}
 
-	msg_index = 2;
+	//Puts("Cluster addr: "); Puts(itoh(conv_task_ID_to_cluster_addr(task_id, id_offset, SDN_X_CLUSTER_NUM))); Puts("\n");
 
-
-	for(int i=0; i<=CLUSTER_NUMBER; i++){
-		id = msg[msg_index++];
-		loc = msg[msg_index++];
-		//putsv("Addint task ", id);
-		AddTaskLocation(id, loc);
-	}
-
-	SetMyID(my_task_ID);
-	Puts("Local mapper initialized by global mapper, address = "); Puts(itoh(cluster_position)); Puts("\n");
-	Puts("Cluster position: "); Puts(itoh(cluster_position)); Puts("\n");
-	Puts("Cluster x offset: "); Puts(itoa(cluster_x_offset)); Puts("\n");
-	Puts("Cluster y offset: "); Puts(itoa(cluster_y_offset)); Puts("\n");*/
+	Puts("Local Mapper initialized!!!!!!\n\n");
 }
 
 /** Assembles and sends a APP_ALLOCATION_REQUEST packet to the global master
@@ -86,13 +85,13 @@ void send_app_allocation_request(Application * app_ptr){
 		while(!NoCSendFree());
 
 		message[msg_size++] = APP_INJECTOR; //Destination
-		message[msg_size++] = 4; //Packet size
+		message[msg_size++] = 5; //Packet size
 		message[msg_size++] = APP_ALLOCATION_REQUEST; //Service
 		message[msg_size++] = task_ptr->id; //Repository task ID
 		message[msg_size++] = master_addr; //Master address
 		message[msg_size++] = task_ptr->allocated_proc;
+		message[msg_size++] = 0; //Real task id, when zero means to injector to ignore this flit. Otherwise, force the task ID to assume the specified ID value
 
-		//send_task_allocation_message(task_ptr->id, task_ptr->allocated_proc, master_addr);
 	}
 	//Send message to Peripheral
 	SendRaw(message, msg_size);
@@ -387,6 +386,7 @@ void main(){
 
 	Echo("Initializing Local Mapper\n");
 	RequestServiceMode();
+	net_address = GetNetAddress();
 	init_message_slots();
 	initialize_applications();
 	init_reclustering();

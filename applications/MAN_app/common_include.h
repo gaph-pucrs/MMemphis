@@ -85,17 +85,32 @@ void initialize_MA_task(){
 	SendService(global_task_ID, message, 3);
 }
 
-
-int position_to_ID(unsigned int pos){
+/** Receives a cluster position 1x1, 2x1 e gives the index of the cluster
+ *
+ */
+int conv_cluster_addr_to_task_ID(unsigned int cluster_addr, unsigned int x_cluster_num){
 	int tx, ty;
 
-	tx = pos >> 8;
-	ty = pos & 0xFF;
+	tx = cluster_addr >> 8;
+	ty = cluster_addr & 0xFF;
 
 	//Converts address in ID
-	pos = (tx + ty*(XDIMENSION/XCLUSTER)) + 1; //PLus 1 because the global mapper uses ID 0
+	cluster_addr = (tx + ty*x_cluster_num) + 1; //PLus 1 because the global mapper uses ID 0
 
-	return pos;
+	return cluster_addr;
+}
+
+int conv_task_ID_to_cluster_addr(unsigned int task_id, unsigned int id_offset, unsigned int x_cluster_num){
+
+	int tx, ty;
+
+	task_id = task_id - id_offset;
+
+	ty = task_id / x_cluster_num;
+	tx = task_id - (ty*x_cluster_num);
+
+	return ((tx << 8) | ty);
+
 }
 
 

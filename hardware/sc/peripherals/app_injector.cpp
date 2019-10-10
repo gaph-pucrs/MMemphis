@@ -57,7 +57,7 @@ string app_injector::get_app_repo_path(unsigned int app_id){
 
 /**Assembles the packet that load the a generic task to the system
  */
-void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned int master_ID, unsigned int allocated_proc){
+void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned int real_task_id, unsigned int master_ID, unsigned int allocated_proc){
 
 	string line, path;
 	unsigned int  task_number, code_size, task_line, code_line, current_line;
@@ -66,6 +66,14 @@ void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned in
 
 	app_id = full_task_id >> 8;
 	task_id = full_task_id & 0xFF;
+
+	if(real_task_id != 0){
+		full_task_id = real_task_id;
+		//cout << "Real task ID updated to " << real_task_id << endl;
+	}
+
+	cout << "Loading task ID " << full_task_id << " to PE " << (allocated_proc >> 8) << "x" << (allocated_proc & 0xFF) << endl;
+
 
 	path = get_app_repo_path(app_id);
 
@@ -143,7 +151,7 @@ void app_injector::bootloader(){
 			/*Sends the Global Mapper App to PE 0 */
 			case INITIALIZE:
 				/*Load the boot task in the packet array*/
-				task_allocation_loader(0,0,0);
+				task_allocation_loader(0,0,0,0);
 				/*This state signals to send_packet to start transmission*/
 				EA_bootloader = WAIT_SEND_BOOT;
 				break;
@@ -185,7 +193,7 @@ void app_injector::monitor_new_app(){
 		req_app_start_time = 0;
 		req_app_task_number = 0;
 		req_app_cluster_id = 0;
-		line_counter = 6; //6 is the number of lines after MAN_app_application
+		line_counter = MAN_APP_DESCRIPTOR_SIZE; //6 is the number of lines after MAN_app_application
 
 	} else if (clock.posedge()){
 
@@ -403,6 +411,7 @@ void app_injector::receive_packet(){
 		req_task_id = 0;
 		req_task_allocated_proc = 0;
 		req_task_master_ID = 0;
+		req_task_id_real = 0;
 		sig_credit_out.write(1);
 	} else {
 
@@ -493,13 +502,15 @@ void app_injector::receive_packet(){
 						case 6:
 							req_task_allocated_proc = data_in.read();
 							break;
+						case 7:
+							req_task_id_real = data_in.read();
+							break;
 						default:
 							break;
 					}
 
 					if (payload_size == 0){
-						task_allocation_loader(req_task_id, req_task_master_ID, req_task_allocated_proc);
-						cout << "Loading task ID " << req_task_id << " to PE " << (req_task_allocated_proc >> 8) << "x" << (req_task_allocated_proc & 0xFF) << endl;
+						task_allocation_loader(req_task_id, req_task_id_real, req_task_master_ID, req_task_allocated_proc);
 						EA_receive_packet = WAITING_SEND_TASK_ALLOCATION;
 					}
 				}

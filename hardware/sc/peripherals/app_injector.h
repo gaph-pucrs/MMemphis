@@ -17,11 +17,12 @@
 
 using namespace std;
 
-#define TAM_FLIT 				32
-#define CONSTANT_PACKET_SIZE	13 //Constant ServiceHeader packet size (more info inside software/modules/packet.h)
-#define MPE_ADDR				0 //PE address of the manager PE
-#define TASK_NUMBER_INDEX		8 //Index where is the app task number information within packet APP_REQ_ACK
-#define TASK_DESCRIPTOR_SIZE	6//6 is number of lines to represent a task description. Keeps this number equal to build_env/scripts/app_builder.py
+#define TAM_FLIT 				32 	//Size of the Packet-Swtiching NoC flit
+#define CONSTANT_PACKET_SIZE	13 	//Constant ServiceHeader packet size (more info inside software/modules/packet.h)
+#define MPE_ADDR				0 	//PE address of the manager PE
+#define TASK_NUMBER_INDEX		8 	//Index where is the app task number information within packet APP_REQ_ACK
+#define TASK_DESCRIPTOR_SIZE	6	//6 is number of lines to represent a task description. Keeps this number equal to build_env/scripts/app_builder.py
+#define MAN_APP_DESCRIPTOR_SIZE	7 	//This number represents the number of lines that MAN_app has into the file my_scenario/appstart.txt. If you include a new MAN_app task, please increase this value in +1
 
 
 typedef sc_uint<TAM_FLIT > regflit;
@@ -54,7 +55,7 @@ SC_MODULE(app_injector){
 
 	//Functions;
 	void app_descriptor_loader();
-	void task_allocation_loader(unsigned int, unsigned int, unsigned int);
+	void task_allocation_loader(unsigned int, unsigned int, unsigned int, unsigned int);
 	string get_app_repo_path(unsigned int);
 
 	//Sequential logic
@@ -97,6 +98,7 @@ SC_MODULE(app_injector){
 	unsigned int req_task_id;
 	unsigned int req_task_allocated_proc;
 	unsigned int req_task_master_ID;
+	unsigned int req_task_id_real;
 
 	//Used inside EA_send_packet
 	unsigned int packet_size;

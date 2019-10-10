@@ -202,21 +202,9 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 			//puts("Added task id "); puts(itoa(arg0)); puts(" at loc "); puts(itoh(arg1)); puts("\n");
 			break;
 
-		case REMOVETASKLOCATION:
-
-			remove_task_location(arg0);
-
-			break;
-
 		case GETTASKLOCATION:
 
 			return get_task_location(arg0);
-
-		case SETMYID:
-
-			current->id = arg0;
-			//putsv("Task id changed to: ", current->id);
-			break;
 
 		case SETTASKRELEASE:
 

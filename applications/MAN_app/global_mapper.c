@@ -19,20 +19,21 @@ unsigned char	map_ID_offset;
 int ma_tasks_location[MAX_MA_TASKS];
 
 /*Common Useful functions*/
-void send_task_allocation_message(unsigned int task_id, unsigned int allocated_proc, unsigned int master_addr){
+void send_task_allocation_message(unsigned int task_repo_id, unsigned int real_task_id, unsigned int allocated_proc, unsigned int master_addr){
 
 	unsigned int * message;
 
 	message = get_message_slot();
 	message[0] = APP_INJECTOR; //Destination
-	message[1] = 4; //Packet size
+	message[1] = 5; //Packet size
 	message[2] = APP_ALLOCATION_REQUEST; //Service
-	message[3] = task_id; //Repository task ID
+	message[3] = task_repo_id; //Repository task ID
 	message[4] = master_addr; //Master address
 	message[5] = allocated_proc;
+	message[6] = real_task_id; //Real task id, when zero means to injector to ignore this flit. Otherwise, force the task ID to assume the specified ID value
 
 	//Send message to Peripheral
-	SendRaw(message, 6);
+	SendRaw(message, 7);
 
 	while(!NoCSendFree());
 
@@ -74,15 +75,11 @@ int get_local_mapper_index(unsigned int pos){
 
 void map_management_tasks(){
 
-	//Create an array with the tasks location.
-	//Map task to PE
-	//Fills the array
-	//Format of task localtion  task_class | task_id  ||  proc
 	int ma_task_index = 0;
 	int cluster_index;
 	int task_loc_aux;
 	int x_aux, y_aux;
-	int task_class, task_id;
+	int task_id;
 	short int PE_usage[XDIMENSION][YDIMENSION];
 
 	Puts("\nInitializing map_management_tasks\n\n");
@@ -104,8 +101,8 @@ void map_management_tasks(){
 	task_id = 1; //Initializes task ID with 1 since task ID 0 is the GM
 
 	//**************************** Instantiate the Mapping MA tasks ********************************************
-	map_ID_offset = 0;
-	Puts("\nStarting MAPPING MA instatiation\n");
+	map_ID_offset = 1;
+	Puts("\nStarting MAPPING MA instantiation\n");
 	for(int y=0; y<MAPPING_Y_CLUSTER_NUM; y++){
 		for(int x=0; x<MAPPING_X_CLUSTER_NUM; x++){
 
@@ -131,7 +128,7 @@ void map_management_tasks(){
 			task_loc_aux = (x_aux << 8) | y_aux;
 			//Request to the injector to load the local_mapper inside the PEs
 			//Task ID of local mappers are always 1
-			send_task_allocation_message(MAPPING_TASK_REPO_ID, task_loc_aux, 0);
+			send_task_allocation_message(MAPPING_TASK_REPO_ID, task_id, task_loc_aux, 0);
 
 			//Remove one resource from the selected PE
 			PE_usage[x_aux][y_aux]--;
@@ -157,7 +154,7 @@ void map_management_tasks(){
 	}
 
 	//**************************** Instantiate the SDN MA asks *****************************************
-	Puts("\nStarting SDN MA instatiation\n");
+	Puts("\nStarting SDN MA instantiation\n");
 	sdn_ID_offset = task_id;
 	for(int y=0; y<SDN_Y_CLUSTER_NUM; y++){
 		for(int x=0; x<SDN_X_CLUSTER_NUM; x++){
@@ -182,9 +179,9 @@ void map_management_tasks(){
 			}
 
 			task_loc_aux = (x_aux << 8) | y_aux;
+
 			//Request to the injector to load the local_mapper inside the PEs
-			//Task ID of local mappers are always 1
-			send_task_allocation_message(SDN_TASK_REPO_ID, task_loc_aux, 0);
+			send_task_allocation_message(SDN_TASK_REPO_ID, task_id, task_loc_aux, 0);
 
 			//Remove one resource from the selected PE
 			PE_usage[x_aux][y_aux]--;
@@ -208,89 +205,69 @@ void map_management_tasks(){
 		}
 	}
 
+	/* Implement your new MA task here
+	Puts("\nStarting MY MA instantiation\n");
+	Please follow the patters of SDN tasks, you need to:
+   	1. Create a macro MY_MA_TASK_REPO_ID. This macro must be in accordance with the appstart_debug.txt, i.e., as task local_mapper is the first in the list from the top to bottom, it receives the value of 1, SDN is the second, them it receives the value of 2, your MA task need to receive the appropriated value. Please check the number for every MA task since the scripts can scramble the sorting when you add a new task
+	2. Set the ID_offset for your MA task based on the current task_id.
+	3. Find a PE to map your MA task
+	4. Request to the injector to load the MA task inside the PE
+	5. Remove one resource from the selected PE
+	6. Allocate cluster resources for your MA task
+	7. Fills the ma_tasks_location with the ID and PE address (the location) of your new MA task
+	8. Increment the task_id counter
+	9. Decrement the total_mpsoc_resources resources
+	 */
 
 
 	putsv("\ntotal_mpsoc_resources: ", total_mpsoc_resources);
 
 	//Adiciona a si mesmo na tabela da task location
-	AddTaskLocation(0, 0);
-
-	//Verificar dimensoes do cluster
-	//Requisitar app locais informando o seu ID no INIT
 
 	for(int i=0; i<MAX_MA_TASKS;i++){
-		Puts("Task MA "); Puts(itoa(ma_tasks_location[i] >> 16)); Puts(" allocated at "); Puts(itoh(ma_tasks_location[i] & 0xFFFF)); Puts("\n");
+		task_id = ma_tasks_location[i] >> 16;
+		task_loc_aux = ma_tasks_location[i] & 0xFFFF;
+		Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(task_loc_aux)); Puts("\n");
+		AddTaskLocation(task_id, task_loc_aux);
 	}
 
 	Puts("\nEnd map_management_tasks\n\n");
 }
 
-
-
-void handle_i_am_alive(unsigned int source_addr, unsigned int repo_id_class){
+void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 	static unsigned int received_i_am_alive_counter = 0;
-	int addr_aux, task_id;
 	unsigned int * message;
 	unsigned int msg_size;
 	unsigned int offset_id_aux;
 
-	//Puts("\nhandle_i_am_alive from "); Puts(itoh(source_addr)); Puts(" repo id class "); Puts(itoa(repo_id_class)); Puts("\n");
+	//Puts("\nhandle_i_am_alive from "); Puts(itoh(source_addr)); Puts(" task id "); Puts(itoa(task_id)); Puts("\n");
 
 	received_i_am_alive_counter++;
 
-	//Discovery the MA task class
-	switch (repo_id_class) {
-		case MAPPING_TASK_REPO_ID:
 
-			task_id = -1;
+	if (task_id >= map_ID_offset && task_id < (map_ID_offset+MAX_MAPPING_TASKS)){
 
-			for(int i=map_ID_offset; i<(map_ID_offset+MAX_MAPPING_TASKS);i++){
+		Puts("Mapping task ID: "); Puts(itoa(task_id)); Puts("\tinitialized at proc "); Puts(itoh(source_addr)); Puts("\n");
 
-				addr_aux = ma_tasks_location[i] & 0xFFFF;
+		offset_id_aux = (unsigned int) map_ID_offset;
 
-				//Test when the mapping
-				if ( addr_aux == source_addr){
+	} else if (task_id >= sdn_ID_offset && task_id < (sdn_ID_offset+MAX_SDN_TASKS)){
 
-					task_id = ma_tasks_location[i] >> 16;
+		Puts("SDN task ID: "); Puts(itoa(task_id)); Puts("\tinitialized at proc "); Puts(itoh(source_addr)); Puts("\n");
 
-					Puts("Mapping task ID: "); Puts(itoa(task_id)); Puts("\tinitialized at proc "); Puts(itoh(source_addr)); Puts("\n");
+		offset_id_aux = (unsigned int) sdn_ID_offset;
 
-					break;
-
-				}
-
-			}
-			while(task_id == -1) Puts("ERROR: task ID should be valid\n");
-
-			offset_id_aux = (unsigned int) map_ID_offset;
-
-		break;
-		case SDN_TASK_REPO_ID:
-
-			task_id = -1;
-
-			for(int i=sdn_ID_offset; i<(sdn_ID_offset+MAX_SDN_TASKS);i++){
-
-				addr_aux = ma_tasks_location[i] & 0xFFFF;
-
-				//Test when the mapping
-				if ( addr_aux == source_addr){
-
-					task_id = ma_tasks_location[i] >> 16;
-
-					Puts("SDN task ID: "); Puts(itoa(task_id)); Puts("\tinitialized at proc "); Puts(itoh(source_addr)); Puts("\n");
-
-					break;
-
-				}
-
-			}
-			while(task_id == -1) Puts("ERROR: task ID should be valid\n");
-
-			offset_id_aux = (unsigned int) sdn_ID_offset;
-
-			break;
+		/* Add the following code to setup the offset_id_aux according to your task
+	} else if (task_id >= my_ID_offset && task_id < (my_ID_offset+MAX_MY_MA_TASKS)){
+		offset_id_aux = (unsigned int) myMA_ID_offset;
 	}
+		 */
+
+	} else {
+		Puts("Task class not identified\n");
+		while(1);
+	}
+
 
 	//Send the initialization packet
 	msg_size = 0;
@@ -305,30 +282,16 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int repo_id_class){
 		message[msg_size++] = ma_tasks_location[i];
 	}
 
-	//Puts("Sending init "); Puts(itoh(source_addr)); Puts(" task id "); Puts(itoa(task_id)); Puts("\n");
-
-	//Temporary set the source addr of that task to allows the kernel to find the right processor for it
-	AddTaskLocation(repo_id_class, source_addr);
-
-	SendService(repo_id_class, message, msg_size);
+	SendService(task_id, message, msg_size);
 
 	while(!NoCSendFree());
 
-	//Register the task id properly at the location table
-	AddTaskLocation(task_id, source_addr);
 	Puts("Initialize MA task sent\n");
-
-
 
 
 	if (received_i_am_alive_counter == (MAX_MA_TASKS-1)){ //Minus 1 due the global mapper
 
 		Puts("Initializing MA complete\n");
-		for(int i=0; i<MAX_MA_TASKS;i++){
-			task_id = ma_tasks_location[i] >> 16;
-			addr_aux = ma_tasks_location[i] & 0xFFFF;
-			AddTaskLocation(task_id, addr_aux);
-		}
 
 		/*Sending MAPPING COMPLETE to APP INJECTOR*/
 		message = get_message_slot();
@@ -336,6 +299,10 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int repo_id_class){
 		message[1] = 2;//Payload should be 1, but is 2 in order to turn around a corner case in traffic monitor of Deloream for packets with payload 1
 		message[2] = APP_MAPPING_COMPLETE;
 		SendRaw(message, 4);
+
+		Puts("Message sent\n");
+
+		while(!NoCSendFree());
 
 	}
 
@@ -379,7 +346,7 @@ void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_numbe
 	total_mpsoc_resources -= app_task_number;
 	putsv("AFTER - total_mpsoc_resources: ", total_mpsoc_resources);
 
-	cluster_loc = (app_cluster_id+1) << 16 | GetTaskLocation(app_cluster_id+1);
+	cluster_loc = (map_ID_offset+app_cluster_id) << 16 | GetTaskLocation(map_ID_offset+app_cluster_id);
 
 	//Puts("Cluster loc "); Puts(itoa(cluster_loc)); Puts("\n");
 
@@ -497,7 +464,7 @@ void main(){
 
 	RequestServiceMode();
 
-	Echo("Initializing Global Mapper\n");
+	Puts("Initializing Global Mapper\n");
 	init_message_slots();
 	intilize_clusters();
 	map_management_tasks();
@@ -517,6 +484,7 @@ void main(){
 	}
 
 	exit();
+
 }
 
 
