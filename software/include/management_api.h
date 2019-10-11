@@ -22,14 +22,7 @@
 #define SETTASKRELEASE	19
 
 
-//Services definition
-#define	PATH_CONNECTION_REQUEST		1000
-#define	PATH_CONNECTION_RELEASE		1001
-#define PATH_CONNECTION_ACK			1002
-#define	NI_STATUS_REQUEST			1003
-#define NI_STATUS_RESPONSE			1004
-
-//Kernel Mode addess
+//A flag TO_KERNEL faz com que o endereço seja enviado diretamente pro kernel
 #define	TO_KERNEL					0x10000
 
 extern int SystemCall();

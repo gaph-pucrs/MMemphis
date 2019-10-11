@@ -271,8 +271,6 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		if (is_another_task_running(p->task_ID >> 8) ){
 
-			remove_task_location(p->task_ID);
-
 			add_task_location(p->task_ID, p->allocated_processor);
 		}
 
@@ -317,12 +315,28 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case APP_ALLOCATED:
 	case NEW_APP_REQ:
 	case NEW_APP:
-	case SERVICE_TASK_MESSAGE:
 	case INIT_I_AM_ALIVE:
 	case INITIALIZE_MA_TASK:
 	case LOAN_PROCESSOR_REQUEST:
 	case LOAN_PROCESSOR_DELIVERY:
 	case LOAN_PROCESSOR_RELEASE:
+
+	case DETAILED_ROUTING_REQUEST:
+	case DETAILED_ROUTING_RESPONSE:
+	case TOKEN_REQUEST:
+	case TOKEN_RELEASE:
+	case TOKEN_GRANT:
+	case UPDATE_BORDER_REQUEST:
+	case UPDATE_BORDER_ACK:
+	case LOCAL_RELEASE_REQUEST:
+	case LOCAL_RELEASE_ACK:
+	case GLOBAL_MODE_RELEASE:
+	case GLOBAL_MODE_RELEASE_ACK:
+	case PATH_CONNECTION_REQUEST:
+	case PATH_CONNECTION_RELEASE:
+	case PATH_CONNECTION_ACK:
+	case NI_STATUS_REQUEST:
+	case NI_STATUS_RESPONSE:
 
 		handle_MA_message(p->consumer_task, p->msg_lenght);
 

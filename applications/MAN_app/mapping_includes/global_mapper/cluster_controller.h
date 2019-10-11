@@ -53,7 +53,7 @@ int search_cluster(int app_task_number) {
 	int selected_cluster = -1;
 	int freest_cluster = 0;
 
-	for (int i=0; i<MAPPING_CLUSTER_NUM; i++){
+	for (int i=0; i<MAX_MAPPING_TASKS; i++){
 
 		if (clusters[i].free_resources > freest_cluster){
 			selected_cluster = i;

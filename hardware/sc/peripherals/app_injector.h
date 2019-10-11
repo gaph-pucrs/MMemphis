@@ -33,7 +33,6 @@ typedef sc_uint<TAM_FLIT > regflit;
 #define		APP_REQ_ACK						0x00000300 //Mestre to Injector (carries cluster addr)
 #define		NEW_APP							0x00000150 //Injector to Mestre (carries App descriptor)
 #define 	APP_ALLOCATION_REQUEST			0x00000240 //Mestre to Injector (carries tasks properties and mapping)
-#define 	SERVICE_TASK_MESSAGE			0x00000350
 #define		APP_MAPPING_COMPLETE			0x00000440
 
 SC_MODULE(app_injector){

@@ -96,13 +96,17 @@ begin
       								SM_traffic_monitor <= Sservice;
       								
       			when Sservice =>
-      								service <= data_in;
-      								
-      								if data_in /= x"40" and data_in /= x"70" and data_in /= x"221" and
-      								 	data_in /= x"10" and data_in /= x"20" then
-      										SM_traffic_monitor <= cont_payload;
+      								if payload = 1 then --Only used to show graphically the CS_ROUTER_SETUP packet
+                    					service <= x"00001025";
+                     					SM_traffic_monitor <= cont_payload;
       								else
-      										SM_traffic_monitor <= task_allocation;
+	      								service <= data_in;
+	      								if data_in /= x"40" and data_in /= x"70" and data_in /= x"221" and
+	      								 	data_in /= x"10" and data_in /= x"20" then
+	      										SM_traffic_monitor <= cont_payload;
+	      								else
+	      									SM_traffic_monitor <= task_allocation;
+	      								end if;
       								end if;
       			
       			when task_allocation =>

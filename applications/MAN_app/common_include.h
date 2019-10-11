@@ -21,8 +21,7 @@
 #define MAPPING_YCLUSTER		YCLUSTER
 #define MAPPING_X_CLUSTER_NUM	(XDIMENSION/MAPPING_XCLUSTER)
 #define MAPPING_Y_CLUSTER_NUM	(YDIMENSION/MAPPING_YCLUSTER)
-#define MAPPING_CLUSTER_NUM		(MAPPING_X_CLUSTER_NUM*MAPPING_Y_CLUSTER_NUM)
-#define MAX_MAPPING_TASKS		(MAPPING_CLUSTER_NUM+1)//Plus one due global mapper
+#define MAX_MAPPING_TASKS		(MAPPING_X_CLUSTER_NUM*MAPPING_Y_CLUSTER_NUM)
 
 
 #define SDN_XCLUSTER			XCLUSTER
@@ -139,6 +138,38 @@ void send(unsigned int destination, unsigned int * msg, int msg_uint_size){
 
 	//Puts("Package sent to ID: "); Puts(itoa(destination)); Puts("\n");
 	SendService(destination, msg, msg_uint_size);
+}
+
+void request_SDN_path(int source_addr, int target_addr){
+	int coordinator_task_ID;
+	int src_x, src_y, nc_x, nc_y;
+	int sdn_offset;
+	unsigned int * send_message;
+
+	src_x = source_addr >> 8;
+	src_y = source_addr & 0xFF;
+
+
+	nc_x = src_x / SDN_XCLUSTER;
+	nc_y = src_y / SDN_YCLUSTER;
+
+	sdn_offset = 5;//TODO Please edit when you add a new MA task
+
+	coordinator_task_ID = nc_x + (nc_y*SDN_X_CLUSTER_NUM) + sdn_offset;
+
+	Puts("\nController addr is "); Puts(itoa(coordinator_task_ID)); Puts("\n");
+
+	send_message = get_message_slot();
+	send_message[0] = PATH_CONNECTION_REQUEST;
+	send_message[1] = source_addr; //source
+	send_message[2] = target_addr; //target
+	send_message[3] = target_addr;
+	send_message[4] = 1;
+
+	SendService(coordinator_task_ID, send_message, 5);
+
+	Puts("\nPath request from "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr)); Puts(" sucessifully sent...\n\n");
+	putsv("Start time: ", GetTick());
 }
 
 

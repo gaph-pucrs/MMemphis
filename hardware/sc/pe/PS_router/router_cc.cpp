@@ -55,11 +55,20 @@ void router_cc::traffic_monitor(){
 
 					case 1: //Payload
 						payload[i] = data_in[i].read();
-						SM_traffic_monitor[i] = 2;
 						payload_counter[i] = data_in[i].read();
-						break;					
+
+						if (data_in[i].read() == 1){
+							service[i] = 0x00001025; //An CS Router setup packet
+							SM_traffic_monitor[i] = 5;
+							break;
+						}
+
+						SM_traffic_monitor[i] = 2;
+
+						break;
 
 					case 2: //Service
+
 						service[i] = data_in[i].read();
 
 						if(service[i] != 0x40 && service[i] != 0x70 && service[i] != 0x221 && service[i] != 0x10 && service[i] != 0x20)
