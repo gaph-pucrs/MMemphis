@@ -5,6 +5,7 @@ Version: 1.2 - jun/2019							*
 												*
 Authors: Marcelo Ruaro and Fernando Moraes      *
 *************************************************
+Branch: secure-sdn
 
 Prerequisites:
  - Ubuntu 16 +
