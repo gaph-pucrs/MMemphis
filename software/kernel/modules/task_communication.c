@@ -429,7 +429,7 @@ int send_message(TCB * running_task, unsigned int msg_addr, unsigned int consume
 			//*************** Deadlock avoidance: avoids to send a packet when the DMNI is busy in send process ************************
 			subnet_ret = get_subnet(producer_task, consumer_task, DMNI_SEND_OP);
 			if (subnet_ret == -1)
-				subnet_ret = PS_SUBNET; //If the CTP was not found, then by default send by PS
+				subnet_ret = PS_SUBNET; //If the CTP was not found, then, by default send by PS
 			if (HAL_is_send_active(subnet_ret)){
 				//Restore the message request
 				msg_req_ptr->requested = producer_task;
@@ -617,7 +617,7 @@ void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
 
 	consumer_tcb_ptr = searchTCB(consumer_task);
 
-	//putsv("Service message received - consumer ", consumer_task);
+	//putsv("Service message received - consumer ", consumer_tcb_ptr->id);
 
 	//Por esse motivo cada execução de uma MA task nunca pode ser interrompida
 	while (consumer_tcb_ptr->recv_buffer == 0 || consumer_tcb_ptr->scheduling_ptr->waiting_msg == 0){

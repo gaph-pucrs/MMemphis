@@ -25,14 +25,13 @@ int main()
 
 		Receive(&msg, prod);
 		time[i] = GetTick();
-		//Echo("Recebeu:");
-		//Echo(itoa(msg.msg[0]));
-	}
-
-
-	for(i=0; i<PROD_CONS_ITERATIONS; i++){
 		Echo(itoa(time[i]));
 	}
+
+
+	/*for(i=0; i<PROD_CONS_ITERATIONS; i++){
+		Echo(itoa(time[i]));
+	}*/
 
 	Echo("Fim da aplicacao cons");
 

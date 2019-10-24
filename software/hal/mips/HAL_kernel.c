@@ -72,7 +72,7 @@ inline unsigned int DMNI_read_data_CS(unsigned int initial_address, unsigned int
 	volatile unsigned int size_32bits;
 
 	//Discovery the data size
-	HAL_set_dmni_net(PS_SUBNET);
+	HAL_set_dmni_net(subnet_nr);
 	HAL_set_dmni_op(DMNI_RECEIVE_OP);
 	HAL_set_dmni_mem_addr((unsigned int)&size_32bits);
 	HAL_set_dmni_mem_size(1);

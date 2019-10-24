@@ -12,8 +12,6 @@
 #include "SDN_includes/token_queue.h"
 #include "SDN_includes/print_path.h"
 
-#define CLUSTER_ID 0
-
 enum ControllerStates {IDLE, GLOBAL_SLAVE, GLOBAL_MASTER};
 enum ControllerStates controller_status;
 
@@ -309,7 +307,7 @@ unsigned short int is_PE_reachable(int x, int y, int s){
 void send_ack_requester(int path_success, int source, int target, int requester_addr, int is_global, enum ReqMode mode){
 	
 #if SDN_DEBUG
-	Puts("\nMessage ACK sent to requester\n");
+	Puts("\nMessage ACK sent to requester "); Puts(itoa(requester_addr)); Puts("\n");
 #endif
 	
 	unsigned int * message = get_message_slot();

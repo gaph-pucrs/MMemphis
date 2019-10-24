@@ -206,7 +206,7 @@ void send_task_allocated(TCB * allocated_task){
 
 	if (master_addr == net_address){
 
-		puts("Escrita local: send_task_allocated\n");
+		//puts("Escrita local: send_task_allocated\n");
 		write_local_service_to_MA(master_task_id, message, 2);
 
 	} else {
@@ -215,7 +215,7 @@ void send_task_allocated(TCB * allocated_task){
 
 		while(HAL_is_send_active(PS_SUBNET));
 
-		puts("Sending task allocated\n");
+		//puts("Sending task allocated\n");
 	}
 
 }
@@ -237,9 +237,11 @@ void send_task_terminated(TCB * terminated_task){
 	master_addr = terminated_task->master_address & 0xFFFF;
 	master_id = terminated_task->master_address >> 16;
 
+	puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
+
 	if (master_addr == net_address){
 
-		puts("Escrita local: send_task_terminated\n");
+		//puts("Escrita local: send_task_terminated\n");
 
 		write_local_service_to_MA(master_id, message, 3);
 
@@ -247,12 +249,10 @@ void send_task_terminated(TCB * terminated_task){
 
 		send_service_to_MA(master_id, master_addr, message, 3);
 
-		puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
-		putsv("Master id: ", master_id);
+		//putsv("Master id: ", master_id);
 
 		while(HAL_is_send_active(PS_SUBNET));
 	}
-	puts("Sended\n");
 
 }
 

@@ -30,6 +30,20 @@
 #define SDN_Y_CLUSTER_NUM		(YDIMENSION/SDN_YCLUSTER)
 #define	MAX_SDN_TASKS			(SDN_X_CLUSTER_NUM*SDN_Y_CLUSTER_NUM)
 
+#define QOS_XCLUSTER			XCLUSTER
+#define	QOS_YCLUSTER			YCLUSTER
+#define QOS_X_CLUSTER_NUM		(XDIMENSION/QOS_XCLUSTER)
+#define QOS_Y_CLUSTER_NUM		(YDIMENSION/QOS_YCLUSTER)
+#define	MAX_QOS_TASKS			(QOS_X_CLUSTER_NUM*QOS_Y_CLUSTER_NUM)
+
+/* Create the macros for your MA task
+#define MY_XCLUSTER			XCLUSTER
+#define	MY_YCLUSTER			YCLUSTER
+#define MY_X_CLUSTER_NUM		(XDIMENSION/MY_XCLUSTER)
+#define MY_Y_CLUSTER_NUM		(YDIMENSION/MY_YCLUSTER)
+#define	MAX_MY_TASKS			(MY_X_CLUSTER_NUM*MY_Y_CLUSTER_NUM)
+*/
+
 
 #define putsv(string, value) Puts(string); Puts(itoa(value)); Puts("\n");
 
@@ -153,7 +167,7 @@ void request_SDN_path(int source_addr, int target_addr){
 	nc_x = src_x / SDN_XCLUSTER;
 	nc_y = src_y / SDN_YCLUSTER;
 
-	sdn_offset = 5;//TODO Please edit when you add a new MA task
+	sdn_offset = 2;//TODO Please edit when you add a new MA task
 
 	coordinator_task_ID = nc_x + (nc_y*SDN_X_CLUSTER_NUM) + sdn_offset;
 
@@ -163,7 +177,7 @@ void request_SDN_path(int source_addr, int target_addr){
 	send_message[0] = PATH_CONNECTION_REQUEST;
 	send_message[1] = source_addr; //source
 	send_message[2] = target_addr; //target
-	send_message[3] = target_addr;
+	send_message[3] = GetMyID();
 	send_message[4] = 1;
 
 	SendService(coordinator_task_ID, send_message, 5);

@@ -7,7 +7,7 @@ from yaml_intf import *
 #This scripts generates the wave.do inside the testcase dir. Modify this scripts as you need to improve debuggability in your project
 
 ENABLE_CPU              = True
-ENABLE_CPU_ROUTER_CFG   = False
+ENABLE_CPU_ROUTER_CFG   = True
 ENABLE_DMNI             = True
 ENABLE_CS               = True
 ENABLE_PS               = True

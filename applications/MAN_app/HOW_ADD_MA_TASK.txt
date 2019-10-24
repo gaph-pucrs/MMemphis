@@ -4,11 +4,11 @@ How to add a new MA task
 2. Go to hardware/sc/peripherals/app_injector.h and increase the value of macro MAN_APP_DESCRIPTOR_SIZE to +1
 3. Go to common_includes and add new macros related to your MA task, follow the patter of the SDN task for example
 4. Go to global_mapper.c and follow the steps:
-  a) Create a myMAtask_ID_offset global variable, follows the SDN task pattern
+  a) Create a myMAtask_ID_offset global variable AND the MYMA_TASK_REPO_ID define, follows the SDN task pattern
   a) Into the map_management_tasks() search for the comments specifing how to instatiate new MA tasks
   b) Into the handle_i_am_alive(), search for the comments specifing how to instatiate new MA tasks
 5. Your MA task needs to call the function initialize_MA_task() at main function.
-6. Your MA task also need to implement the handling of the packet INITIALIZE_MA_TASK that is sent by the global_mapper initializing all MA tasks
+6. Your MA task also need to implement the handling of the message INITIALIZE_MA_TASK that is sent by the global_mapper initializing all MA tasks
 Please implement the properly initialization of your MA task fullfilling this minimum step (you can observe the others initializiong funciton inside noc_manager):
   a) Create a loop that reads the ma_tasl_location (array sent by global mapper into the INITIALIZE_MA_TASK packet) and call the function AddTaskLocation for each task inside this array
 7. Go to common_includes, into the function request_SDN_path() check if the variable sdn_offset is receiving the correct value
@@ -17,3 +17,64 @@ ATTENTION: MA tasks of same class (for example, two SDN tasks) cannot share the 
 
 This is all, hopefully your MA task will works fine after these steps.
 Any question contact marcelo.ruaro@acad.pucrs.br or fernando.moraes@pucrs.br
+
+An example of the minimun requirements of a MA task (in this example the task is called qos manager)
+
+#include "common_include.h"
+
+void initialize_qos_manager(unsigned int * msg){
+	unsigned int max_ma_tasks, task_id, proc_addr, id_offset, x_aux, y_aux;
+
+	task_id = msg[1];
+	id_offset = msg[2];
+
+	Puts("\n ************ Initialize QoS Manager *********** \n");
+	Puts("Task ID: "); Puts(itoa(task_id)); Puts("\n");
+	Puts("Offset ID: "); Puts(itoa(id_offset)); Puts("\n");
+	Puts("MAX_MA_TASKS: "); Puts(itoa(msg[3])); Puts("\n");
+
+	max_ma_tasks = msg[3];
+
+	//Set the proper location of all MA tasks
+	for(int i=0; i<max_ma_tasks; i++){
+		task_id = msg[i+4] >> 16;
+		proc_addr = msg[i+4] & 0xFFFF;
+		Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(proc_addr)); Puts("\n");
+		AddTaskLocation(task_id, proc_addr);
+	}
+
+	init_generic_send_comm(id_offset, MAPPING_XCLUSTER);
+
+	Puts("QoS Manager initialized!!!!!!\n\n");
+}
+
+
+void handle_message(unsigned int * data_msg){
+	switch (data_msg[0]) {
+		case INITIALIZE_MA_TASK:
+			initialize_qos_manager(data_msg);
+			break;
+		default:
+			Puts("Error message unknown\n");
+			for(;;);
+			break;
+	}
+
+}
+
+
+void main(){
+
+	RequestServiceMode();
+	init_message_slots();
+	initialize_MA_task();
+
+	unsigned int data_message[MAX_MANAG_MSG_SIZE];
+
+	for(;;){
+		ReceiveService(data_message);
+		handle_message(data_message);
+	}
+
+	exit();
+}

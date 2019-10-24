@@ -45,10 +45,11 @@
 #define 	RT_CONSTRANTS_OTHER_CLUSTER		0x00000285 //Real-Time Scheduler:		Message sent from a slave PE (from other cluster) to LM informing that a given real-time task update its constraints
 #define		NEW_APP_REQ						0x00000290 //Mapping:					Message sent from AppInjector to GM informing that a new application is requesting to execute
 #define		APP_REQ_ACK						0x00000300 //Mapping:					Message sent from GM to AppInjector informing that the application was mapped in a given cluster and AppInjector can transfer the application descriptor to that cluster
-#define 	CLEAR_CS_CTP					0x00000320 //TODO QoS (Circuit-Switching):	Message sent from a QoS Manager to slave PE notifying to a CTP (Communicating Task Pair) to stop to comunicate using CS
+#define 	CLEAR_CS_CTP					0x00000320 //TODO QoS (Circuit-Switching):	Message sent from a QoS Manager to slave PE notifying to a CTP (Communicating Task Pair) to stop to communicate using CS
 #define 	SET_NOC_SWITCHING_CONSUMER		0x00000360 //QoS (Circuit-Switching):	Message sent from QoS Manager to slave PE of consumer task requesting that a CTP starts its communication using CS
 #define 	SET_NOC_SWITCHING_PRODUCER		0x00000370 //QoS (Circuit-Switching):	Message sent from slave PE of consumer task to slave PE of producer task requesting to start to use CS to communicate
 #define 	NOC_SWITCHING_PRODUCER_ACK		0x00000380 //QoS (Circuit-Switching):	Message sent from slave PE of producer task to slave PE of consumer task acknowledging the reception of SET_NOC_SWITCHING_PRODUCER
+#define 	NOC_SWITCHING_CTP_CONCLUDED		0x00000390 //QoS (Circuit-Switching):	Message sent from slavE PE of producer task to the QoS manager informing about the conclusion of the dynamic CS establishment
 #define 	LEARNED_TASK_PROFILE			0x00000420 //DAPE(Dynamic App. Profiling Extraction): Message	sent from slave PE to the DATE manager updating the profiling of a given task
 #define		APP_MAPPING_COMPLETE			0x00000440 //Mapping:					Message sent from GM to AppInjector notifying that current application was mapped and AppInjector can send a new application request if it exists
 

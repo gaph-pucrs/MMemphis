@@ -28,7 +28,7 @@ typedef struct {
 	int consumer_task;			//!< Stores consumer task id (task that performs the Receive() API )
 	int dmni_op;				//!< Stores dmni operation mode (send=0, receive=1) of the ctp
 	int subnet;					//!< Stores CS subnet used by this ctp
-	char ready_to_go;			//!< Stores 1 when the producer send the ack to the consumer releasing the consumer to make request to the producer using CS
+	char CS_enabled;			//!< Stores 1 when the producer send the ack to the consumer releasing the consumer to make request to the producer using CS
 } CTP;
 
 
@@ -44,11 +44,9 @@ int get_subnet(int, int, int);
 
 void check_ctp_reconfiguration(TCB *);
 
-void set_ctp_producer_adress(unsigned int);
-
 void send_config_router(int, int, int, int);
 
-void send_NoC_switching_ack(int, int, int subnet, int);
+void send_NoC_switching_ack(int, int, int, int);
 
 void handle_dynamic_CS_setup(volatile ServiceHeader *);
 

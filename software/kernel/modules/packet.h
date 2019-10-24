@@ -25,15 +25,19 @@
  * when need to send a packet, or that will be read when the packet is received
  */
 typedef struct {
+	//flit 0
 	unsigned int header;				//!<Is the first flit of packet, keeps the target NoC router
+	//flit 1
 	unsigned int payload_size;			//!<Stores the number of flits that forms the remaining of packet
+	//flit 2
 	unsigned int service;				//!<Store the packet service code (see services.h file)
+	//flit 3
 	union {								//!<Generic union
 		   unsigned int producer_task;
 		   unsigned int task_ID;
 		   unsigned int app_ID;
 	};
-
+	//flit 4
 	union {								//!<Generic union
 	   unsigned int consumer_task;
 	   unsigned int cluster_ID;
@@ -42,15 +46,16 @@ typedef struct {
 	   unsigned int period;
 	   unsigned int task_profile;
 	};
-
+	//flit 5
 	unsigned int source_PE;				//!<Store the packet source PE address
+	//flit 6
 	unsigned int timestamp;				//!<Store the packet timestamp, filled automatically by send_packet function
-
+	//flit 7
 	union {
 		unsigned int cpu_slack_time;			//!<Unused field for while
 		unsigned int computation_task_number;
 	};
-
+	//flit 8
 	union {								//!<Generic union
 		unsigned int msg_lenght;
 		unsigned int resolution;
@@ -67,7 +72,7 @@ typedef struct {
 		unsigned int target_processor;
 		unsigned int input_port;
 	};
-
+	//flit 9
 	union {								//!<Generic union
 		unsigned int pkt_size;
 		unsigned int data_size;
@@ -78,7 +83,7 @@ typedef struct {
 		unsigned int insert_request;
 		unsigned int task_number;
 	};
-
+	//flit 10
 	union {								//!<Generic union
 		unsigned int code_size;
 		unsigned int max_free_procs;
@@ -87,7 +92,7 @@ typedef struct {
 		unsigned int deadline;
 		unsigned int master_address;
 	};
-
+	//flit 11
 	union {								//!<Generic union
 		unsigned int bss_size;
 		unsigned int cpu_slack_time;
@@ -97,7 +102,7 @@ typedef struct {
 		unsigned int mode;
 		unsigned int path_id;
 	};
-
+	//flit 12
 	union {								//!<Generic union
 		unsigned int initial_address;
 		unsigned int program_counter;

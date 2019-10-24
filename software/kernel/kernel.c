@@ -337,6 +337,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case PATH_CONNECTION_ACK:
 	case NI_STATUS_REQUEST:
 	case NI_STATUS_RESPONSE:
+	case NOC_SWITCHING_CTP_CONCLUDED:
 
 		handle_MA_message(p->consumer_task, p->msg_lenght);
 
