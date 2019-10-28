@@ -10,12 +10,12 @@
 
 #define TOKEN_QUEUE_SIZE		NC_NUMBER
 
-unsigned int token_first = 0;	//!<first valid array index
-unsigned int token_last = 0;	//!<last valid array index
+unsigned int token_first;	//!<first valid array index
+unsigned int token_last;	//!<last valid array index
 
-unsigned char add_fifo = 0; 	//!<Keeps the last operation: 1 - last operation was add. 0 - last operation was remove
+unsigned char add_fifo; 	//!<Keeps the last operation: 1 - last operation was add. 0 - last operation was remove
 
-int token = -1;
+int token;
 
 unsigned int token_request_FIFO[TOKEN_QUEUE_SIZE];	//!<request_connection array declaration
 
@@ -69,6 +69,15 @@ int get_next_token_request(){
 	add_fifo = 0;
 
 	return removed_token;
+}
+
+void init_token_queue(){
+	token_first = 0;
+	token_last = 0;
+
+	add_fifo = 0;
+
+	token = -1;
 }
 
 

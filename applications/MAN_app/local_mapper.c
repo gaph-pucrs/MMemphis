@@ -34,7 +34,9 @@ void initialize_local_mapper(unsigned int * msg){
 	Puts("Cluster x offset: "); Puts(itoa(cluster_x_offset)); Puts("\n");
 	Puts("Cluster y offset: "); Puts(itoa(cluster_y_offset)); Puts("\n");
 
+	//Initialize processors and global variable
 	init_procesors();
+	pending_app_to_map = 0;
 
 	max_ma_tasks = msg[3];
 

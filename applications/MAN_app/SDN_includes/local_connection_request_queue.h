@@ -12,10 +12,10 @@
 
 #define LOCAL_REQ_QUEUE_SIZE		NC_NUMBER
 
-unsigned int local_req_first = 0;	//!<first valid array index
-unsigned int local_req_last = 0;	//!<last valid array index
+unsigned int local_req_first;	//!<first valid array index
+unsigned int local_req_last;	//!<last valid array index
 
-unsigned char local_token_add_fifo = 0; 	//!<Keeps the last operation: 1 - last operation was add. 0 - last operation was remove
+unsigned char local_token_add_fifo; 	//!<Keeps the last operation: 1 - last operation was add. 0 - last operation was remove
 
 ConnectionRequest local_request_connection_FIFO[LOCAL_REQ_QUEUE_SIZE];	//!<request_connection array declaration
 
@@ -77,6 +77,13 @@ ConnectionRequest * get_next_local_connection_request(){
 	local_token_add_fifo = 0;
 
 	return removed_request;
+}
+
+void init_local_connection_request(){
+	local_req_first = 0;
+	local_req_last = 0;
+
+	local_token_add_fifo = 0;
 }
 
 #endif /* LOCAL_CONNECTION_REQUEST_QUEUE_H_ */

@@ -6,6 +6,7 @@
  */
 #include <api.h>
 #include "SDN_includes/noc_manager.h"
+#include "SDN_includes/secure_sdn.h"
 #include "SDN_includes/connection_request.h"
 #include "SDN_includes/global_connection_request_queue.h"
 #include "SDN_includes/local_connection_request_queue.h"
@@ -17,8 +18,8 @@ enum ControllerStates controller_status;
 
 ConnectionRequest 	global_path_request;
 unsigned int 		controllers_response_counter;
-unsigned int 		token_coordinator_address = 0x000;
-unsigned char 		token_requested = 0;
+unsigned int 		token_coordinator_address;
+unsigned char 		token_requested;
 unsigned char		global_routing_attempts;
 unsigned int 		path_overhead;
 
@@ -352,9 +353,9 @@ void send_ack_requester(int path_success, int source, int target, int requester_
 	message[6] = path_overhead;
 	message[7] = is_global;
 #if PATH_DEBUG == 0
+	printPathSize = 0;
 	message[8] = printPathSize;
 	path_uint_size += 9;
-	printPathSize = 0;
 #else
 	path_uint_size += 8;
 #endif
@@ -1378,6 +1379,9 @@ void initialize_noc_manager(unsigned int * msg){
 		AddTaskLocation(task_id, proc_addr);
 	}
 
+	/*Secure SDN - Initializes the secure mapper addrs with the list passed by GM*/
+	initialize_secure_mappers(&msg[5]);
+
 	task_id = msg[1];
 	id_offset = msg[2];
 	/*Puts("Task ID: "); Puts(itoa(task_id)); Puts("\n");
@@ -1399,10 +1403,16 @@ int handle_packet(unsigned int * recv_message){
 
 	switch (recv_message[0]) {
 		case PATH_CONNECTION_REQUEST:
-			handle_component_request(recv_message[1], recv_message[2], recv_message[3], -1);
+			//Only serves for authorized managers
+			//if (check_path_requester_authenticity(recv_message[3], recv_message[5])){
+				handle_component_request(recv_message[1], recv_message[2], recv_message[3], -1);
+			//}
 			break;
 		case PATH_CONNECTION_RELEASE:
-			handle_component_request(recv_message[1], recv_message[2], recv_message[3], recv_message[4]);
+			//Only serves for authorized managers
+			//if (check_path_requester_authenticity(recv_message[3], recv_message[5])){
+				handle_component_request(recv_message[1], recv_message[2], recv_message[3], recv_message[4]);
+			//}
 			break;
 		case NI_STATUS_REQUEST:
 			handle_NI_status_request(recv_message[1], recv_message[2]);
@@ -1808,8 +1818,15 @@ int main(){
     Puts("\n*************** NoC-Controller "); Puts(itoa(cluster_id)); Puts(" initialized! ******************\n");
     init_message_slots();
     initialize_MA_task();
+    init_global_connection_request();
+    init_local_connection_request();
+    init_token_queue();
     init_search_path();
     initit_cluster_borders();
+
+    //Initialize global variables
+    token_coordinator_address = 0; //Set coordinator cluster ID 0 as default
+    token_requested = 0;
 
     controller_status = IDLE;
 #if SDN_DEBUG

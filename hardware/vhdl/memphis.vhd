@@ -181,7 +181,7 @@ architecture Memphis of Memphis is
                 ----------------------------------------------------
                 
                 --- EAST PORT CONNECTIONS ----------------------------------------------------
-                east_grounding: if RouterPosition(i) = BR or RouterPosition(i) = CRX or RouterPosition(i) = TR generate
+                east_grounding: if (RouterPosition(i) = BR or RouterPosition(i) = CRX or RouterPosition(i) = TR) and io_port(i) /= EAST generate
                         rx_ps(i)(EAST)             <= '0';
                         credit_i_ps(i)(EAST)       <= '0';
                         data_in_ps(i)(EAST)        <= (others => '0');
@@ -195,7 +195,7 @@ architecture Memphis of Memphis is
 
                 ------------------------------------------------------------------------------
                 --- WEST PORT CONNECTIONS ----------------------------------------------------
-                west_grounding: if RouterPosition(i) = BL or RouterPosition(i) = CL or RouterPosition(i) = TL generate
+                west_grounding: if (RouterPosition(i) = BL or RouterPosition(i) = CL or RouterPosition(i) = TL)  and io_port(i) /= WEST generate
                         rx_ps(i)(WEST)             <= '0';
                         credit_i_ps(i)(WEST)       <= '0';
                         data_in_ps(i)(WEST)        <= (others => '0');
@@ -209,7 +209,7 @@ architecture Memphis of Memphis is
 
                 -------------------------------------------------------------------------------
                 --- NORTH PORT CONNECTIONS ----------------------------------------------------
-                north_grounding: if RouterPosition(i) = TL or RouterPosition(i) = TC or RouterPosition(i) = TR generate
+                north_grounding: if (RouterPosition(i) = TL or RouterPosition(i) = TC or RouterPosition(i) = TR)  and io_port(i) /= NORTH generate
                         rx_ps(i)(NORTH)            <= '0';
                         credit_i_ps(i)(NORTH)      <= '0';
                         data_in_ps(i)(NORTH)       <= (others => '0');
@@ -223,7 +223,7 @@ architecture Memphis of Memphis is
 
                 --------------------------------------------------------------------------------
                 --- SOUTH PORT CONNECTIONS -----------------------------------------------------
-                south_grounding: if RouterPosition(i) = BL or RouterPosition(i) = BC or RouterPosition(i) = BR generate
+                south_grounding: if (RouterPosition(i) = BL or RouterPosition(i) = BC or RouterPosition(i) = BR)  and io_port(i) /= SOUTH generate
                         rx_ps(i)(SOUTH)            <= '0';
                         credit_i_ps(i)(SOUTH)      <= '0';
                         data_in_ps(i)(SOUTH)       <= (others => '0');

@@ -619,9 +619,13 @@ void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
 
 	//putsv("Service message received - consumer ", consumer_tcb_ptr->id);
 
+	while (!consumer_tcb_ptr){
+		putsv("ERROR: consuemr task is invalid: ", consumer_task);
+	}
+
 	//Por esse motivo cada execução de uma MA task nunca pode ser interrompida
 	while (consumer_tcb_ptr->recv_buffer == 0 || consumer_tcb_ptr->scheduling_ptr->waiting_msg == 0){
-		puts("ERROR message delivery send to an invalid producer\n");
+		puts("ERROR message MA send to an invalid producer\n");
 	}
 
 	DMNI_read_data(consumer_tcb_ptr->recv_buffer, msg_size);

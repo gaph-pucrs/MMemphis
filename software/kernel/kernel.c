@@ -146,7 +146,6 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 			//TODO: a protocol that only grants a service permission to secure tasks
 			current->is_service_task = 1;
 
-			puts("Task REQUESTED service - disabling interruption\n");
 			HAL_interrupt_mask_clear(0xffffffff);
 
 			return 1;

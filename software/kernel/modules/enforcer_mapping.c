@@ -63,7 +63,7 @@ void add_task_location(int task_ID, int proc){
 		if (task_location[i].id == -1){
 			task_location[i].id = task_ID;
 			task_location[i].proc_address = proc;
-			//puts("Add task location - task id "); puts(itoa(task_ID)); puts(" proc "); puts(itoh(proc)); puts("\n");
+			puts("Add task location - task id "); puts(itoa(task_ID)); puts(" proc "); puts(itoh(proc)); puts("\n");
 			return;
 		}
 	}
@@ -260,6 +260,7 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 
 	TCB * tcb_ptr;
 	unsigned int code_lenght;
+	volatile unsigned int * bss_ptr;
 
 	tcb_ptr = search_free_TCB();
 
@@ -271,7 +272,12 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 
 	code_lenght = pkt->code_size;
 
-	tcb_ptr->text_lenght = code_lenght;
+	tcb_ptr->text_lenght = code_lenght; //Code has the TXT and DATA size
+
+	tcb_ptr->bss_lenght = pkt->bss_size;
+
+	//putsv("CODE size: ", tcb_ptr->text_lenght);
+	//putsv("BSS size: ", tcb_ptr->bss_lenght);
 
 	tcb_ptr->master_address = pkt->master_ID;
 
@@ -295,6 +301,13 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 		tcb_ptr->scheduling_ptr->status = BLOCKED;
 		send_task_allocated(tcb_ptr);
 	}
+
+	//Clean the BSS memory region in order to avoid task to use trash from other tasks
+	bss_ptr = (unsigned int *)(tcb_ptr->offset + (code_lenght * 4));
+	for(int i=0; i < (tcb_ptr->bss_lenght+1); i++){
+		bss_ptr[i] = 0;
+	}
+
 }
 
 

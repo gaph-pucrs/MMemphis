@@ -522,14 +522,14 @@ void main(){
 	RequestServiceMode();
 
 	Puts("Initializing Global Mapper\n");
+
+	//Initialize global variables
+	pending_app_req = 0;
+	total_mpsoc_resources = (MAX_LOCAL_TASKS * XDIMENSION * YDIMENSION);
+
 	init_message_slots();
 	intilize_clusters();
 	map_management_tasks();
-	//init_sdn_tasks();
-	//init_dvfs_tasks();
-	//init_monitoring_tasks();
-	//init_decision_tasks();
-	//init_adaptation_tasks();
 
 	unsigned int data_message[MAX_MANAG_MSG_SIZE];
 

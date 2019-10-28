@@ -254,28 +254,26 @@ void send_NoC_switching_ack(int producer_task, int consumer_task, int subnet, in
 		for(;;);
 	}
 
-
 	//Sends the ACK to the consumer also
-	if (cs_mode) {//Only send if the mode is establish
+	//if (cs_mode) {//Only send if the mode is establish
 
-		//puts("Enviou NOC_SWITCHING_PRODUCER_ACK para consumer\n");
-		p = get_service_header_slot();
+	p = get_service_header_slot();
 
-		p->header = get_task_location(consumer_task);
+	p->header = get_task_location(consumer_task);
 
-		p->service = NOC_SWITCHING_PRODUCER_ACK;
+	p->service = NOC_SWITCHING_PRODUCER_ACK;
 
-		p->producer_task = producer_task;
+	p->producer_task = producer_task;
 
-		p->consumer_task = consumer_task;
+	p->consumer_task = consumer_task;
 
-		p->cs_net = subnet;
+	p->cs_net = subnet;
 
-		p->cs_mode = cs_mode;
+	p->cs_mode = cs_mode;
 
-		send_packet(p, 0, 0);
+	send_packet(p, 0, 0);
 
-	}
+	//}
 
 
 }

@@ -37,7 +37,7 @@ int reclustering_next_task(Application *);
 Reclustering reclustering;			//!<Reclustering structure instance
 
 //Max o levels of MPSoCs
-int max_neighbors_level = 0;		//!<Max of neighbors clusters for each reclustering level
+int max_neighbors_level;			//!<Max of neighbors clusters for each reclustering level
 
 //Cluster dimmensions
 unsigned int starting_x_cluster_size;	//!<Starting X size of cluster when reclustering is started
@@ -50,6 +50,8 @@ void init_reclustering(){
 
 	starting_x_cluster_size = MAPPING_XCLUSTER;
 	starting_y_cluster_size = MAPPING_YCLUSTER;
+
+	max_neighbors_level = 0;
 
 #if RECLUSTERING_DEBUG
 	Puts("starting_x_cluster_size: "); Puts(itoa(starting_x_cluster_size)); Puts("\n");

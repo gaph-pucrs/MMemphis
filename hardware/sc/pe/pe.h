@@ -132,7 +132,7 @@ SC_MODULE(pe) {
 	CS_config 	* 	cs_config;
 
 
-	unsigned long int log_interaction;
+	/*unsigned long int log_interaction;
 	unsigned long int instant_instructions;
 	unsigned long int aux_instant_instructions;
 	
@@ -145,7 +145,7 @@ SC_MODULE(pe) {
 	unsigned long int load_instant_instructions;
 	unsigned long int shift_instant_instructions;
 	unsigned long int nop_instant_instructions;
-	unsigned long int mult_div_instant_instructions;
+	unsigned long int mult_div_instant_instructions;*/
 
 
 	char aux[255];
@@ -155,7 +155,7 @@ SC_MODULE(pe) {
 	
 	void sequential_attr();
 	//void memory_mux();
-	void log_process();
+	//void log_process();
 	void comb_assignments();
 	void mem_mapped_registers();
 	void reset_n_attr();
@@ -309,9 +309,9 @@ SC_MODULE(pe) {
 		SC_METHOD(sequential_attr);
 		sensitive << clock.pos() << reset.pos();
 		
-		SC_METHOD(log_process);
-		sensitive << clock.pos() << reset.pos();
-		
+		/*SC_METHOD(log_process);
+		sensitive << clock.pos() << reset.pos();*/
+
 		SC_METHOD(comb_assignments);
 		sensitive << cpu_mem_address << dmni_mem_address << cpu_mem_address_reg << write_enable;
 		sensitive << cpu_mem_data_write_reg << irq_mask_reg << irq_status;

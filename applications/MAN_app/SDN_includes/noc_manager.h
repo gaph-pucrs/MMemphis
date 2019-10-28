@@ -63,7 +63,7 @@ int last_plist;
 
 char detour[SDN_XCLUSTER][SDN_YCLUSTER];
 
-unsigned int subnet_selector = 0;
+unsigned int subnet_selector;
 
 
 #if PATH_DEBUG
@@ -103,7 +103,7 @@ unsigned short int global_subnet_utilization[SDN_X_CLUSTER_NUM][SDN_Y_CLUSTER_NU
 //Hadlock function that enable it to find either at global or local level
 unsigned int MAX_GRID_X = SDN_XCLUSTER; //default values
 unsigned int MAX_GRID_Y = SDN_YCLUSTER; //default values
-unsigned char is_global_search = 0;  //default values
+unsigned char is_global_search;  //default values
 //#######################################
 
 //Variables that identifies the controller
@@ -189,6 +189,9 @@ void initit_cluster_borders(){
 void init_search_path(){
 
 	Puts("\nInitializing search path\n");
+
+	subnet_selector = 0;
+	is_global_search = 0;
 
 	for(int x=0; x<SDN_XCLUSTER; x++)
 		for (int y=0; y<SDN_YCLUSTER; y++ )

@@ -24,14 +24,14 @@
 #define MAX_MAPPING_TASKS		(MAPPING_X_CLUSTER_NUM*MAPPING_Y_CLUSTER_NUM)
 
 
-#define SDN_XCLUSTER			XCLUSTER
-#define	SDN_YCLUSTER			YCLUSTER
+#define SDN_XCLUSTER			XDIMENSION//XCLUSTER
+#define	SDN_YCLUSTER			YDIMENSION//YCLUSTER
 #define SDN_X_CLUSTER_NUM		(XDIMENSION/SDN_XCLUSTER)
 #define SDN_Y_CLUSTER_NUM		(YDIMENSION/SDN_YCLUSTER)
 #define	MAX_SDN_TASKS			(SDN_X_CLUSTER_NUM*SDN_Y_CLUSTER_NUM)
 
-#define QOS_XCLUSTER			XCLUSTER
-#define	QOS_YCLUSTER			YCLUSTER
+#define QOS_XCLUSTER			XDIMENSION//XCLUSTER
+#define	QOS_YCLUSTER			YDIMENSION//YCLUSTER
 #define QOS_X_CLUSTER_NUM		(XDIMENSION/QOS_XCLUSTER)
 #define QOS_Y_CLUSTER_NUM		(YDIMENSION/QOS_YCLUSTER)
 #define	MAX_QOS_TASKS			(QOS_X_CLUSTER_NUM*QOS_Y_CLUSTER_NUM)
@@ -60,9 +60,9 @@ typedef struct {
 }MangmtMessageSlot;
 
 volatile 		MangmtMessageSlot sdn_msg_slot1, sdn_msg_slot2;	//!<Slots to prevent memory writing while is sending a packet
-unsigned int 	global_task_ID = 0; 							//!< Stores the global mapper ID at task level
-unsigned int 	S_task_ID_offset = 0;								//!< Stores the offset of task IDs where tasks of same class of management starts
-unsigned int 	S_num_x_cluster = 0;
+unsigned int 	global_task_ID; 							//!< Stores the global mapper ID at task level
+unsigned int 	S_task_ID_offset;								//!< Stores the offset of task IDs where tasks of same class of management starts
+unsigned int 	S_num_x_cluster;
 
 
 unsigned int * get_message_slot() {
@@ -89,10 +89,16 @@ void init_message_slots(){
 
 void initialize_MA_task(){
 
-	unsigned int * message = get_message_slot();
+	unsigned int * message;
+
+	//Initializes global variables
+	global_task_ID = 0;
+	S_task_ID_offset = 0;
+	S_num_x_cluster = 0;
 
 	AddTaskLocation(global_task_ID,global_task_ID);
 
+	message = get_message_slot();
 	message[0] = INIT_I_AM_ALIVE;		//Task Service
 	message[1] = GetNetAddress();	//Task Address
 	message[2] = GetMyID();
@@ -178,7 +184,8 @@ void request_SDN_path(int source_addr, int target_addr){
 	send_message[1] = source_addr; //source
 	send_message[2] = target_addr; //target
 	send_message[3] = GetMyID();
-	send_message[4] = 1;
+	send_message[4] = 1; //Not used by the noc_manager - can be deleted
+	send_message[5] = GetNetAddress(); //Secure SDN: added to allows SDN manager check the addresse of manager
 
 	SendService(coordinator_task_ID, send_message, 5);
 

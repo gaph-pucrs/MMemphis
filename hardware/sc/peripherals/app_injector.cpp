@@ -60,7 +60,7 @@ string app_injector::get_app_repo_path(unsigned int app_id){
 void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned int real_task_id, unsigned int master_ID, unsigned int allocated_proc){
 
 	string line, path;
-	unsigned int  task_number, code_size, task_line, code_line, current_line;
+	unsigned int  task_number, code_size, data_size, bss_size, task_line, code_line, current_line;
 	int ptr_index = 0;
 	unsigned int app_id, task_id;
 
@@ -99,7 +99,9 @@ void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned in
 		getline (repo_file,line); /*code size*/
 		sscanf( line.substr(0, 8).c_str(), "%x", &code_size);
 		getline (repo_file,line); /*data size*/
+		sscanf( line.substr(0, 8).c_str(), "%x", &data_size);
 		getline (repo_file,line); /*bss size*/
+		sscanf( line.substr(0, 8).c_str(), "%x", &bss_size);
 		getline (repo_file,line); /*initial_address*/
 		sscanf( line.substr(0, 8).c_str(), "%x", &code_line);
 
@@ -119,13 +121,14 @@ void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned in
 
 		packet = new unsigned int[packet_size];
 
-		packet[ptr_index++] = allocated_proc; //Packet service
-		packet[ptr_index++] = packet_size-2; //Packet service
-		packet[ptr_index++] = TASK_ALLOCATION; //Packet service
-		packet[ptr_index++] = full_task_id;
-		packet[ptr_index++] = master_ID; //Master ID
-		ptr_index 			= ptr_index + 5; //Jumps to code_size field on ServiceHeader
-		packet[ptr_index++] = code_size; //Code size
+		packet[0] = allocated_proc; //Packet service
+		packet[1] = packet_size-2; //Packet service
+		packet[2] = TASK_ALLOCATION; //Packet service
+		packet[3] = full_task_id;
+		packet[4] = master_ID; //Master ID
+		packet[9] = data_size; //Data size
+		packet[10] = code_size; //Code size
+		packet[11] = bss_size; //Bss size
 		ptr_index 			= CONSTANT_PACKET_SIZE; //Jumps to the end of ServiceHeader
 
 		//Assembles txt

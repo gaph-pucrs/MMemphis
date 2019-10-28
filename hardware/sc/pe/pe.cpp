@@ -110,12 +110,14 @@ void pe::comb_assignments(){
 			config_r_cpu_valid[i].write(config_valid_subconfig.read().range(i,i) );
 		}
 	}
+
+	//Used to mask the packet to DMNI when it is designated to configure a CS router
 	dmni_rec_en.write( !( (data_in_dmni_ps.read().range(16,16) && config_wait_header.read()) || config_en.read() ) );
 	rx_dmni_ps.write( dmni_rec_en.read() && tx_router_local_ps.read() );
 
 	//DMNI config
 	switch (cpu_mem_address_reg.read()) {
-		case DMNI_NET: 		cpu_code_dmni.write(CODE_NET); 	break;
+		case DMNI_NET: 		cpu_code_dmni.write(CODE_NET); 		break;
 		case DMNI_MEM_ADDR: cpu_code_dmni.write(CODE_MEM_ADDR); break;
 		case DMNI_MEM_SIZE: cpu_code_dmni.write(CODE_MEM_SIZE); break;
 		case DMNI_MEM_ADDR2:cpu_code_dmni.write(CODE_MEM_ADDR2);break;
@@ -307,6 +309,7 @@ void pe::end_of_simulation(){
     }
 }
 
+/*
 void pe::log_process(){
 	if (reset.read() == 1) {
 		log_interaction=1;
@@ -421,7 +424,7 @@ void pe::log_process(){
 		}
 	}
 }
-
+*/
 
 void pe::clock_stop(){
 

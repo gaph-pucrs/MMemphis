@@ -12,10 +12,9 @@
 
 #define GLOBAL_REQ_QUEUE_SIZE		NC_NUMBER
 
-unsigned int global_req_first = 0;	//!<first valid array index
-unsigned int global_req_last = 0;	//!<last valid array index
-
-unsigned char global_token_add_fifo = 0; 	//!<Keeps the last operation: 1 - last operation was add. 0 - last operation was remove
+unsigned int global_req_first;			//!<first valid array index
+unsigned int global_req_last;			//!<last valid array index
+unsigned char global_token_add_fifo; 	//!<Keeps the last operation: 1 - last operation was add. 0 - last operation was remove
 
 ConnectionRequest global_request_connection_FIFO[GLOBAL_REQ_QUEUE_SIZE];	//!<request_connection array declaration
 
@@ -77,6 +76,13 @@ ConnectionRequest * get_next_global_connection_request(){
 	global_token_add_fifo = 0;
 
 	return removed_request;
+}
+
+void init_global_connection_request(){
+	global_req_first = 0;
+	global_req_last = 0;
+
+	global_token_add_fifo = 0;
 }
 
 #endif /* GLOBAL_CONNECTION_REQUEST_QUEUE_H_ */
