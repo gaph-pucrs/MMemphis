@@ -390,11 +390,11 @@ void main(){
 
 	Echo("Initializing Local Mapper\n");
 	RequestServiceMode();
-	net_address = GetNetAddress();
 	init_message_slots();
 	initialize_applications();
 	init_reclustering();
 	initialize_MA_task();
+	Puts("My net address: "); Puts(itoh(net_address)); Puts("\n");
 
 	unsigned int data_message[MAX_MANAG_MSG_SIZE];
 

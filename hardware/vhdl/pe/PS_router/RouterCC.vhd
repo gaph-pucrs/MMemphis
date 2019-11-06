@@ -96,7 +96,7 @@ begin
       								SM_traffic_monitor <= Sservice;
       								
       			when Sservice =>
-      								if payload = 1 then --Only used to show graphically the CS_ROUTER_SETUP packet
+      								if payload = 2 then --Only used to show graphically the CS_ROUTER_SETUP packet
                     					service <= x"00001025";
                      					SM_traffic_monitor <= cont_payload;
       								else

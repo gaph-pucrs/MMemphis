@@ -19,6 +19,7 @@
 extern unsigned int net_address;
 
 /*********** Hardware MMR addresses ***********/
+/*ATTENTION: address need to be always a pair number due memory addressing constraints*/
 #define UART_WRITE        		0x20000000
 #define IRQ_MASK          		0x20000010
 #define IRQ_STATUS        		0x20000020
@@ -38,6 +39,7 @@ extern unsigned int net_address;
 #define DMNI_OP					0x20000230
 #define DMNI_SEND_STATUS	  	0x20000250
 #define DMNI_RECEIVE_STATUS		0x20000260
+#define	DMNI_SDN_KEY			0x20000264
 #define SCHEDULING_REPORT		0x20000270
 #define ADD_PIPE_DEBUG			0x20000280
 #define REM_PIPE_DEBUG			0x20000285
@@ -114,6 +116,7 @@ extern unsigned int net_address;
 #define HAL_set_dmni_mem_size(size)		*(volatile unsigned int*)(DMNI_MEM_SIZE)=(size)
 #define HAL_set_dmni_mem_addr2(addr)	*(volatile unsigned int*)(DMNI_MEM_ADDR2)=(addr)
 #define HAL_set_dmni_mem_size2(size)	*(volatile unsigned int*)(DMNI_MEM_SIZE2)=(size)
+#define HAL_set_dmni_sdn_key(key)		*(volatile unsigned int*)(DMNI_SDN_KEY)=(key)
 #define HAL_set_CS_config(config)		*(volatile unsigned int*)(CONFIG_VALID_NET)=(config)
 #define HAL_set_clock_hold(on_off)		*(volatile unsigned int*)(CLOCK_HOLD)=(on_off)
 #define HAL_set_pending_service(srv)	*(volatile unsigned int*)(PENDING_SERVICE_INTR)=(srv)

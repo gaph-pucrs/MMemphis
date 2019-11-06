@@ -74,7 +74,7 @@ void handle_SDN_ack(unsigned int * recv_message){
 	message[2] = SET_NOC_SWITCHING_CONSUMER;
 	message[3] = 257;//p->producer_task
 	message[4] = 256;//p->consumer_task
-	message[5] = GetNetAddress(); //Source PE - QoS master addr
+	message[5] = net_address; //Source PE - QoS master addr
 	message[9] = GetMyID(); //task_number- QoS master ID
 	message[10] = subnet;//p->cs_net
 	message[11] = 1;//p->cs_mode 1 establish. 0 release
@@ -93,7 +93,7 @@ void CTP_set_PS_switching(unsigned int consumer_task, unsigned int producer_task
 	message[2] = SET_NOC_SWITCHING_CONSUMER;
 	message[3] = producer_task;//p->producer_task
 	message[4] = consumer_task;//p->consumer_task
-	message[5] = GetNetAddress(); //Source PE - QoS master addr --used
+	message[5] = net_address; //Source PE - QoS master addr --used
 	message[9] = GetMyID(); //task_number- QoS master ID --used
 	//message[10] = subnet;//p->cs_net -- there is no more subnet since the path is PS
 	message[11] = 0;//p->cs_mode 1 establish. 0 release CS and use PS
@@ -139,6 +139,8 @@ void main(){
 	RequestServiceMode();
 	init_message_slots();
 	initialize_MA_task();
+
+	Puts("My net address: "); Puts(itoh(net_address)); Puts("\n");
 
 	unsigned int data_message[MAX_MANAG_MSG_SIZE];
 

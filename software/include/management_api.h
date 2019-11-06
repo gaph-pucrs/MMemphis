@@ -13,13 +13,14 @@
 #define WRITESERVICE   	10
 #define READSERVICE     11
 #define	PUTS			12
-#define CFGROUTER		13
+#define SDNLOCALCFG		13
 #define NOCSENDFREE		14
 #define INCOMINGPACKET	15
 #define	GETNETADDRESS	16
 #define	ADDTASKLOCATION	17
 #define	GETTASKLOCATION	18
 #define SETTASKRELEASE	19
+#define	SDNINITKEY		20
 
 
 //A flag TO_KERNEL faz com que o endereço seja enviado diretamente pro kernel
@@ -31,13 +32,14 @@ extern int SystemCall();
 #define SendService(target, msg, uint_size) while(!SystemCall(WRITESERVICE, target, (unsigned int *)msg, uint_size))
 #define ReceiveService(msg)					while(!SystemCall(READSERVICE, 	(unsigned int *)msg, 0, 0))
 #define Puts(str) 							while(!SystemCall(PUTS, 		(char*)str,			0, 0))
-#define ConfigRouter(target, ports, subnet)	while(!SystemCall(CFGROUTER, 	target, ports, subnet))
+#define LocalSDNConfig(cfg_msg)				SystemCall(SDNLOCALCFG, 	cfg_msg, 0, 0)
 #define	NoCSendFree()						SystemCall(NOCSENDFREE, 	0, 0, 0)
 #define IncomingPacket()					SystemCall(INCOMINGPACKET, 	0, 0, 0)
 #define GetNetAddress()						SystemCall(GETNETADDRESS, 	0, 0, 0)
 #define AddTaskLocation(task_id, location)	SystemCall(ADDTASKLOCATION, task_id, location, 0)
 #define GetTaskLocation(task_id)			SystemCall(GETTASKLOCATION, task_id, 0, 0)
 #define SetTaskRelease(message, size)		SystemCall(SETTASKRELEASE, message, size, 0)
+#define SetSDN_Key(key)						SystemCall(SDNINITKEY, 	key, 0, 0)
 
 
 #endif /* _SERVICE_API_H_ */

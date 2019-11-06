@@ -13,6 +13,10 @@
 #define			SDN_TASK_REPO_ID		2
 #define			QOS_TASK_REPO_ID		3
 
+//SDN Initial Keys
+#define			K1						0xF0DA
+#define			K2						0xEB0A
+
 unsigned char	sdn_ID_offset;
 unsigned char	map_ID_offset;
 unsigned char	qos_ID_offset;
@@ -289,64 +293,67 @@ void map_management_tasks(){
 
 void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 	static unsigned int received_i_am_alive_counter = 0;
-	unsigned int * message;
+	unsigned int * message, * offset_id_aux;
 	unsigned int msg_size;
-	unsigned int offset_id_aux;
 
 	//Puts("\nhandle_i_am_alive from "); Puts(itoh(source_addr)); Puts(" task id "); Puts(itoa(task_id)); Puts("\n");
 
 	received_i_am_alive_counter++;
+
+	//Creates the standard part of the the initialization packet
+	msg_size = 0;
+	message = get_message_slot();
+	message[0] = INITIALIZE_MA_TASK;
+	message[1] = task_id;
+	offset_id_aux = &message[2]; //offset_id_aux will be set in sequence
+	message[3] = MAX_MA_TASKS;
+	msg_size = 4;
+	for(int i=0; i<MAX_MA_TASKS;i++){
+		message[msg_size++] = ma_tasks_location[i];
+	}
 
 
 	if (task_id >= map_ID_offset && task_id < (map_ID_offset+MAX_MAPPING_TASKS)){
 
 		Puts("Mapping task ID: "); Puts(itoa(task_id)); Puts("\tinitialized at proc "); Puts(itoh(source_addr)); Puts("\n");
 
-		offset_id_aux = (unsigned int) map_ID_offset;
+		*offset_id_aux = (unsigned int) map_ID_offset;
 
 	} else if (task_id >= sdn_ID_offset && task_id < (sdn_ID_offset+MAX_SDN_TASKS)){
 
 		Puts("SDN task ID: "); Puts(itoa(task_id)); Puts("\tinitialized at proc "); Puts(itoh(source_addr)); Puts("\n");
 
-		offset_id_aux = (unsigned int) sdn_ID_offset;
+		*offset_id_aux = (unsigned int) sdn_ID_offset;
+
+		//Embeds the k1 and k2 into the initialization packet to SDN controller
+		message[msg_size++] = K1;
+		message[msg_size++] = K2;
 
 	} else if (task_id >= qos_ID_offset && task_id < (qos_ID_offset+MAX_QOS_TASKS)){
 
 		Puts("QoS task ID: "); Puts(itoa(task_id)); Puts("\tinitialized at proc "); Puts(itoh(source_addr)); Puts("\n");
 
-		offset_id_aux = (unsigned int) qos_ID_offset;
+		*offset_id_aux = (unsigned int) qos_ID_offset;
 
 		/* Add the following code to setup the offset_id_aux according to your task
 	} else if (task_id >= my_ID_offset && task_id < (my_ID_offset+MAX_MY_MA_TASKS)){
-		offset_id_aux = (unsigned int) myMA_ID_offset;
+		*offset_id_aux = (unsigned int) myMA_ID_offset;
 	}
 		 */
 
 	} else {
-		Puts("Task class not identified\n");
+		putsv("Task class not identified: ", task_id);
 		while(1);
 	}
 
-
-	//Send the initialization packet
-	msg_size = 0;
-	message = get_message_slot();
-	message[0] = INITIALIZE_MA_TASK;
-	message[1] = task_id;
-	message[2] = offset_id_aux;
-	message[3] = MAX_MA_TASKS;
-
-	msg_size = 4;
-	for(int i=0; i<MAX_MA_TASKS;i++){
-		message[msg_size++] = ma_tasks_location[i];
-	}
-
+	//Sends the initialization packet to the MA task
 	SendService(task_id, message, msg_size);
 
 	while(!NoCSendFree());
 
 
 	if (received_i_am_alive_counter == (MAX_MA_TASKS-1)){ //Minus 1 due the global mapper
+
 
 		Puts("\nInitializing ALL MA TASKS complete\n");
 
@@ -517,11 +524,46 @@ void handle_message(unsigned int * data_msg){
 	}
 }
 
+
+void init_DMNI_SDN_key(){
+	unsigned int addr;
+	unsigned int * message;
+	unsigned int key_flit32;
+
+	key_flit32 = (K1 << 16) | K2;
+
+	Puts("Begin SDN Key config\n");
+
+	for(int x=0; x<XDIMENSION; x++){
+		for(int y=0; y<YDIMENSION; y++){
+
+			addr = (x << 8 | y); //Reuse of msg_size
+
+			//Init remote DMNIs
+			if(addr != net_address){
+				message = get_message_slot();
+				message[0] = 0x20000 | addr; //0x20000 enable bit 17
+				message[1] = 2; //payload
+				message[2] = 0x000; //source
+				message[3] = key_flit32; //init k1 and k2
+				SendRaw(message, 4);
+			} else { //Init local DMNI
+				//Puts("Init local DMNI - GM\n");
+				SetSDN_Key(key_flit32);
+			}
+		}
+	}
+	Puts("End SDN Key config\n");
+}
+
 void main(){
 
 	RequestServiceMode();
 
 	Puts("Initializing Global Mapper\n");
+	net_address = GetNetAddress();
+
+	init_DMNI_SDN_key();
 
 	//Initialize global variables
 	pending_app_req = 0;

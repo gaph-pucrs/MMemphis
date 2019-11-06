@@ -63,9 +63,6 @@ SC_MODULE(pe) {
 	sc_signal<bool > 			config_r_cpu_valid[CS_SUBNETS_NUMBER];
 
 	//CS config
-	sc_signal <bool > 			config_en;
-	sc_signal <bool > 			config_wait_header;
-	sc_signal <bool > 			dmni_rec_en;
 	sc_signal<sc_uint<3> > 		config_inport_subconfig;
 	sc_signal<sc_uint<3> > 		config_outport_subconfig;
 	sc_signal<regCSnet > 		config_valid_subconfig;
@@ -95,7 +92,7 @@ SC_MODULE(pe) {
 	sc_signal< bool > 			tx_dmni_ps;
 	sc_signal< regflit > 		data_out_dmni_ps;
 	sc_signal< bool > 			credit_i_dmni_ps;
-	sc_signal< bool > 			rx_dmni_ps, tx_router_local_ps;
+	sc_signal< bool > 			rx_dmni_ps;
 	sc_signal< regflit > 		data_in_dmni_ps;
 	sc_signal< bool > 			credit_o_dmni_ps;
 		//Configuration
@@ -129,7 +126,6 @@ SC_MODULE(pe) {
 	dmni_qos 	*	dmni;
 	router_cc 	*	ps_router;
 	CS_router	*	cs_router[CS_SUBNETS_NUMBER];
-	CS_config 	* 	cs_config;
 
 
 	/*unsigned long int log_interaction;
@@ -230,6 +226,11 @@ SC_MODULE(pe) {
 		dmni->data_in_ps	(data_in_dmni_ps);
 		dmni->credit_out_ps	(credit_o_dmni_ps);
 
+		//SDN configuration interface
+		dmni->sdn_config_inport(config_inport_subconfig);
+		dmni->sdn_config_outport(config_outport_subconfig);
+		dmni->sdn_config_valid(config_valid_subconfig);
+
 
 		//CS routers wiring
 		char module_name[20];
@@ -283,14 +284,14 @@ SC_MODULE(pe) {
 			ps_router->data_in[p]	(data_in_ps[p]);
 		}
 		//PS router <-> DMNI assignment
-		//ps_router->tx[LOCAL]		(rx_dmni_ps);
-		ps_router->tx[LOCAL]		(tx_router_local_ps);
+		ps_router->tx[LOCAL]		(rx_dmni_ps);
 		ps_router->credit_o[LOCAL]	(credit_i_dmni_ps);
 		ps_router->data_out[LOCAL]	(data_in_dmni_ps);
 		ps_router->rx[LOCAL]		(tx_dmni_ps);
 		ps_router->credit_i[LOCAL]	(credit_o_dmni_ps);
 		ps_router->data_in[LOCAL]	(data_out_dmni_ps);
 
+		/*
 		cs_config = new CS_config("cs_config");
 		cs_config->clock(clock);
 		cs_config->reset(reset);
@@ -302,6 +303,7 @@ SC_MODULE(pe) {
 		cs_config->config_valid(config_valid_subconfig);
 		cs_config->wait_header(config_wait_header);
 		cs_config->config_en(config_en);
+		*/
 
 		SC_METHOD(reset_n_attr);
 		sensitive << reset;
@@ -320,9 +322,9 @@ SC_MODULE(pe) {
 		sensitive << cpu_valid_dmni << cpu_code_dmni << dmni_enable_internal_ram;
 		sensitive << mem_data_read << cpu_enable_ram << cpu_mem_write_byte_enable_reg << dmni_mem_write_byte_enable;
 		sensitive << dmni_mem_data_write << dmni_intr << slack_update_timer;
-		sensitive << cpu_code_dmni << req_in_reg << tx_router_local_ps;
+		sensitive << cpu_code_dmni << req_in_reg;
 		sensitive << config_inport_subconfig << config_outport_subconfig;
-		sensitive << data_in_dmni_ps << config_wait_header << config_en << dmni_rec_en;
+		sensitive << data_in_dmni_ps;
 		sensitive << config_valid_subconfig;
 		
 		SC_METHOD(mem_mapped_registers);

@@ -172,14 +172,12 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 
 
 /*Here starts the support for the management task API used for MA task*/
-		case CFGROUTER:
+		case SDNLOCALCFG:
 
-			if (HAL_is_send_active(PS_SUBNET))
-				return 0;
-
-			send_config_router(arg0, arg1 >> 8, arg1 & 0xFF, arg2);
+			HAL_set_CS_config(arg0);
 
 			return 1;
+
 		case NOCSENDFREE:
 			//If DMNI send is active them return FALSE
 			if (HAL_is_send_active(PS_SUBNET))
@@ -210,9 +208,14 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 			set_task_release((current->offset | arg0), 0);
 
 			break;
+		case SDNINITKEY:
+			
+			HAL_set_dmni_sdn_key(arg0);
+
+			break;
 
 		default:
-			putsv("Syscall code unknow: ", service);
+			putsv("Syscall code unknown: ", service);
 			while(1);
 			break;
 	}

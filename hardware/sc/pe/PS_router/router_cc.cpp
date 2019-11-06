@@ -57,7 +57,7 @@ void router_cc::traffic_monitor(){
 						payload[i] = data_in[i].read();
 						payload_counter[i] = data_in[i].read();
 
-						if (data_in[i].read() == 1){
+						if (data_in[i].read() == 2){
 							service[i] = 0x00001025; //An CS Router setup packet
 							SM_traffic_monitor[i] = 5;
 							break;

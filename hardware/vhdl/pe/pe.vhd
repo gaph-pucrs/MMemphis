@@ -147,7 +147,6 @@ architecture structural of pe is
     signal req_in_reg       			 : array_subnet_wire_pe;
     signal handle_req       			 : array_subnet_wire_pe;
 
-    signal config_en, config_wait_header, dmni_rec_en  : std_logic;
     signal config_inport_subconfig, config_outport_subconfig : std_logic_vector (2 downto 0);
     signal config_valid_subconfig : array_subnet_wire_pe;
 begin
@@ -216,22 +215,6 @@ begin
 		);
 	end generate CS_router;
 
-   CS_config : entity work.CS_config
-      port map(
-         clock          => clock,
-         reset          => reset,
-         rx             => tx_noc_ps(LOCAL),
-         data_in        => data_in_dmni_ps,
-         credit_o       => credit_o_dmni_ps,
-
-         config_inport  => config_inport_subconfig,
-         config_outport => config_outport_subconfig,
-         config_valid   => config_valid_subconfig,
-
-         wait_header    => config_wait_header,
-         config_en      => config_en
-      );
-
     dmni_qos : entity work.dmni_qos
     	generic map(
     		address_router => router_address
@@ -269,7 +252,12 @@ begin
 	        credit_in_ps     => credit_i_dmni_ps,
 	        rx_ps            => rx_dmni_ps,
 	        data_in_ps       => data_in_dmni_ps,
-	        credit_out_ps    => credit_o_dmni_ps
+	        credit_out_ps    => credit_o_dmni_ps,
+	        
+	        --SDN configuration interface
+	        sdn_config_inport  => config_inport_subconfig,
+         	sdn_config_outport => config_outport_subconfig,
+         	sdn_config_valid   => config_valid_subconfig
     	);
 
     uart : entity work.UartFile
@@ -336,17 +324,15 @@ begin
     credit_i_noc_ps(3 downto 0) 		<= credit_i_ps;
 
     -- Internal: connecting router local port to dmni
-    									--bit 16 indicates a configuration packet
-   	dmni_rec_en                        	<= not( (data_in_dmni_ps(16) and config_wait_header) or config_en);
-   	rx_dmni_ps                    		<= tx_noc_ps(LOCAL) and dmni_rec_en;
-
+    -- router to DMNI
+   	rx_dmni_ps                    		<= tx_noc_ps(LOCAL);
+   	data_in_dmni_ps 					<= data_out_noc_ps(LOCAL);
+   	credit_i_noc_ps(LOCAL) 			 	<= credit_o_dmni_ps;
+   	
+   	--DMNI to router
 	rx_noc_ps(LOCAL) 					<= tx_dmni_ps;
-	credit_i_dmni_ps 					<= credit_o_noc_ps(LOCAL);
-	credit_i_noc_ps(LOCAL) 			 	<= credit_o_dmni_ps;
-	data_in_dmni_ps 					<= data_out_noc_ps(LOCAL);
 	data_in_noc_ps(LOCAL) 				<= data_out_dmni_ps;
-    
-    
+	credit_i_dmni_ps 					<= credit_o_noc_ps(LOCAL);
 -----------------------------------------------------------------------------------
 -- COMBINATIONAL LOGIC
 -----------------------------------------------------------------------------------
@@ -394,6 +380,7 @@ begin
   	config_r_cpu_outport 	<= cpu_mem_data_write_reg(12 downto 10) when (cpu_mem_address_reg = CONFIG_VALID_NET) and write_enable = '1' else config_outport_subconfig;
 	config_r_cpu_valid		<= cpu_mem_data_write_reg(CS_SUBNETS_NUMBER downto 1) when cpu_mem_address_reg = CONFIG_VALID_NET and write_enable = '1' else config_valid_subconfig;
 
+
 	--DMNI config
 	cpu_code_dmni <= 	CODE_CS_NET 	when cpu_mem_address_reg = DMNI_CS_NET 	   	else
 						CODE_MEM_ADDR 	when cpu_mem_address_reg = DMNI_MEM_ADDR  	else
@@ -401,6 +388,7 @@ begin
 						CODE_MEM_ADDR2 	when cpu_mem_address_reg = DMNI_MEM_ADDR2 	else
 						CODE_MEM_SIZE2 	when cpu_mem_address_reg = DMNI_MEM_SIZE2 	else
 						CODE_OP			when cpu_mem_address_reg = DMNI_OP		   	else
+						CODE_LOCAL_KEY	when cpu_mem_address_reg = DMNI_CFG_KEY	  	else
 						(others=> '0');
 	cpu_valid_dmni <= '0' when cpu_code_dmni = 0 else '1';
 	

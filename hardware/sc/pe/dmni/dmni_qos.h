@@ -53,6 +53,11 @@ SC_MODULE(dmni_qos){
 	sc_in<regflit>			data_in_ps;
 	sc_out <bool>			credit_out_ps;
 
+	//SDN configuration interface
+	sc_out<sc_uint<3> > 	sdn_config_inport;
+	sc_out<sc_uint<3> > 	sdn_config_outport;
+	sc_out<regCSnet> 		sdn_config_valid;
+
 
 	//Signals
 	//serializers
@@ -87,6 +92,10 @@ SC_MODULE(dmni_qos){
 	//Send and Receive Arbiter
 	sc_signal<bool>			dmni_mode;
 	sc_signal<reg4>			timer;
+
+	//SDN configuration signals
+	sc_signal <bool > 		sdn_local_key_en;
+	sc_signal<reg32 >		sdn_local_key;
 
 	//Instances
 	noc_cs_sender	* 	noc_CS_sender	[CS_SUBNETS_NUMBER];
@@ -162,6 +171,14 @@ SC_MODULE(dmni_qos){
 				noc_PS_receiver->rx(rx_ps);
 				noc_PS_receiver->data_in(data_in_ps);
 				noc_PS_receiver->credit_out(credit_out_ps);
+
+				//SDN configuration interface
+				noc_PS_receiver->config_inport(sdn_config_inport);
+				noc_PS_receiver->config_outport(sdn_config_outport);
+				noc_PS_receiver->config_valid(sdn_config_valid);
+				noc_PS_receiver->local_key_en(sdn_local_key_en);
+				noc_PS_receiver->local_key(sdn_local_key);
+
 			}
 		}
 
@@ -184,6 +201,9 @@ SC_MODULE(dmni_qos){
 			sensitive << s_curr;
 			sensitive << s_next;
 			sensitive << r_curr;
+
+			//SDN configuration sensitive
+			sensitive << config_valid << config_code;
 		}
 
 		//Sequential

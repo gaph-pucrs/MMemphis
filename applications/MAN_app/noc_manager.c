@@ -1365,22 +1365,32 @@ void handle_NI_status_request(unsigned int targetPE, unsigned int req_address){
 }
 
 void initialize_noc_manager(unsigned int * msg){
-	unsigned int max_ma_tasks;
+	unsigned int max_ma_tasks, index;
 	unsigned int task_id, proc_addr, id_offset;
+	unsigned int k1, k2;
 
 	Puts("\n ************ Initialize NoC manager *********** \n");
 	max_ma_tasks = msg[3];
 
 	//Set the proper location of all MA tasks
+	index = 4; //4 is the position of the packet where the addresses of MA task begin -- see global_mapper.c at the creation of packet INITIALIZE_MA_TASK
 	for(int i=0; i<max_ma_tasks; i++){
-		task_id = msg[i+4] >> 16;
-		proc_addr = msg[i+4] & 0xFFFF;
+		task_id = msg[index] >> 16;
+		proc_addr = msg[index] & 0xFFFF;
+		index++;
 		//Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(proc_addr)); Puts("\n");
 		AddTaskLocation(task_id, proc_addr);
 	}
 
+	/*Secure SDN - Initializes the keys*/
+	k1 = msg[index++];
+	k2 = msg[index++];
+
 	/*Secure SDN - Initializes the secure mapper addrs with the list passed by GM*/
-	initialize_secure_mappers(&msg[5]);
+	initialize_secure_mappers(&msg[5]); //msg[4] has the global mapper, for this reason the array point to msg[5]
+
+	/*Secure SDN - Intialize the key passed by GM*/
+	initialize_keys((unsigned short int)k1, (unsigned short int)k2);
 
 	task_id = msg[1];
 	id_offset = msg[2];
@@ -1823,6 +1833,8 @@ int main(){
     init_token_queue();
     init_search_path();
     initit_cluster_borders();
+
+    Puts("My net address: "); Puts(itoh(net_address)); Puts("\n");
 
     //Initialize global variables
     token_coordinator_address = 0; //Set coordinator cluster ID 0 as default

@@ -18,7 +18,6 @@ MEMORY 		=ram
 PROCESSOR 	=mlite_cpu
 PS_ROUTER	=queue switchcontrol router_cc
 CS_ROUTER	=CS_router
-CS_CONFIG	=CS_config
 
 TOP_SRC	    	= $(addprefix sc/, 						$(TOP:=.cpp) $(TOP:=.h) 			)
 IO_SRC			= $(addprefix sc/peripherals/, 			$(IO:=.cpp) $(IO:=.h)				)
@@ -28,7 +27,6 @@ MEMORY_SRC		= $(addprefix sc/pe/memory/,			$(MEMORY:=.cpp) $(MEMORY:=.h)		)
 PROCESSOR_SRC	= $(addprefix sc/pe/processor/plasma/, 	$(PROCESSOR:=.cpp) $(PROCESSOR:=.h)	)
 PS_ROUTER_SRC	= $(addprefix sc/pe/PS_router/, 		$(PS_ROUTER:=.cpp) $(PS_ROUTER:=.h)	)
 CS_ROUTER_SRC	= $(addprefix sc/pe/CS_router/, 		$(CS_ROUTER:=.cpp) $(CS_ROUTER:=.h)	)
-CS_CONFIG_SRC	= $(addprefix sc/pe/CS_config/, 		$(CS_CONFIG:=.cpp) $(CS_CONFIG:=.h)	)
 
 TOP_TGT 		=$(TOP:=.o)
 IO_TGT	 		=$(IO:=.o)
@@ -38,12 +36,11 @@ MEMORY_TGT 		=$(MEMORY:=.o)
 PROCESSOR_TGT 	=$(PROCESSOR:=.o)
 PS_ROUTER_TGT	=$(PS_ROUTER:=.o)
 CS_ROUTER_TGT	=$(CS_ROUTER:=.o)
-CS_CONFIG_TGT 	=$(CS_CONFIG:=.o)
 
 all: $(MEMPHIS_TGT)
 	@cp $(MEMPHIS_TGT) ../base_scenario
 
-$(MEMPHIS_TGT): $(PS_ROUTER_TGT) $(CS_ROUTER_TGT) $(CS_CONFIG_TGT) $(PROCESSOR_TGT) $(DMNI_TGT) $(MEMORY_TGT) $(PE_TGT) $(IO_TGT) $(TOP_TGT)
+$(MEMPHIS_TGT): $(PS_ROUTER_TGT) $(CS_ROUTER_TGT) $(PROCESSOR_TGT) $(DMNI_TGT) $(MEMORY_TGT) $(PE_TGT) $(IO_TGT) $(TOP_TGT)
 	@printf "${COR}Generating %s ...${NC}\n" "$@"
 	g++ -I./ -o $@ $^ -L. -L$(SYSTEMC_HOME)/lib-linux64 -lsystemc
 	
@@ -79,11 +76,6 @@ $(CS_ROUTER_TGT): $(CS_ROUTER_SRC)
 	@printf "${COR}Compiling SystemC source: %s ...${NC}\n" "$(dir $<)$*.cpp"
 	$(SC_C) $(dir $<)$*.cpp
 	
-$(CS_CONFIG_TGT): $(CS_CONFIG_SRC)
-	@printf "${COR}Compiling SystemC source: %s ...${NC}\n" "$(dir $<)$*.cpp"
-	$(SC_C) $(dir $<)$*.cpp
-	
-
 clean:
 	@printf "Cleaning up\n"
 	@rm -f *~

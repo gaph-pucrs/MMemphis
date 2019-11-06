@@ -19,7 +19,6 @@
 /*Global Variables*/
 unsigned int 	cluster_position = 0;					//!< Stores the XY cluster positioning
 unsigned int 	my_task_ID = 0;							//!< Stores the local mapper ID at task level
-unsigned int 	net_address = 0;						//!< Stores the XY address of running processor
 unsigned int 	cluster_x_offset;						//!< Stores the X address of the most left-bottom router
 unsigned int 	cluster_y_offset;						//!< Stores the Y address of the most left-bottom router
 unsigned int 	pending_app_to_map = 0; 				//!< Controls the number of pending applications already handled by not completely mapped

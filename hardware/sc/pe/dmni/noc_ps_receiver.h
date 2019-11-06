@@ -25,13 +25,36 @@ SC_MODULE(noc_ps_receiver){
 	sc_in<regflit > 	data_in;
 	sc_out<bool > 		credit_out;
 
+	//SDN configuration interface
+	sc_out<sc_uint<3> > 	config_inport;
+	sc_out<sc_uint<3> > 	config_outport;
+	sc_out<regCSnet> 		config_valid;
+
+	//Local Key configuration
+	sc_in <bool > 			local_key_en;
+	sc_in<reg32 >			local_key;
+
+
+
 	//Signals
 	sc_signal<reg32 >	data[2];
 	sc_signal<bool >	full[2];
 	sc_signal<bool > 	head, tail;
 
+	//SDN configuration signals
+	sc_signal<regflit> 	payload;
+	sc_signal<reg16> 	k1, k2;
+	sc_signal<bool> 	en_config, en_set_key, key_valid;
+	sc_signal<bool> 	credit, rx_en;
+
+	enum state {header, p_size, ppayload, check_src, check_key, config, set_key};
+	sc_signal<state >	PS;
+
 	void combinational();
 	void sequential();
+
+	void sdn_config_combinational();
+	void sdn_config_sequential();
 
 	SC_HAS_PROCESS(noc_ps_receiver);
 	noc_ps_receiver (sc_module_name name_) : sc_module(name_) {
@@ -42,6 +65,18 @@ SC_MODULE(noc_ps_receiver){
 		sensitive << head;
 
 		SC_METHOD(sequential);
+		sensitive << clock.pos();
+		sensitive << reset;
+
+		//New SDN configuration methods
+		SC_METHOD(sdn_config_combinational);
+		sensitive << data_in;
+		sensitive << PS;
+		sensitive << en_config;
+		sensitive << en_set_key;
+		sensitive << k1 << k2;
+
+		SC_METHOD(sdn_config_sequential);
 		sensitive << clock.pos();
 		sensitive << reset;
 	}

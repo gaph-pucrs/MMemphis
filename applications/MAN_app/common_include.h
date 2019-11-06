@@ -63,6 +63,7 @@ volatile 		MangmtMessageSlot sdn_msg_slot1, sdn_msg_slot2;	//!<Slots to prevent 
 unsigned int 	global_task_ID; 							//!< Stores the global mapper ID at task level
 unsigned int 	S_task_ID_offset;								//!< Stores the offset of task IDs where tasks of same class of management starts
 unsigned int 	S_num_x_cluster;
+unsigned int 	net_address;
 
 
 unsigned int * get_message_slot() {
@@ -96,11 +97,13 @@ void initialize_MA_task(){
 	S_task_ID_offset = 0;
 	S_num_x_cluster = 0;
 
+	net_address = GetNetAddress();
+
 	AddTaskLocation(global_task_ID,global_task_ID);
 
 	message = get_message_slot();
 	message[0] = INIT_I_AM_ALIVE;		//Task Service
-	message[1] = GetNetAddress();	//Task Address
+	message[1] = net_address;	//Task Address
 	message[2] = GetMyID();
 	//Puts("Sending I AM ALIVE to global mapper\n");
 	SendService(global_task_ID, message, 3);
@@ -185,7 +188,7 @@ void request_SDN_path(int source_addr, int target_addr){
 	send_message[2] = target_addr; //target
 	send_message[3] = GetMyID();
 	send_message[4] = 1; //Not used by the noc_manager - can be deleted
-	send_message[5] = GetNetAddress(); //Secure SDN: added to allows SDN manager check the addresse of manager
+	send_message[5] = net_address; //Secure SDN context: added to allows SDN manager check the addresse of manager
 
 	SendService(coordinator_task_ID, send_message, 5);
 

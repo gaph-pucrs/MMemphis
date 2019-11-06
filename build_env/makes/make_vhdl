@@ -18,7 +18,6 @@ MEMORY 		=ram
 PROCESSOR 	=mlite_pack UartFile alu bus_mux control mem_ctrl mult pc_next pipeline reg_bank shifter mlite_cpu
 PS_ROUTER	=Hermes_buffer Hermes_crossbar Hermes_switchcontrol RouterCC
 CS_ROUTER	=latch_d EB_input CS_router
-CS_CONFIG	=CS_config
 
 MEMPHIS_PKG_SRC	= $(addprefix ../include/, 					$(MEMPHIS_PKG:=.vhd) 	)
 STAND_SRC	    = $(addprefix vhdl/, 						$(STAND:=.vhd) 		)
@@ -30,14 +29,13 @@ MEMORY_SRC		= $(addprefix ../base_scenario/ram_pe/,		$(MEMORY:=.vhd) 	)
 PROCESSOR_SRC	= $(addprefix vhdl/pe/processor/plasma/, 	$(PROCESSOR:=.vhd) 	)
 PS_ROUTER_SRC	= $(addprefix vhdl/pe/PS_router/, 			$(PS_ROUTER:=.vhd) 	)
 CS_ROUTER_SRC	= $(addprefix vhdl/pe/CS_router/, 			$(CS_ROUTER:=.vhd) 	)
-CS_CONFIG_SRC	= $(addprefix vhdl/pe/CS_config/, 			$(CS_CONFIG:=.vhd) 	)
 
 #This target dir $(TGT_SCCOM_PATH) is created automatically by questa or modelsim, please ensures that your path math it the following 
 TGT_SCCOM_PATH = $(LIB)/_sc/linux_x86_64_gcc-4.7.4/
 
 IO_TGT	 		=$(addprefix $(TGT_SCCOM_PATH), $(IO:=.o))
 
-default: lib $(MEMPHIS_PKG) $(STAND) $(PS_ROUTER) $(CS_ROUTER) $(CS_CONFIG) $(PROCESSOR) $(DMNI) $(MEMORY) $(PE) $(IO_TGT) $(TOP)
+default: lib $(MEMPHIS_PKG) $(STAND) $(PS_ROUTER) $(CS_ROUTER) $(PROCESSOR) $(DMNI) $(MEMORY) $(PE) $(IO_TGT) $(TOP)
 	@ $(CC) -link -B/usr/bin/
 
 lib:
@@ -81,10 +79,6 @@ $(PS_ROUTER): $(PS_ROUTER_SRC)
 	$(COMP) $(dir $<)$@.vhd
 	
 $(CS_ROUTER): $(CS_ROUTER_SRC)
-	@printf "${COR}Compiling VHDL source: %s ...${NC}\n" "$(dir $<)$@.vhd"
-	$(COMP) $(dir $<)$@.vhd
-
-$(CS_CONFIG): $(CS_CONFIG_SRC)
 	@printf "${COR}Compiling VHDL source: %s ...${NC}\n" "$(dir $<)$@.vhd"
 	$(COMP) $(dir $<)$@.vhd
 

@@ -108,30 +108,6 @@ void DMNI_send_data(unsigned int initial_address, unsigned int dmni_msg_size,  u
 }
 
 
-
-
-/**Function that abstracts the process to configure the CS routers table,
- * This function configures the IRT and ORT CS_router tables
- * \param input_port Input port number [0-4]
- * \param output_port Output port number [0-4]
- * \param subnet_nr Subnet number
- */
-void config_subnet(unsigned int input_port, unsigned int output_port, unsigned int subnet_nr){
-
-#if CS_DEBUG
-	puts("\n **** CONFIG subnet routine *****\n");
-	putsv("Input port = ", input_port);
-	putsv("Output port = ", output_port);
-	putsv("subnet_nr = ", subnet_nr);
-#endif
-	volatile unsigned int config;
-
-	config = (input_port << 13) | (output_port << 10) | (2 << subnet_nr) | 0;
-
-	HAL_set_CS_config(config);
-}
-
-
 /** Clear a interruption mask
  * \param Mask Interruption mask clear
  */

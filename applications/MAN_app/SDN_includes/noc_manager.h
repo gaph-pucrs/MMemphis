@@ -10,6 +10,7 @@
 
 #include "../common_include.h"
 #include <management_api.h>
+#include "sdn_config_manager.h"
 
 #define SDN_DEBUG 0
 #define PATH_DEBUG 0
@@ -335,7 +336,7 @@ void retrace(int mp, int beg_inport, int end_outport){
 			cs_inport[x][y][mp][beg_inport] = end_outport;
 			/************** router configuration *************************/
 			cfg_router = ((x+x_offset) << 8) | (y+y_offset);
-			ConfigRouter(cfg_router, (beg_inport << 8) | end_outport, mp);
+			ConfigRouter(cfg_router, beg_inport, end_outport, mp);
 			/**************************************************************/
 
 			if(beg_inport != LOCAL_IN && end_outport != LOCAL_OUT)
@@ -410,7 +411,7 @@ void retrace(int mp, int beg_inport, int end_outport){
 				hops_count++;
 			/************** router configuration *************************/
 			cfg_router = ((x+x_offset) << 8) | (y+y_offset);
-			ConfigRouter(cfg_router, (inport << 8) | outport, mp);
+			ConfigRouter(cfg_router, inport, outport, mp);
 			/**************************************************************/
 
 #if PATH_DEBUG
@@ -456,7 +457,7 @@ void retrace(int mp, int beg_inport, int end_outport){
 
 		/************** router configuration *************************/
 		cfg_router = ((x+x_offset) << 8) | (y+y_offset);
-		ConfigRouter(cfg_router, (beg_inport << 8) | outport, mp);
+		ConfigRouter(cfg_router, beg_inport, outport, mp);
 		/**************************************************************/
 
 #if PATH_DEBUG

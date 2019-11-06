@@ -14,7 +14,6 @@ MEMORY 		=ram
 PROCESSOR 	=mlite_cpu
 PS_ROUTER	=queue switchcontrol router_cc
 CS_ROUTER	=CS_router
-CS_CONFIG	=CS_config
 
 TOP_SRC	    	= $(addprefix sc/, 						$(TOP:=.cpp) $(TOP:=.h) 			)
 IO_SRC			= $(addprefix sc/peripherals/, 			$(IO:=.cpp) $(IO:=.h)				)
@@ -24,7 +23,6 @@ MEMORY_SRC		= $(addprefix sc/pe/memory/,			$(MEMORY:=.cpp) $(MEMORY:=.h)		)
 PROCESSOR_SRC	= $(addprefix sc/pe/processor/plasma/, 	$(PROCESSOR:=.cpp) $(PROCESSOR:=.h)	)
 PS_ROUTER_SRC	= $(addprefix sc/pe/PS_router/, 		$(PS_ROUTER:=.cpp) $(PS_ROUTER:=.h)	)
 CS_ROUTER_SRC	= $(addprefix sc/pe/CS_router/, 		$(CS_ROUTER:=.cpp) $(CS_ROUTER:=.h)	)
-CS_CONFIG_SRC	= $(addprefix sc/pe/CS_config/, 		$(CS_CONFIG:=.cpp) $(CS_CONFIG:=.h)	)
 
 #This target dir $(TGT_SCCOM_PATH) is created automatically by questa or modelsim, please ensures that you have a valid path
 TGT_SCCOM_PATH = $(LIB)/_sc/linux_x86_64_gcc-4.7.4/
@@ -38,10 +36,9 @@ MEMORY_TGT 		=$(addprefix $(TGT_SCCOM_PATH), $(MEMORY:=.o))
 PROCESSOR_TGT 	=$(addprefix $(TGT_SCCOM_PATH), $(PROCESSOR:=.o))
 PS_ROUTER_TGT	=$(addprefix $(TGT_SCCOM_PATH), $(PS_ROUTER:=.o))
 CS_ROUTER_TGT	=$(addprefix $(TGT_SCCOM_PATH), $(CS_ROUTER:=.o))
-CS_CONFIG_TGT	=$(addprefix $(TGT_SCCOM_PATH), $(CS_CONFIG:=.o))
 
 
-default: lib $(PS_ROUTER_TGT) $(CS_ROUTER_TGT) $(CS_CONFIG_TGT) $(PROCESSOR_TGT) $(DMNI_TGT) $(MEMORY_TGT) $(PE_TGT) $(IO_TGT) $(TOP_TGT)
+default: lib $(PS_ROUTER_TGT) $(CS_ROUTER_TGT) $(PROCESSOR_TGT) $(DMNI_TGT) $(MEMORY_TGT) $(PE_TGT) $(IO_TGT) $(TOP_TGT)
 	@ $(CC) -link -B/usr/bin/
 
 lib:
@@ -80,10 +77,6 @@ $(CS_ROUTER_TGT): $(CS_ROUTER_SRC)
 	@printf "${COR}Compiling SystemC source: %s ...${NC}\n" "$(dir $<)$(notdir $*).cpp"
 	$(SC_C) $(dir $<)$(notdir $*).cpp
 	
-$(CS_CONFIG_TGT): $(CS_CONFIG_SRC)
-	@printf "${COR}Compiling SystemC source: %s ...${NC}\n" "$(dir $<)$(notdir $*).cpp"
-	$(SC_C) $(dir $<)$(notdir $*).cpp
-
 clean:
 	@printf "Cleaning up\n"
 	@rm -f *~

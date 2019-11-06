@@ -37,23 +37,21 @@ architecture noc_ps_receiver of noc_ps_receiver is
 	
 	--Signal from SDN config
 	type state is (header, p_size, ppayload, check_src, check_key, config, set_key);
-	signal PS                    	: state;
-	signal payload          		: regflit;
-	signal key						: std_logic_vector(31 downto 0);
-	signal en_config, en_set_key	: std_logic;
-	signal credit, rx_en			: std_logic;
+	signal PS                    			: state;
+	signal payload          				: regflit;
+	signal k1, k2							: std_logic_vector(15 downto 0);
+	signal en_config, en_set_key, key_valid	: std_logic;
+	signal credit, rx_en					: std_logic;
 	
 begin
 	
 	credit <= (not full(0)) or (not full(1));
-	
 	credit_out <=  credit;
 	valid <= full(0) or full(1);
 	data_to_memory <= data(conv_integer(head)); 
 	
-	--rx_en <= '1' when not ((data_in(16) = '1' or data_in(17) = '1') and PS = header) and en_config = '0' and en_set_key = '0' else '0';
 	rx_en <= '0' when ((data_in(16) = '1' or data_in(17) = '1') and PS = header) or en_config = '1' or en_set_key = '1' else '1';
-	
+	key_valid <= '1' when (data_in(31 downto 16) xor k1) = k2 else '0';
 	
 	process(clock, reset)
 	begin
@@ -88,7 +86,7 @@ begin
 --  ppayload -> apenas consome o pacote ate chegar o ultimo flit, que faz com que a SM retorne para header concluindo o recebimento do pacote
 --  check_src-> verifica se o 3o flit do pacote (contido em data_in) eh igua a zero. Por padrao so eh possivel configurar a key se o source do pacote
 --				eh o PE no endereco 0x0. Caso o PE nao for 0x0, gera-se um report the warning e a SM avanca para ppayload para consumir o restante do pacote malicioso
---  check_key-> verifica se o 3o flit do pacote   (contido em data_in) eh igua a key configurada e se a key possui um valor valido (diferente de zero). Caso afirmativo,
+--  check_key-> verifica se key_valid esta com um valor positivo. Caso afirmativo,
 --              a SM avanca para config. Caso contratio, gera-se um report de warning e a SM avanca para ppayload para consumir o restante do pacote malicioso.              
 --  config ->   configura o CS router. Esta configuracao eh feita pelo reg config_valid que somente eh ativado quando a SM esta em config. Apos a configuracao a SM volta para header.
 --  set_key ->  configura a key de acordo com o conteudo de data_in. Apos a configuracao a SM volta para header.
@@ -141,7 +139,7 @@ begin
 						end if;
 						
 					when check_key =>
-						if key /= 0 and key = data_in then
+						if key_valid = '1' then
 							PS <= config;
 						else
 							report "Malicious config. detected (key does not match)" severity warning;
@@ -163,16 +161,19 @@ begin
 		end if;
 	end process;
 	
-	--Updates the data used by CS router to configure the inport and outport
+	--Updates the keys and the data used by CS router to configure the inport and outport
 	config_update : process(clock, reset)
 	begin
 		if reset = '1' then
 			config_valid <= (others=> '0');
 			config_inport  <= (others=> '0');
 			config_outport <= (others=> '0');
-			key <= (others=> '0');
+			k1 <= (others=> '0');
+			k2 <= (others=> '0');
 		elsif rising_edge(clock) then
 			
+			
+			--Update CS routers config
 			if PS = config then
 				config_valid <= data_in(CS_SUBNETS_NUMBER downto 1);--Gets subnet information from config. packet flit
 				config_inport  <= data_in(15 downto 13);
@@ -180,12 +181,21 @@ begin
 			else 
 				config_valid <= (others=> '0');
 			end if;
-		end if;
 		
-		if PS = set_key then
-			key <= data_in;
-		elsif local_key_en = '1' then
-			key <= local_key;
+		
+		
+			--Update keys
+			if PS = set_key then
+				k1 <= data_in(31 downto 16);
+				k2 <= data_in(15 downto 0);
+			elsif PS = check_key and key_valid = '1' then
+				k1 <= k2;
+				k2 <= data_in(15 downto 0) xor k2; --Extracts k3 using k2
+			elsif local_key_en = '1' then
+				k1 <= local_key(31 downto 16);
+				k2 <= local_key(15 downto 0);
+			end if;
+		
 		end if;
 	end process;
 	

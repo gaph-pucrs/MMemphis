@@ -27,7 +27,6 @@ architecture noc_ps_sender of noc_ps_sender is
 	signal data : send_buffer := (others=> (others=>'0'));
 	signal full : std_logic_vector(1 downto 0);
 	signal head, tail: std_logic_vector(0 downto 0);
-	signal shifter_count : std_logic_vector(3 downto 0);
 	
 begin
 	

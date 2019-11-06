@@ -44,8 +44,6 @@ int get_subnet(int, int, int);
 
 void check_ctp_reconfiguration(TCB *);
 
-void send_config_router(int, int, int, int);
-
 void send_NoC_switching_ack(int, int, int, int);
 
 void handle_dynamic_CS_setup(volatile ServiceHeader *);

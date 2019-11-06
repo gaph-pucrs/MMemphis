@@ -40,9 +40,18 @@ def main():
     yaml_testcase_r = get_yaml_reader(INPUT_TESTCASE_FILE_PATH)
     
     create_ifn_exists(SCENARIO_PATH)
-    os.system("rm -rf "+SCENARIO_PATH+"/*")
-    create_ifn_exists(SCENARIO_PATH+"/log")
     
+    #Teste if scenario has a wave.do file, if positive, copy this file to tmp file
+    if os.path.isfile(SCENARIO_PATH+"/wave.do"):
+        os.system("cp "+SCENARIO_PATH+"/wave.do "+SCENARIO_PATH+"/../wave_tmp.do")
+    
+    os.system("rm -rf "+SCENARIO_PATH+"/*")
+    
+    #Restore the last wave.do from the tmp file, copying it to the new scenario directory
+    if os.path.isfile(SCENARIO_PATH+"/../wave_tmp.do"):
+        os.system("mv "+SCENARIO_PATH+"/../wave_tmp.do "+SCENARIO_PATH+"/wave.do")
+    
+    create_ifn_exists(SCENARIO_PATH+"/log")
     #Copy scenario.yaml to scenario dir and testcase dir
     try:
         copyfile(INPUT_SCENARIO_FILE_PATH, SCENARIO_PATH+"/"+SCENARIO_NAME+".yaml")
@@ -63,7 +72,8 @@ def main():
     elif system_model == "scmod" or system_model == "vhdl":
         
         copyfile(TESTCASE_PATH+"/base_scenario/sim.do" , SCENARIO_PATH+"/sim.do")
-        copyfile(TESTCASE_PATH+"/base_scenario/wave.do" , SCENARIO_PATH+"/wave.do")
+        if not os.path.isfile(SCENARIO_PATH+"/wave.do"):
+            copyfile(TESTCASE_PATH+"/base_scenario/wave.do" , SCENARIO_PATH+"/wave.do")
         delete_if_exists(SCENARIO_PATH+"/hardware")
         create_ifn_exists(SCENARIO_PATH+"/hardware")
         create_ifn_exists(SCENARIO_PATH+"/hardware/work")
