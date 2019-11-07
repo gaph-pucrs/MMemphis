@@ -58,6 +58,7 @@ def get_subnet_number(yaml_reader):
     try:
         return yaml_reader["hw"]["subnets"]
     except:
+        print "Warning SUBNETS not declared into testcase yaml, using 2 as default\n"
         return 2;
     
 def get_subnet_CS_flit_width(yaml_reader):
@@ -102,6 +103,21 @@ def get_task_scheduler(yaml_reader):
 
 def get_app_repo_size(yaml_reader):
     return 1000
+
+def get_consumer_tasks_list(yaml_reader, producer_task_name):
+    return yaml_reader[producer_task_name]
+
+def is_realtime_app(yaml_reader):
+    try:
+        return yaml_reader["real-time"]
+    except:
+        return 0;
+
+def is_secure_app(yaml_reader):
+    try:
+        return yaml_reader["secure"]
+    except:
+        return 0;
 
 #Returns a list of objects ApplicationInfo containing the app name, num of tasks, start time and cluster id
 #However repo address return -1, it is filled inside app_builder during the repositoriy generation
