@@ -52,10 +52,15 @@ os.system("killall "+IMPUT_SCENARIO_FILE_PATH.split(".")[0])
 exit_status = os.system("memphis-gen "+ INPUT_TESTCASE_FILE_PATH)
 if exit_status != 0:
 	sys.exit("\nError in memphis-gen")
-	
+
+#raw_input("Press Enter to continue to App Generation (memphis-app)...")	
+
 exit_status = os.system("memphis-app "+ INPUT_TESTCASE_FILE_PATH + " -all "+IMPUT_SCENARIO_FILE_PATH)
 if exit_status != 0:
 	sys.exit("\nError in memphis-app")
+
+#raw_input("Press Enter to continue to Run the scenario (memphis-run)...")
+
 exit_status = os.system("memphis-run "+ INPUT_TESTCASE_FILE_PATH + " " + IMPUT_SCENARIO_FILE_PATH + " " + str(SIM_TIME))
 if exit_status != 0:
 	sys.exit("\nError in memphis-run")

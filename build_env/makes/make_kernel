@@ -22,7 +22,7 @@ HAL_KERNEL_TGT = $(addsuffix .o, $(addprefix $(HAL_KERNEL_DIR), $(HAL_NAME) ) )
 
 #------------- MODULES KERNEL -----------
 MODULES_DIR = kernel/modules/
-MODULES_NAMES = utils packet pending_service task_communication TCB monitor enforcer_mapping enforcer_migration enforcer_sdn task_scheduler
+MODULES_NAMES = utils packet pending_service task_communication TCB monitor enforcer_mapping enforcer_migration enforcer_sdn task_scheduler csiphash
 
 MODULES_SRC = $(addsuffix .c, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) ) $(addsuffix .h, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) )
 MODULES_TGT = $(addsuffix .o, $(addprefix $(MODULES_DIR), $(MODULES_NAMES) ) )

@@ -84,8 +84,8 @@ def main():
     #Calls the memphis-wave_gen script if
     generate_wave(TESTCASE_PATH, yaml_reader)
     
-    #Compile the hw and kernel by calling hw_builder and kernel_builder    
-    exit_status = os.system("make all -C "+TESTCASE_PATH)
+    #Show the banner and compile the hw and kernel by calling hw_builder and kernel_builder    
+    exit_status = os.system("make banner kernel hw -C "+TESTCASE_PATH)
     
     if exit_status == 0:
         print "\n\nMemphis platform generated and compiled successfully at:\n-"+TESTCASE_PATH+"\n"

@@ -75,12 +75,30 @@ def main():
     if exit_status != 0:
         sys.exit("\nError compiling applications' source code\n");
         exit(1)
+        
+    #Generate the siphash and embedded at the end of each object code file (.txt)
+    generate_siphash(TESTCASE_PATH, APP_NAME, APP_PATH)
     
     #Generate the repository.txt and repository_debug.txt files for each application
     generate_repository(yaml_r, TESTCASE_PATH, APP_PATH, APP_NAME);
     
     exit(0)
+
+def generate_siphash(testacase_dir, app_name, app_path):
     
+    if (get_app_secure_status(app_path) == 1):
+        
+        task_name_list = get_app_task_name_list(testacase_dir, app_name)
+        
+        for task_name in task_name_list: 
+            
+            print "Generating SIPHASH to task ", task_name, "..."
+            exit_status = os.system(testacase_dir+"/build/siphash " + app_path+"/"+task_name+".txt" )  #TXT 
+            
+            if exit_status == 0 :
+                print "ERROR: MAC generation failed"
+                sys.exit(0)
+
 def copy_app_make(memphis_path, app_path, page_size_KB):
     
     makes_source = memphis_path+"/build_env/makes/make_app"
