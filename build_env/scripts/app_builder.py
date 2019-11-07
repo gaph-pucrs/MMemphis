@@ -116,7 +116,8 @@ def generate_apps_id(app_name, app_path, testacase_dir):
 #Please, behold this following peace of art:     
 def generate_repository(yaml_r, testcase_dir, app_path, app_name):
     
-    TASK_DESCRIPTOR_SIZE = 6 #6 is number of lines to represent a task description 
+    MAX_DEPENDENCES = 10
+    TASK_DESCRIPTOR_SIZE = MAX_DEPENDENCES + 7 #7 is number of lines to represent a task description 
 
     print "\n***************** Task page size report ***********************"
     
@@ -160,7 +161,20 @@ def generate_repository(yaml_r, testcase_dir, app_path, app_name):
         
         initial_address = initial_address + (txt_size * 4)
         
-        dependenc_list = get_task_dependence_list(app_name, task_name)
+        repo_lines.append( RepoLine(toX(get_app_secure_status(app_path)), "is secure (1), not secure (0)") )
+        
+        dependenc_list = get_consumers_task_list(testcase_dir, app_path, app_name, task_name)
+        
+        #Fills the task dependences according with MAX_DEPENDENCES size
+        for i in range(0, MAX_DEPENDENCES):
+            
+            if (i < len(dependenc_list)):
+                comment = "consumer task id ["+dependenc_list[i][0]+"]"
+                repo_lines.append( RepoLine(toX(dependenc_list[i][1]), comment) )
+            else:
+                comment = ""
+                repo_lines.append( RepoLine("ffffffff", comment) )
+                    
         
         task_id = task_id + 1
         
@@ -305,5 +319,82 @@ def check_application_task_number(testcase_dir, app_task_number, app_name):
         tkinter.Tk().wm_withdraw()
         mbox.showinfo('ERROR', "Applicaiton: "+app_name+" has "+str(app_task_number)+" tasks but kernel support MAX_TASKS_APP of "+str(kernel_max_app)+". Please change this kernel constraint inside the file build_env/scripts/kernel_builder.py")
         sys.exit("\nMAX_TASKS_APP boundary exceeded\n")
+
+def get_consumers_task_list(testcase_dir, app_path, app_name, task_name):
+    
+    ctg_source_file = app_path + "/tcg.yaml"
+    
+    try:
+    
+        file = open(ctg_source_file, 'r')
+        
+        ctg_yaml_r = yaml.load(file)
+        
+        file.close()
+        
+        consumer_list = get_consumer_tasks_list(ctg_yaml_r, task_name)
+        
+        #print "Producer name: ", task_name
+        #print "Consumer list: ", consumer_list
+        
+        consumer_id_list = []
+    
+        for consumer_name in consumer_list:
+            consumer_id = get_task_id(testcase_dir, app_name, consumer_name)
+            consumer_id_list.append([consumer_name, consumer_id])
+        
+        return consumer_id_list
+    except:
+        return []
+
+def get_task_id(testcase_path, app_name, task_name):
+    
+    app_task_name_list = get_app_task_name_list(testcase_path, app_name)
+    
+    task_found = False;
+    
+    task_id = 0
+    for task_n in app_task_name_list:
+        if task_n == task_name:
+            task_found = True;
+            break;
+        task_id = task_id + 1
+        
+    if not task_found:
+        sys.exit("\nERROR in app_builder:::task name is not within app list\n")
+        
+    return task_id
+
+def get_app_rt_status(app_path):
+    
+    ctg_source_file = app_path + "/tcg.yaml"
+    
+    try:
+        file = open(ctg_source_file, 'r')
+    
+        ctg_yaml_r = yaml.load(file)
+        
+        file.close()
+    
+        return is_realtime_app(ctg_yaml_r) #TO DO
+
+    except:
+        return 0
+
+def get_app_secure_status(app_path):
+    
+    ctg_source_file = app_path + "/tcg.yaml"
+    
+    try:
+        file = open(ctg_source_file, 'r')
+    
+        ctg_yaml_r = yaml.load(file)
+        
+        file.close()
+    
+        return is_secure_app(ctg_yaml_r)
+
+    except:
+        return 0
 
 main()

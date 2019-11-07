@@ -1,0 +1,20 @@
+real-time: 1
+secure: 1
+recognizer:
+ - p1
+ - p2
+ - p3
+ - p4
+p4:
+ - recognizer
+p3:
+ - recognizer
+p2:
+ - recognizer
+p1:
+ - recognizer
+bank:
+ - p1
+ - p2
+ - p3
+ - p4
