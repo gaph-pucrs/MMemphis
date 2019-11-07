@@ -45,11 +45,14 @@
 */
 
 
+/*Others common defines*/
+
+/* Defines the number where Packet-Switching subnet is refered in MMR*/
+#define MAX_MANAG_MSG_SIZE		100
+
 #define putsv(string, value) Puts(string); Puts(itoa(value)); Puts("\n");
 
-//#define MAX_MAPPING_MSG		100
-//#define MAX_MANAG_MSG_SIZE (XDIMENSION*YDIMENSION*CS_NETS)
-#define MAX_MANAG_MSG_SIZE	100
+
 
 
 typedef struct {

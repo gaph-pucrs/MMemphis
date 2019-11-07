@@ -1,4 +1,5 @@
 real-time: 1
+secure: 1
 prod:
  - cons
   

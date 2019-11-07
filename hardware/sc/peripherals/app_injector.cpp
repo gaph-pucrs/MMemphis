@@ -60,7 +60,7 @@ string app_injector::get_app_repo_path(unsigned int app_id){
 void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned int real_task_id, unsigned int master_ID, unsigned int allocated_proc){
 
 	string line, path;
-	unsigned int  task_number, code_size, data_size, bss_size, task_line, code_line, current_line;
+	unsigned int  task_number, code_size, data_size, bss_size, task_line, is_secure, code_line, current_line;
 	int ptr_index = 0;
 	unsigned int app_id, task_id;
 
@@ -104,13 +104,22 @@ void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned in
 		sscanf( line.substr(0, 8).c_str(), "%x", &bss_size);
 		getline (repo_file,line); /*initial_address*/
 		sscanf( line.substr(0, 8).c_str(), "%x", &code_line);
+		getline (repo_file,line); /*is secure*/
+		sscanf( line.substr(0, 8).c_str(), "%x", &is_secure);
 
-		code_line = code_line / 4; /*Divided by 4 because memory has 4 byte words*/
+		/*Skips MAX_DEPENDECES_SIZE*/
+		for(int i=0; i<MAX_DEPENDECES_SIZE; i++){
+			getline (repo_file,line);
+		}
 
+		/*Code line point the line of the repository according to the address extracted from initial address field*/
+		code_line = code_line / 4;
+
+		/*Computes the current pointer of file reader*/
 		current_line = task_line + TASK_DESCRIPTOR_SIZE + 1; /*Finds the current line by sum the number of task by the task decription size*/
 
 		//cout << "Current line: " << current_line << endl;
-		/*Points the reader to the beging of task code*/
+		/*Jumps the file reader pointer until the right position of the tast obj code*/
 		while(current_line < code_line){
 			getline (repo_file,line);
 			current_line++;
@@ -126,10 +135,11 @@ void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned in
 		packet[2] = TASK_ALLOCATION; //Packet service
 		packet[3] = full_task_id;
 		packet[4] = master_ID; //Master ID
+		packet[7] = is_secure; //Is a secure task
 		packet[9] = data_size; //Data size
 		packet[10] = code_size; //Code size
 		packet[11] = bss_size; //Bss size
-		ptr_index 			= CONSTANT_PACKET_SIZE; //Jumps to the end of ServiceHeader
+		ptr_index  = CONSTANT_PACKET_SIZE; //Jumps to the end of ServiceHeader
 
 		//Assembles txt
 		for(unsigned int i=0; i<code_size; i++){
@@ -137,6 +147,8 @@ void app_injector::task_allocation_loader(unsigned int full_task_id, unsigned in
 			sscanf( line.substr(0, 8).c_str(), "%x", &packet[ptr_index++]);
 			//cout << line << endl;
 		}
+
+		//cout << "END of PACKET" << endl;
 
 	} else {
 		cout << "ERROR cannot read the file at path: " << path << " and app id " << app_id << endl;
@@ -357,6 +369,7 @@ void app_injector::app_descriptor_loader(){
 		for(int i=0; i<file_length; i++){
 
 			getline (repo_file,line);
+			//cout << line << endl;
 
 			if(i == allocated_proc_index){//If the current line is the allocated proc, then inserts the statically mapped process address
 				packet[ptr_index++] = task_static_mapping[task_index++];

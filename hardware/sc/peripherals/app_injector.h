@@ -21,7 +21,8 @@ using namespace std;
 #define CONSTANT_PACKET_SIZE	13 	//Constant ServiceHeader packet size (more info inside software/modules/packet.h)
 #define MPE_ADDR				0 	//PE address of the manager PE
 #define TASK_NUMBER_INDEX		8 	//Index where is the app task number information within packet APP_REQ_ACK
-#define TASK_DESCRIPTOR_SIZE	6	//6 is number of lines to represent a task description. Keeps this number equal to build_env/scripts/app_builder.py
+#define MAX_DEPENDECES_SIZE		10	//Size of the maximum number of diferent tasks that a given task can perform Send() calls
+#define TASK_DESCRIPTOR_SIZE	(MAX_DEPENDECES_SIZE+7)	//7 is number of lines to represent a task description. Keeps this number equal to build_env/scripts/app_builder.py
 #define MAN_APP_DESCRIPTOR_SIZE	8 	//This number represents the number of lines that MAN_app has into the file my_scenario/appstart.txt. If you include a new MAN_app task, please increase this value in +1
 
 

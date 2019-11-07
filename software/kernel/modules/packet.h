@@ -54,6 +54,7 @@ typedef struct {
 	union {
 		unsigned int cpu_slack_time;			//!<Unused field for while
 		unsigned int computation_task_number;
+		unsigned int is_secure_task;
 	};
 	//flit 8
 	union {								//!<Generic union

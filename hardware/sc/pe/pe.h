@@ -8,7 +8,6 @@
 #include "dmni/dmni_qos.h"
 #include "PS_router/router_cc.h"
 #include "CS_router/CS_router.h"
-#include "CS_config/CS_config.h"
 #include "memory/ram.h"
 
 SC_MODULE(pe) {

@@ -253,7 +253,7 @@ void handle_task_allocated(unsigned int task_id){
 	Task * task_ptr;
 	unsigned int * message;
 
-	putsv("\n -> TASK ALLOCATED from task ", task_id);
+	putsv("-> TASK ALLOCATED from task ", task_id);
 
 	app_id = task_id >> 8;
 
@@ -396,7 +396,8 @@ void main(){
 	initialize_MA_task();
 	Puts("My net address: "); Puts(itoh(net_address)); Puts("\n");
 
-	unsigned int data_message[MAX_MANAG_MSG_SIZE];
+	//Worst case message size == (MAX_TASKS_APP*TASK_DESCRIPTOR_SIZE)+1
+	unsigned int data_message[MAX_TASKS_APP*TASK_DESCRIPTOR_SIZE+100]; //usando +100 para garantir
 
 	for(;;){
 		ReceiveService(data_message);

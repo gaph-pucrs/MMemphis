@@ -109,21 +109,21 @@ void handle_message(unsigned int * data_msg){
 	switch (data_msg[0]) {
 		case INITIALIZE_MA_TASK:
 			initialize_qos_manager(data_msg);
-			fires_SDN_request();
+			//fires_SDN_request();
 			break;
 		case PATH_CONNECTION_ACK:
 			handle_SDN_ack(data_msg);
 			break;
 		case NOC_SWITCHING_CTP_CONCLUDED:
 			Puts(" ACK received, CS protocol finished\n");
-			while(flag_apagar){
+			/*while(flag_apagar){
 				while(GetTick() > 400000 ){
 					Puts("aqui\n");
 					flag_apagar = 0;
 					CTP_set_PS_switching(256, 257, 0x102);
 					break;
 				}
-			}
+			}*/
 			break;
 		default:
 			Puts("Error message unknown\n");
