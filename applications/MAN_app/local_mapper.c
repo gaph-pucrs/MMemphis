@@ -8,6 +8,7 @@
 #include "mapping_includes/local_mapper/application.h"
 #include "mapping_includes/local_mapper/processors.h"
 #include "mapping_includes/local_mapper/reclustering.h"
+#include "mapping_includes/local_mapper/circuit_switching.h"
 #include "mapping_includes/local_mapper/resoucer_controller.h"
 
 void initialize_local_mapper(unsigned int * msg){
@@ -139,22 +140,62 @@ void request_application(Application *app){
 void handle_pending_application(){
 
 	Application *app = 0;
-	int mapping_complete = 0;
+	int complete = 0;
 
 	Puts("Handle next application \n");
 
 	/*Selects an application pending to be mapped due reclustering*/
 	app = get_next_pending_app();
 
-	//This line fires the reclustering protocol
-	mapping_complete = reclustering_next_task(app);
+	putsv("Pending app ID: ", app->app_ID);
 
-	if (mapping_complete){
+	switch (app->status) {
 
-		app->status = READY_TO_LOAD;
+		case WAITING_RECLUSTERING:
 
-		request_application(app);
+			//This line fires the reclustering protocol
+			complete = reclustering_next_task(app);
+
+			if (complete){ //If reclustering is complete for that application
+
+				Puts("Reclustering complete - ");
+
+				if (app->is_secure){
+
+					app->status = WAITING_CIRCUIT_SWITCHING;
+
+					Puts("app WAITING_CIRCUIT_SWITCHING\n");
+
+				} else {
+
+					Puts("app READY_TO_LOAD\n");
+
+					app->status = READY_TO_LOAD;
+				}
+			}
+
+			break;
+
+		case WAITING_CIRCUIT_SWITCHING:
+
+			complete = request_connection(app);
+
+			if (complete){ //If circuit-switching is complete for that application
+
+				Puts("CS complete - app READY_TO_LOAD\n");
+
+				app->status = READY_TO_LOAD;
+			}
+
+			break;
+
+		case READY_TO_LOAD:
+
+			request_application(app);
+
+			break;
 	}
+
 }
 
 void handle_new_app(unsigned int * msg){
@@ -184,13 +225,22 @@ void handle_new_app(unsigned int * msg){
 
 	if (mapping_completed){
 
-		application->status = READY_TO_LOAD;
+		if (application->is_secure){
 
-		request_application(application);
+			Puts("App WAITING_CIRCUIT_SWITCHING\n");
+
+			application->status = WAITING_CIRCUIT_SWITCHING;
+
+		} else {
+
+			Puts("App READY_TO_LOAD\n");
+
+			application->status = READY_TO_LOAD;
+		}
 
 	} else {
 
-		Puts("Application waiting reclustering\n");
+		Puts("Application WAITING_RECLUSTERING\n");
 
 		application->status = WAITING_RECLUSTERING;
 
@@ -400,12 +450,15 @@ void main(){
 	unsigned int data_message[MAX_TASKS_APP*TASK_DESCRIPTOR_SIZE+100]; //usando +100 para garantir
 
 	for(;;){
+
+		if (is_reclustering_NOT_active() && is_CS_not_active && pending_app_to_map && !IncomingPacket() && NoCSendFree()){
+			handle_pending_application();
+			//Avoid to execute the lines after the IF
+			continue;
+		}
+
 		ReceiveService(data_message);
 		handle_message(data_message);
-
-		if (is_reclustering_NOT_active() && pending_app_to_map && !IncomingPacket() && NoCSendFree()){
-			handle_pending_application();
-		}
 
 	}
 

@@ -10,12 +10,19 @@
 
 #include "application.h"
 
-void request_connection(Application *){
+int circuit_switching_active = 0;
+
+int request_connection(Application * app){
  //1. Organize the CTPs
  //2. Send they to the SDN controller
  //3. Set app waiting reclustering
+
+	return 1;
 }
 
+int is_CS_not_active(){
+	return !circuit_switching_active;
+}
 
 void handle_connection_response(){
 

@@ -13,10 +13,11 @@
 
 
 //Application status
-#define	 RUNNING				1	//!< Signals that the application have all its task mapped and the task already has been requested
-#define	 FREE					2	//!< Signals that all task of the application finishes
-#define	 WAITING_RECLUSTERING	3	//!< Signals that the application have at least one task waiting for reclustering
-#define	 READY_TO_LOAD			4	//!< Signals that the application have all its task mapped but the task not were requested yet
+#define	 RUNNING					1	//!< Signals that the application have all its task mapped and the task already has been requested
+#define	 FREE						2	//!< Signals that all task of the application finishes
+#define	 WAITING_RECLUSTERING		3	//!< Signals that the application have at least one task waiting for reclustering
+#define	 WAITING_CIRCUIT_SWITCHING	4	//!< Signals that the application have at least one ctp waiting a circuit-switching connection
+#define	 READY_TO_LOAD				5	//!< Signals that the application have all its task mapped but the task not were requested yet
 
 //Task status
 #define	 REQUESTED				0	//!< Signals that the task has already requested to the global master
@@ -141,9 +142,13 @@ Task * get_task_ptr(Application * app, int task_id){
 Application * get_next_pending_app(){
 
 	Application * older_app = 0;
+	int app_status;
 
 	for(int i=0; i<MAX_CLUSTER_TASKS; i++){
-		if (applications[i].status == WAITING_RECLUSTERING){
+
+		app_status = applications[i].status;
+
+		if (app_status == READY_TO_LOAD || app_status == WAITING_RECLUSTERING || app_status == WAITING_CIRCUIT_SWITCHING){
 
 			if (older_app == 0 || older_app->app_ID > applications[i].app_ID){
 				older_app = &applications[i];
@@ -152,7 +157,7 @@ Application * get_next_pending_app(){
 	}
 
 	if (!older_app){
-		Puts("ERROR: no one app waiting reclustering\n");
+		Puts("ERROR: no one app WAITING_RECLUSTERING or WAITING_CIRCUIT_SWTCHING\n");
 		while(1);
 	}
 
