@@ -11,7 +11,6 @@
 #include "../../include/kernel_pkg.h"
 
 /*Definitions*/
-#define MAX_TASKS_APP			10
 #define MAX_CLUSTER_TASKS		(MAX_LOCAL_TASKS * MAPPING_XCLUSTER * MAPPING_YCLUSTER)
 #define MAX_PROCESSORS			(MAPPING_XCLUSTER*MAPPING_YCLUSTER)
 #define CONSTANT_PKT_SIZE		13

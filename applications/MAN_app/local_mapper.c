@@ -139,7 +139,7 @@ void request_application(Application *app){
 void handle_pending_application(){
 
 	Application *app = 0;
-	int request_app = 0;
+	int mapping_complete = 0;
 
 	Puts("Handle next application \n");
 
@@ -147,9 +147,9 @@ void handle_pending_application(){
 	app = get_next_pending_app();
 
 	//This line fires the reclustering protocol
-	request_app = reclustering_next_task(app);
+	mapping_complete = reclustering_next_task(app);
 
-	if (request_app){
+	if (mapping_complete){
 
 		app->status = READY_TO_LOAD;
 
