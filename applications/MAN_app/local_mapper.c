@@ -429,9 +429,13 @@ void handle_message(unsigned int * data_msg){
 			handle_reclustering(data_msg);
 
 			break;
+		case PATH_CONNECTION_ACK:
+			handle_SDN_ack(data_msg);
+			break;
 		default:
-			Puts("Error message unknown\n");
-			for(;;);
+			while(1){
+				Puts("Error service message unknown: "); Puts(itoh(*(data_msg++))); Puts("\n");
+			}
 			break;
 	}
 }
@@ -451,7 +455,7 @@ void main(){
 
 	for(;;){
 
-		if (is_reclustering_NOT_active() && is_CS_not_active && pending_app_to_map && !IncomingPacket() && NoCSendFree()){
+		if (is_reclustering_NOT_active() && is_CS_not_active() && pending_app_to_map && !IncomingPacket() && NoCSendFree()){
 			handle_pending_application();
 			//Avoid to execute the lines after the IF
 			continue;

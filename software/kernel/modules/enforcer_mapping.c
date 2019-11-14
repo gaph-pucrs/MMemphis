@@ -273,9 +273,11 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 
 	code_lenght = pkt->code_size;
 
-	tcb_ptr->text_lenght = code_lenght; //Code has the TXT and DATA size
+	tcb_ptr->text_lenght = code_lenght; //Code has the TXT and DATA size since it represent the number of line for the <task_name>.txt file
 
 	tcb_ptr->bss_lenght = pkt->bss_size;
+
+	tcb_ptr->data_lenght = pkt->data_size;
 
 	//putsv("CODE size: ", tcb_ptr->text_lenght);
 	//putsv("BSS size: ", tcb_ptr->bss_lenght);
@@ -301,12 +303,6 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 	} else { //For others task
 		tcb_ptr->scheduling_ptr->status = BLOCKED;
 		send_task_allocated(tcb_ptr);
-	}
-
-	//Clean the BSS memory region in order to avoid task to use trash from other tasks
-	bss_ptr = (unsigned int *)(tcb_ptr->offset + (code_lenght * 4));
-	for(int i=0; i < (tcb_ptr->bss_lenght+1); i++){
-		bss_ptr[i] = 0;
 	}
 
 	if (pkt->is_secure_task){
@@ -341,8 +337,18 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 		puts("  Received hash lo:"); puts(itoh(lo)); puts("\n");
 		puts("Address MAC: "); puts(itoh(ptr_rcv)); puts("\n");
 
+		//This line is not more necessary because the for below that clean the BSS regions alread do that
+		//*ptr_rcv = 0; //Set zero in the fields of ciphash since it belongs to BSS region
+
 	} else {
 		puts("The App. is NOT SECURE\n");
+	}
+
+	//Clean the BSS memory region in order to avoid task to use trash from other tasks
+	bss_ptr = (unsigned int *)(tcb_ptr->offset + (tcb_ptr->text_lenght * 4));
+	for(int i=0; i < (tcb_ptr->bss_lenght+1); i++){
+		//puts(itoh(bss_ptr[i])); puts("\n");
+		bss_ptr[i] = 0;
 	}
 
 }

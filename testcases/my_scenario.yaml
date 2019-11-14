@@ -1,2 +1,8 @@
 apps:
- - name: sorting_iacana
+ - name: MAN_app
+ - name: dtw
+ - name: prod_cons
+ 
+#   cluster: 0
+#   static_mapping:
+#     prod: [2,0]

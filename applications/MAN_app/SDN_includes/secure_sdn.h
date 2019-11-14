@@ -35,12 +35,13 @@ int check_path_requester_authenticity(unsigned int id, unsigned int address){
 		proc_addr = secure_mappers_addr[i] & 0xFFFF;
 
 		if (task_id == id && proc_addr == address){
-			Puts("Manager authorized to have access SDN services!\n");
+			//Puts("Manager authorized to have access SDN services\n");
 			return 1;
 		}
 	}
 
-	Puts("ATTENTION: Manager not authorized to have access SDN services!\n");
+	//Puts("ID "); Puts(itoa(id)); Puts("\n");
+	Puts("ATTENTION: Manager not authorized to have access SDN services "); Puts(itoh(address)); Puts("\n");
 	return 0;
 }
 
