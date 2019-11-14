@@ -525,7 +525,7 @@ void main(){
 
 	//Initialize global variables
 	pending_app_req = 0;
-	total_mpsoc_resources = (MAX_LOCAL_TASKS * XDIMENSION * YDIMENSION);
+	total_mpsoc_resources = (MAX_LOCAL_TASKS * XDIMENSION * YDIMENSION) - 1; //Minus 1 due global mapper
 
 	init_message_slots();
 	intilize_clusters();
