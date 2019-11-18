@@ -699,7 +699,7 @@ int send_MA(TCB * running_task, unsigned int msg_addr, unsigned int msg_size, un
 
 			//memcopy
 			for(int i=0; i<msg_size; i++){
-				prod_data[i] = cons_data[i];
+				cons_data[i] = prod_data[i];
 			}
 
 			//Mark that consumer was populated with a message or not called yet
