@@ -101,6 +101,10 @@ void send_app_allocation_request(Application * app_ptr){
 	//Send message to Peripheral
 	SendRaw(message, msg_size);
 
+	//TODO: aqui deveria enviar uma mensagem para o GM, para que ele gere o Pseudo Random NUmber e envia para os slaves do CTp
+	//E tambem faça o SIPHASH do PRN, obtendo o Km e envio e Ke para os slaves do CTP.
+	//Quando os slaves do CTP recebem o TASK_ALLOCATION eles devem comprarar esses valores com os gerados pelo codigo obj
+
 }
 
 /** Requests a new application to the global master kernel

@@ -325,7 +325,7 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 
 		*offset_id_aux = (unsigned int) sdn_ID_offset;
 
-		//Embeds the k1 and k2 into the initialization packet to SDN controller
+		//Embeds the k1 and k2 into the initialization packet to SDN controller with the initial keys. These keys will be used by the SDN controllers to update its keys
 		message[msg_size++] = K1;
 		message[msg_size++] = K2;
 
@@ -524,7 +524,9 @@ void handle_message(unsigned int * data_msg){
 	}
 }
 
-
+/** Initializes the key into all the DMNI of the system.
+ * This packet is consumed by the DMNI and it is not delivery to the kernel
+ */
 void init_DMNI_SDN_key(){
 	unsigned int addr;
 	unsigned int * message;

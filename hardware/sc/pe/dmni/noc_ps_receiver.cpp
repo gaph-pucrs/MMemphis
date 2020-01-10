@@ -164,8 +164,8 @@ void noc_ps_receiver::sdn_config_sequential(){
 
 		//Update keys
 		if ( PS.read() == set_key ){
-			k1.write(data_in.read().range(31, 16));
-			k2.write(data_in.read().range(15, 0));
+			k1.write(data_in.read().range(31, 16)); //Extract the k1 from upper part of the flit
+			k2.write(data_in.read().range(15, 0));  //Extract the k2 from lower part of the flit
 		} else if ( PS.read() == check_key && key_valid.read() ) {
 			k1.write(k2.read());
 			k2.write(data_in.read().range(15, 0) ^ k2.read());

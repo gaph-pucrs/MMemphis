@@ -16,7 +16,10 @@ unsigned short int key1[SDN_XCLUSTER][SDN_YCLUSTER];
 unsigned short int key2[SDN_XCLUSTER][SDN_YCLUSTER];
 
 
-//K1
+/** Initializes the two 2D arrays used to store the key of each DMNI. Each DMNI stores two keys and for this reason are necessary two arrays.
+ * The size of the keys is 16 bits.
+ *
+ * */
 void initialize_keys(unsigned short int initial_k1, unsigned short int initial_k2){
 
 	Puts("Init K1 = "); Puts(itoh(initial_k1)); Puts("\n");
