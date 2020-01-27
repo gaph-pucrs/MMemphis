@@ -109,7 +109,6 @@ void handle_message(unsigned int * data_msg){
 	switch (data_msg[0]) {
 		case INITIALIZE_MA_TASK:
 			initialize_qos_manager(data_msg);
-			fires_SDN_request();
 			break;
 		case PATH_CONNECTION_ACK:
 			handle_SDN_ack(data_msg);
@@ -133,14 +132,13 @@ void handle_message(unsigned int * data_msg){
 
 }
 
+volatile unsigned int data_message[MAX_MANAG_MSG_SIZE];
 
 void main(){
 
 	RequestServiceMode();
 	init_message_slots();
 	initialize_MA_task();
-
-	unsigned int data_message[MAX_MANAG_MSG_SIZE];
 
 	for(;;){
 		ReceiveService(data_message);

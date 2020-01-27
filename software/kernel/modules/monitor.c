@@ -20,19 +20,35 @@ unsigned int 	total_idle_time = 0;		//!< Store the total of the processor idle t
 
 void send_latency_miss(TCB * target_task, int producer_task, int producer_proc){
 
-	ServiceHeader * p = get_service_header_slot();
+	unsigned int message[5];
+	unsigned int master_addr, master_id;
 
-	p->header = target_task->master_address;
+	message[0] = LATENCY_MISS_REPORT;
+	message[1] = target_task->id; //Consumer ID
+	message[2] = net_address; //Producer ID
+	message[3] = producer_task;
+	message[4] = producer_proc;
 
-	p->service = LATENCY_MISS_REPORT;
+	//Address of the local mapper
+	master_addr = target_task->master_address & 0xFFFF;
+	master_id = target_task->master_address >> 16;
 
-	p->producer_task = producer_task;
+	//puts("Sent task LATENCY_MISS_REPORT to "); puts(itoh(master_addr)); puts("\n");
 
-	p->consumer_task = target_task->id;
+	if (master_addr == net_address){
 
-	p->target_processor = producer_proc;
+		//puts("Escrita local: send_task_terminated\n");
 
-	send_packet(p, 0, 0);
+		write_local_service_to_MA(master_id, message, 5);
+
+	} else {
+
+		send_service_to_MA(master_id, master_addr, message, 5);
+
+		//putsv("Master id: ", master_id);
+
+		while(HAL_is_send_active(PS_SUBNET));
+	}
 
 }
 

@@ -57,6 +57,10 @@
 #define		INIT_I_AM_ALIVE					0x00000450 //Management Task:			Message sent from an MA task to GM notifying that it was successfully loaded into a given PE
 #define		INITIALIZE_MA_TASK				0x00000460 //Management Task:			Message sent from GM to an MA task initializing it
 
+/*Fault Tolerance Services*/
+//#define		LM_FAULT_REPORT					0x00000470 //Message sent from a fault detection mechanism to the Local Mapper report a fault in a link or router
+#define		SDN_FAULT_REPORT				0x00000480 //Message sent from Local Mapper to the controller informing that a given router or router link has a fault and must be ignored in next path setup
+
 /*SDN Services*/
 //SDN - SDN task services
 #define 	DETAILED_ROUTING_REQUEST		0x00001001 //Message sent from the coordinator controller to the other controller that belongs to the paths

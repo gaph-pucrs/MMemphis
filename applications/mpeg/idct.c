@@ -225,7 +225,7 @@ int main()
 {
     unsigned int time_a, time_b;
     int i,j;
-    type_DATA block[64];
+    type_DATA block[512];
 
 
     Echo("MPEG Task D start: iDCT ");
@@ -240,7 +240,7 @@ int main()
 
         idct_func(block, 8);  // 8x8 Blocks
 
-        msg1.length = 64;
+        msg1.length = 512;
         for(i=0; i<msg1.length; i++)
             msg1.msg[i] = block[i];
 

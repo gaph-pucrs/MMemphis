@@ -64,6 +64,7 @@ unsigned int 	global_task_ID; 							//!< Stores the global mapper ID at task le
 unsigned int 	S_task_ID_offset;								//!< Stores the offset of task IDs where tasks of same class of management starts
 unsigned int 	S_num_x_cluster;
 
+//TODO add the offset support for the other MA classes
 
 unsigned int * get_message_slot() {
 
@@ -177,8 +178,6 @@ void request_SDN_path(int source_addr, int target_addr){
 
 	coordinator_task_ID = nc_x + (nc_y*SDN_X_CLUSTER_NUM) + sdn_offset;
 
-	Puts("\nController addr is "); Puts(itoa(coordinator_task_ID)); Puts("\n");
-
 	send_message = get_message_slot();
 	send_message[0] = PATH_CONNECTION_REQUEST;
 	send_message[1] = source_addr; //source
@@ -187,10 +186,43 @@ void request_SDN_path(int source_addr, int target_addr){
 	send_message[4] = 1; //Not used by the noc_manager - can be deleted
 	send_message[5] = GetNetAddress(); //Secure SDN: added to allows SDN manager check the addresse of manager
 
-	SendService(coordinator_task_ID, send_message, 5);
+	SendService(coordinator_task_ID, send_message, 6);
 
-	Puts("\nPath request from "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr)); Puts(" sucessifully sent...\n\n");
-	putsv("Start time: ", GetTick());
+	Puts("Path request from "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr)); putsv(" sucessifully sent at ", GetTick());
+	putsv("Coordinator ID: ",coordinator_task_ID);
+}
+
+
+//void handle_component_request(int sourcePE, int targetPE, int requester_address, int subnet){
+
+void request_SDN_path_release(int source_addr, int target_addr, int subnet){
+	int coordinator_task_ID;
+	int src_x, src_y, nc_x, nc_y;
+	int sdn_offset;
+	unsigned int * send_message;
+
+	src_x = source_addr >> 8;
+	src_y = source_addr & 0xFF;
+
+	nc_x = src_x / SDN_XCLUSTER;
+	nc_y = src_y / SDN_YCLUSTER;
+
+	sdn_offset = 2;//TODO Please edit when you add a new MA task
+
+	coordinator_task_ID = nc_x + (nc_y*SDN_X_CLUSTER_NUM) + sdn_offset;
+
+	send_message = get_message_slot();
+	send_message[0] = PATH_CONNECTION_RELEASE;
+	send_message[1] = source_addr; //source
+	send_message[2] = target_addr; //target
+	send_message[3] = GetMyID();
+	send_message[4] = subnet; //Not used by the noc_manager - can be deleted
+	send_message[5] = GetNetAddress(); //Secure SDN: added to allows SDN manager check the addresse of manager
+
+	SendService(coordinator_task_ID, send_message, 6);
+
+	Puts("Path release from "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr)); Puts(" subnet "); Puts(itoa(subnet)); putsv(" sucessifully sent at ", GetTick());
+
 }
 
 

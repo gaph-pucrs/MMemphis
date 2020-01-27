@@ -380,11 +380,14 @@ void handle_message(unsigned int * data_msg){
 
 			break;
 		default:
-			Puts("Error message unknown\n");
+			putsv("ERROR: message unknown, time: ", GetTick());
+			putsv("code: ", data_msg[0]);
 			for(;;);
 			break;
 	}
 }
+
+volatile unsigned int data_message[MAX_MANAG_MSG_SIZE];
 
 void main(){
 
@@ -395,8 +398,6 @@ void main(){
 	initialize_applications();
 	init_reclustering();
 	initialize_MA_task();
-
-	unsigned int data_message[MAX_MANAG_MSG_SIZE];
 
 	for(;;){
 		ReceiveService(data_message);

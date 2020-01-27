@@ -21,7 +21,7 @@ int main()
 	Echo("Inicio da aplicacao prod");
 
 	for(i=0;i<MSG_SIZE;i++) msg.msg[i]=i;
-	msg.length = MSG_SIZE;
+	msg.length = 1024;
 
 
 	for(i=0; i<PROD_CONS_ITERATIONS; i++){

@@ -207,6 +207,43 @@ void init_search_path(){
 
 }
 
+/** Set as allocated a link or router
+ *  \param router_addr Address XY of the faulty router
+ *  \param subnet of the faulty link
+ *  \param input_port Input port number of the faulty link, when the number is equal PORT_NUMBER == 6, the faul is into the router
+ */
+void set_fault(int router_addr, int subnet, int input_port){
+
+	int x, y;
+
+	x = router_addr >> 8;
+	y = router_addr & 0xFF;
+
+	if (input_port >= 0 && input_port < PORT_NUMBER){
+
+		cs_inport[x][y][subnet][input_port] = 9; //9 means a generic allocation value since it is not linked to any path.
+
+//#if SDN_DEBUG
+		Puts("Fault set to router "); Puts(itoh(router_addr)); Puts(" at subnet "); Puts(itoa(subnet)); Puts(" port ");
+		Puts(itoa(input_port)); Puts("\n");
+//#endif
+
+	} else if (input_port == PORT_NUMBER){
+
+		for (int s=0; s<CS_NETS; s++){
+			for(int p=0; p<PORT_NUMBER; p++){
+				cs_inport[x][y][s][p] = 9; //9 means a generic allocation value since it is not linked to any path.
+			}
+		}
+#if SDN_DEBUG
+		Puts("Fault set to router "); Puts(itoh(router_addr)); Puts(" in all subnets and port ");  Puts("\n");
+#endif
+
+	} else {
+		Puts("ERROR: invalid input_port\n");
+		for(;;);
+	}
+}
 
 int Manhattan(int xi, int yi, int xj, int yj){
 	return (abs(xi - xj) + abs(yi - yj));

@@ -1475,6 +1475,9 @@ int handle_packet(unsigned int * recv_message){
 		case INITIALIZE_MA_TASK:
 			initialize_noc_manager(recv_message);
 			break;
+		case SDN_FAULT_REPORT:
+			set_fault(recv_message[1], recv_message[2], recv_message[3]);
+			break;
 		default:
 			Puts("ERROR message not indentified\n");
 			while(1);

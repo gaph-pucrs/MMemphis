@@ -337,6 +337,9 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case NI_STATUS_REQUEST:
 	case NI_STATUS_RESPONSE:
 	case NOC_SWITCHING_CTP_CONCLUDED:
+	case LATENCY_MISS_REPORT:
+	//case LM_FAULT_REPORT:
+	case SDN_FAULT_REPORT:
 
 		handle_MA_message(p->consumer_task, p->msg_lenght);
 

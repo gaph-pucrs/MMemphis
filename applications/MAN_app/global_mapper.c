@@ -9,6 +9,9 @@
 
 
 #define 		MAX_MA_TASKS			(MAX_SDN_TASKS+MAX_MAPPING_TASKS+MAX_QOS_TASKS+1) //+1 Due Global mapper
+
+/*These REPO_ID defines must be updated when you add a new MA task, they represent the ID of each MA task class placed into the repository
+ * This information is usefull when the global_mapper need to request a new mapping of a MA task*/
 #define			MAPPING_TASK_REPO_ID	1
 #define			SDN_TASK_REPO_ID		2
 #define			QOS_TASK_REPO_ID		3
@@ -335,6 +338,8 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 	message[1] = task_id;
 	message[2] = offset_id_aux;
 	message[3] = MAX_MA_TASKS;
+
+	//TODO: send the offset of each MA task to the MA task know the correct offset. This will be good to remove the TODOs that are necessary when a MA task need to communicate with another MA
 
 	msg_size = 4;
 	for(int i=0; i<MAX_MA_TASKS;i++){

@@ -90,7 +90,7 @@ int main()
 	int i,j;
 
     type_DATA clk_count;
-    type_DATA block[64];
+    type_DATA block[512];
 
 
     Echo("MPEG Task C start: iquant ");
@@ -105,7 +105,7 @@ int main()
 
         iquant_func(block, 8, 0, 1);  // 8x8 Blocks, DC precision value = 0, Quantization coefficient (mquant) = 64
 
-        msg1.length = 64;
+        msg1.length = 512;
         for(i=0; i<msg1.length; i++)
             msg1.msg[i] = block[i];
 

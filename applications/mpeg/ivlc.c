@@ -467,8 +467,8 @@ int main()
 	unsigned int time_a, time_b;
 	int i,j;
 
-	type_DATA vlc_array[128];
-	type_DATA block[64];
+	type_DATA vlc_array[1024];
+	type_DATA block[512];
 
 	Echo("MPEG Task B start: iVLC ");
 	Echo(itoa(GetTick()));
@@ -486,7 +486,7 @@ int main()
 
 		ivlc_func(block, 0, 8, vlc_array);	    // codifica RLE-VLC (returns the number of bits in the produced stream)
 
-		msg1.length = 64;
+		msg1.length = 512;
 		for(i=0; i<msg1.length; i++)
 		   msg1.msg[i] = block[i];
 
