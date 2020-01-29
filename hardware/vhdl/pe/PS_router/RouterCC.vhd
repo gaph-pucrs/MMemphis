@@ -326,6 +326,7 @@ begin
         port map(
                 clock => clock,
                 reset => reset,
+                address  =>  address,
                 data_in => data_in(0),
                 rx => rx(0),
                 h => h(0),
@@ -340,6 +341,7 @@ begin
         port map(
                 clock => clock,
                 reset => reset,
+                address  =>  address,
                 data_in => data_in(1),
                 rx => rx(1),
                 h => h(1),
@@ -354,6 +356,7 @@ begin
         port map(
                 clock => clock,
                 reset => reset,
+                address  =>  address,
                 data_in => data_in(2),
                 rx => rx(2),
                 h => h(2),
@@ -368,6 +371,7 @@ begin
         port map(
                 clock => clock,
                 reset => reset,
+                address  =>  address,
                 data_in => data_in(3),
                 rx => rx(3),
                 h => h(3),
@@ -382,6 +386,7 @@ begin
         port map(
                 clock => clock,
                 reset => reset,
+                address  =>  address,
                 data_in => data_in(4),
                 rx => rx(4),
                 h => h(4),

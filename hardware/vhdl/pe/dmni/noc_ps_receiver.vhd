@@ -19,11 +19,7 @@ entity noc_ps_receiver is
 		--SDN configuration interface
 		config_inport  : out std_logic_vector(2 downto 0);
 		config_outport : out std_logic_vector(2 downto 0);
-		config_valid   : out std_logic_vector(CS_SUBNETS_NUMBER - 1 downto 0);
-		
-		--Local Key configuration
-		local_key_en   : in std_logic;
-		local_key	   : in std_logic_vector(31 downto 0)
+		config_valid   : out std_logic_vector(CS_SUBNETS_NUMBER - 1 downto 0)
 		
 	);
 end entity noc_ps_receiver;
@@ -188,12 +184,10 @@ begin
 			if PS = set_key then
 				k1 <= data_in(31 downto 16);
 				k2 <= data_in(15 downto 0);
+				report "Key set!";
 			elsif PS = check_key and key_valid = '1' then
 				k1 <= k2;
 				k2 <= data_in(15 downto 0) xor k2; --Extracts k3 using k2
-			elsif local_key_en = '1' then
-				k1 <= local_key(31 downto 16);
-				k2 <= local_key(15 downto 0);
 			end if;
 		
 		end if;

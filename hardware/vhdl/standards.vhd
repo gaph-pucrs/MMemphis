@@ -46,7 +46,6 @@ package standards is
 	    constant DMNI_OP		  		: std_logic_vector(31 downto 0)	:= x"20000230";
 	    constant DMNI_SEND_ACTIVE    	: std_logic_vector(31 downto 0) := x"20000250";
     	constant DMNI_RECEIVE_ACTIVE 	: std_logic_vector(31 downto 0) := x"20000260";
-    	constant DMNI_CFG_KEY		 	: std_logic_vector(31 downto 0) := x"20000264";
 		
 		--Scheduler
 		constant SCHEDULING_REPORT 		: std_logic_vector(31 downto 0) := x"20000270";
@@ -133,7 +132,6 @@ package standards is
     constant CODE_MEM_ADDR2: std_logic_vector(2 downto 0)	:="100"; --4
     constant CODE_MEM_SIZE2: std_logic_vector(2 downto 0)	:="101"; --5
     constant CODE_OP: std_logic_vector(2 downto 0)			:="110"; --6
-	constant CODE_LOCAL_KEY: std_logic_vector(2 downto 0)	:="111"; --7
     
 ---------------------------------------------------------
 -- SUBTIPOS, TIPOS E FUNCOES

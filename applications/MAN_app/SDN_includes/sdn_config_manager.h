@@ -16,6 +16,11 @@ unsigned short int key1[SDN_XCLUSTER][SDN_YCLUSTER];
 unsigned short int key2[SDN_XCLUSTER][SDN_YCLUSTER];
 
 
+/*Messages used to control the configuration packet*/
+unsigned int config_message[SDN_XCLUSTER*SDN_XCLUSTER*4+13];//Worst case of config message (PE COUNT + (SIZE OF EACH MSG) + ACK MESSAGE)
+unsigned char config_size;
+
+
 /** Initializes the two 2D arrays used to store the key of each DMNI. Each DMNI stores two keys and for this reason are necessary two arrays.
  * The size of the keys is 16 bits.
  *
@@ -33,6 +38,56 @@ void initialize_keys(unsigned short int initial_k1, unsigned short int initial_k
 	}
 }
 
+void InitConfigRouter(){
+
+	//Necessary to avoid the data of config_message from previous packet (if exists) be overwriten
+	while(!NoCSendFree());
+
+	config_size = 0;
+}
+
+void CommitConfigRouter(unsigned int requester_ID, unsigned int source_addr, unsigned int targer_addr){
+
+	unsigned int requester_proc;
+	unsigned int config_packet_payload;
+	unsigned int config_pcaket_count;
+	const int const_packet_size = 13;//13 is the size of a standard Service Packet, see packet.h.
+	const int ack_msg_data_size = 3; //3 is the size of the additional payload, handled by the MA task of requester
+
+	config_packet_payload = config_size + const_packet_size + ack_msg_data_size;
+	//Set the payload size of each sub-packet
+	for (int payload_size_index=1; payload_size_index<config_size; payload_size_index=payload_size_index+4){
+		config_message[payload_size_index] = config_packet_payload-2;
+		config_packet_payload = config_packet_payload - 4;
+	}
+
+	requester_proc = GetTaskLocation(requester_ID);
+
+	//Add the last packet: the ack to the source kernel of the path
+	config_message[config_size] = requester_proc;
+	config_message[config_size+1] = const_packet_size-2 + ack_msg_data_size; //CONSTANT_PACKT_SIZE -2
+	config_message[config_size+2] = SET_CS_ROUTER_ACK_MANAGER; //source
+	config_message[config_size+4] = requester_ID; //consumer_task
+	config_message[config_size+5] = source_addr; //source_PE
+	config_message[config_size+8] = ack_msg_data_size; //msg_lenght
+	config_message[config_size+9] = targer_addr; //consumer_processor
+
+	config_size = config_size + const_packet_size; //Fills the remaining of the message
+
+	config_message[config_size++] = SET_CS_ROUTER_ACK_MANAGER; //consumer_processor
+	config_message[config_size++] = source_addr; //consumer_processor
+	config_message[config_size++] = targer_addr; //consumer_processor
+
+
+	//Just print the message before sending it
+	/*putsv("pkt_size = ", config_size);
+	for (int k=0; k<config_size; k++){
+		Puts("["); Puts(itoa(k)); Puts("]="); Puts(itoh(config_message[k])); Puts("\n");
+	}*/
+
+	SendRaw(config_message, config_size);
+
+}
 
 void ConfigRouter(unsigned int target, unsigned int input_port, unsigned int output_port, unsigned int subnet){
 
@@ -49,52 +104,25 @@ void ConfigRouter(unsigned int target, unsigned int input_port, unsigned int out
 
 	config_msg = (input_port << 13) | (output_port << 10) | (2 << subnet) | 0;
 
-	if (target == net_address){
+	x = target >> 8;
+	y = target & 0xFF;
 
-		LocalSDNConfig(config_msg);
+	//Gets the current key
+	k1 = key1[x][y];
+	k2 = key2[x][y];
+	//Generate k3
+	k3 = (unsigned short)(GetTick()); //random()
 
-	} else { //Remote configuration
+	//Puts("K3: "); Puts(itoh(k3)); Puts("\n");
+	//Update keys
+	key1[x][y] = k2;
+	key2[x][y] = k3;
 
-		x = target >> 8;
-		y = target & 0xFF;
+	config_message[config_size++] = 0x10000 | target;;
+	config_size++; //Spacte used to t
+	config_message[config_size++] = ((k1 ^ k2) << 16) | (k2 ^ k3);
+	config_message[config_size++] = config_msg;
 
-		//Gets the current key
-		k1 = key1[x][y];
-		k2 = key2[x][y];
-		//Generate k3
-		k3 = (unsigned short)(GetTick()); //random()
-
-		Puts("K3: "); Puts(itoh(k3)); Puts("\n");
-		//Update keys
-		key1[x][y] = k2;
-		key2[x][y] = k3;
-
-		//Send cfg message
-		message = get_message_slot();
-		//Header
-		message[0] = 0x10000 | target;
-		//Payload
-		message[1] = 2;
-		//Key flit
-		message[2] = ((k1 ^ k2) << 16) | (k2 ^ k3);
-		//Msg flit
-		message[3] = config_msg;
-
-		/*message[2] = (k1 ^ k2);
-		message[3] = config_msg;
-		message[4] = (k2 ^ k3);*/
-
-		SendRaw(message, 4);
-
-	}
-
-#if 0
-	puts("\n********* Config router ********* \n");
-	puts("target_proc = "); puts(itoh(target_proc));
-	puts("\ninput port = "); puts(itoa(input_port));
-	puts("\noutput_port = "); puts(itoa(output_port));
-	puts("\ncs_net = "); puts(itoa(cs_net)); puts("\n***********************\n");
-#endif
 }
 
 

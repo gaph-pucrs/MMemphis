@@ -93,10 +93,6 @@ SC_MODULE(dmni_qos){
 	sc_signal<bool>			dmni_mode;
 	sc_signal<reg4>			timer;
 
-	//SDN configuration signals
-	sc_signal <bool > 		sdn_local_key_en;
-	sc_signal<reg32 >		sdn_local_key;
-
 	//Instances
 	noc_cs_sender	* 	noc_CS_sender	[CS_SUBNETS_NUMBER];
 	noc_cs_receiver * 	noc_CS_receiver	[CS_SUBNETS_NUMBER];
@@ -176,8 +172,6 @@ SC_MODULE(dmni_qos){
 				noc_PS_receiver->config_inport(sdn_config_inport);
 				noc_PS_receiver->config_outport(sdn_config_outport);
 				noc_PS_receiver->config_valid(sdn_config_valid);
-				noc_PS_receiver->local_key_en(sdn_local_key_en);
-				noc_PS_receiver->local_key(sdn_local_key);
 
 			}
 		}

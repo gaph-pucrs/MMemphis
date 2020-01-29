@@ -48,6 +48,7 @@ entity Hermes_buffer is
 port(
         clock:      in  std_logic;
         reset:      in  std_logic;
+        address: 	in  regmetadeflit;
         rx:         in  std_logic;
         data_in:    in  regflit;
         credit_o:   out std_logic;
@@ -68,6 +69,8 @@ signal buf: buff := (others=>(others=>'0'));
 signal first,last: pointer := (others=>'0');
 signal tem_espaco: std_logic := '0';
 signal counter_flit: regflit := (others=>'0');
+
+signal sdn_cfg_mode: std_logic := '0'; 
 
 begin
 
@@ -101,15 +104,30 @@ begin
         process(reset, clock)
         begin
                 if reset='1' then
-                        last <= (others=>'0');
+                	last <= (others=>'0');
+                	sdn_cfg_mode <= '0';
                 elsif clock'event and clock='0' then
-                        if tem_espaco='1' and rx='1' then
-                                buf(CONV_INTEGER(last)) <= data_in;
-                                --incrementa o last
-                                if(last = TAM_BUFFER - 1) then last <= (others=>'0');
-                                else last <= last + 1;
-                                end if;
+                	if tem_espaco='1' and rx='1' then
+--Begin of new lines added to support sequential SDN configuration
+--Testa se o header possui o endereco do roteador e se o bit 17 ou 16 estao ligados, caso verdade iss
+--significa um flit the configuracao.
+                		if EA = S_INIT and data_in(15 downto 0) = address and (data_in(17) = '1' or data_in(16) = '1') then
+							sdn_cfg_mode <= '1';
+							report "CFG MODE ON";
+						end if;
+							
+						if sdn_cfg_mode = '1' then   
+							buf(CONV_INTEGER(last)) <= x"00000002"; --Payload of a SDN config packet
+							sdn_cfg_mode <= '0';
+						else     
+--End of new lines added to support sequential SDN configuration    			
+							buf(CONV_INTEGER(last)) <= data_in;
+						end if;--Remove this end if case you remove the new lines added above
+                        --incrementa o last
+                        if(last = TAM_BUFFER - 1) then last <= (others=>'0');
+                        else last <= last + 1;
                         end if;
+                    end if;
                 end if;
         end process;
 

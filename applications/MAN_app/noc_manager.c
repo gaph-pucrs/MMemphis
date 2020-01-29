@@ -325,17 +325,13 @@ void send_ack_requester(int path_success, int source, int target, int requester_
 
 		//Apagar essa linha de baixo na hemps
 		if (mode == ESTABLISH){
-#if SDN_DEBUG
-			Puts("Begin write path\n");
-#endif
 			
 #if PATH_DEBUG
+			Puts("Begin write path\n");
 			path_uint_size = write_path(global_path_size, &message[8]);
-#endif
-			
-#if SDN_DEBUG
 			Puts("End write path\n");
 #endif
+			
 		}
 		//Apagar ate aqui
 	} else {
@@ -1411,6 +1407,7 @@ void initialize_noc_manager(unsigned int * msg){
 
 int handle_packet(unsigned int * recv_message){
 
+
 	switch (recv_message[0]) {
 		case PATH_CONNECTION_REQUEST:
 			//Only serves for authorized managers
@@ -1778,8 +1775,14 @@ void new_local_path(ConnectionRequest * conn_request_ptr){
 
 	} else {
 
+		InitConfigRouter();
+
 		connection_ret = CS_connection_setup(source_x, source_y, target_x, target_y);
 
+		if (connection_ret != -1){
+			//Assembles and sends the configuration packet
+			CommitConfigRouter(conn_request_ptr->requester_address, conn_request_ptr->source, conn_request_ptr->target);
+		}
 
 #if PATH_DEBUG
 		addPath(cluster_addr, print_paths, print_path_size);
@@ -1848,15 +1851,18 @@ int main(){
     ConnectionRequest * conn_request = 0;
 
     //Data message
-    unsigned int data_message[MAX_MANAG_MSG_SIZE];
+    volatile unsigned int data_message[MAX_MANAG_MSG_SIZE];
 
     for(;;){
 
 #if SDN_DEBUG
     	//Puts("\n....Waiting receive.....\n");
 #endif
-		ReceiveService(data_message);
-		handle_packet(data_message);
+    	//Test if there is a incomming packet waiting to be handled, otherwise must advances to the switch in order to handle pending requests.
+    	if (IncomingPacket()){
+    		ReceiveService(data_message);
+    		handle_packet(data_message);
+    	}
     	
     	switch (controller_status) {
 			case IDLE: //At IDLE search for global and local path request, as can be seen, the global path receive more priority since are checked first

@@ -172,12 +172,6 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 
 
 /*Here starts the support for the management task API used for MA task*/
-		case SDNLOCALCFG:
-
-			HAL_set_CS_config(arg0);
-
-			return 1;
-
 		case NOCSENDFREE:
 			//If DMNI send is active them return FALSE
 			if (HAL_is_send_active(PS_SUBNET))
@@ -206,11 +200,6 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 		case SETTASKRELEASE:
 
 			set_task_release((current->offset | arg0), 0);
-
-			break;
-		case SDNINITKEY:
-			
-			HAL_set_dmni_sdn_key(arg0);
 
 			break;
 
@@ -340,6 +329,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case NI_STATUS_REQUEST:
 	case NI_STATUS_RESPONSE:
 	case NOC_SWITCHING_CTP_CONCLUDED:
+	case SET_CS_ROUTER_ACK_MANAGER:
 
 		handle_MA_message(p->consumer_task, p->msg_lenght);
 

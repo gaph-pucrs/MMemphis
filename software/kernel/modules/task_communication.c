@@ -628,8 +628,11 @@ void handle_MA_message(unsigned int consumer_task, unsigned int msg_size){
 		puts("ERROR message MA send to an invalid producer\n");
 	}
 
-	DMNI_read_data(consumer_tcb_ptr->recv_buffer, msg_size);
+	if (msg_size > 0){
+		DMNI_read_data(consumer_tcb_ptr->recv_buffer, msg_size);
+	}
 
+	//This is only a pointer, once the data was copied the pointer can be set to zero
 	consumer_tcb_ptr->recv_buffer = 0;
 
 	HAL_release_waiting_task(consumer_tcb_ptr);

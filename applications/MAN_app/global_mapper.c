@@ -357,6 +357,11 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 
 		Puts("\nInitializing ALL MA TASKS complete\n");
 
+		//Used only to evaluate secure DMNI
+		//request_SDN_path(0x002,  0x202);
+		//request_SDN_path(0x000,  0x201);
+		//request_SDN_path(0x102,  0x200);
+
 		/*Sending MAPPING COMPLETE to APP INJECTOR*/
 		message = get_message_slot();
 		message[0] = APP_INJECTOR;
@@ -517,8 +522,13 @@ void handle_message(unsigned int * data_msg){
 		case PATH_CONNECTION_ACK:
 			Puts("ACK received from SDN controller at time: "); Puts(itoa(GetTick())); Puts("\n");
 			break;
+		case SET_CS_ROUTER_ACK_MANAGER:
+			putsv("CS path ACK: ", GetTick());
+			Puts("Source: "); Puts(itoh(data_msg[1])); Puts("\n");
+			Puts("Target: "); Puts(itoh(data_msg[2])); Puts("\n");
+			break;
 		default:
-			Puts("Error message unknown\n");
+			Puts("Error message unknown"); Puts(itoh(data_msg[0])); Puts("\n");
 			for(;;);
 			break;
 	}
@@ -529,33 +539,54 @@ void handle_message(unsigned int * data_msg){
  */
 void init_DMNI_SDN_key(){
 	unsigned int addr;
-	unsigned int * message;
+	volatile unsigned int message[(XDIMENSION*YDIMENSION)*4];
 	unsigned int key_flit32;
+	int y, i = 0;
+	int packet_size = (XDIMENSION*YDIMENSION)*4;
+	int turn_flag = 1;
+
 
 	key_flit32 = (K1 << 16) | K2;
 
 	Puts("Begin SDN Key config\n");
 
+	//message = get_message_slot();
 	for(int x=0; x<XDIMENSION; x++){
-		for(int y=0; y<YDIMENSION; y++){
+
+		turn_flag = !turn_flag;
+
+		if (turn_flag)
+			y = YDIMENSION-1;
+		else
+			y = 0;
+
+		for(int aux_y=0; aux_y<YDIMENSION; aux_y++){
 
 			addr = (x << 8 | y); //Reuse of msg_size
 
-			//Init remote DMNIs
-			if(addr != net_address){
-				message = get_message_slot();
-				message[0] = 0x20000 | addr; //0x20000 enable bit 17
-				message[1] = 2; //payload
-				message[2] = 0x000; //source
-				message[3] = key_flit32; //init k1 and k2
-				SendRaw(message, 4);
-			} else { //Init local DMNI
-				//Puts("Init local DMNI - GM\n");
-				SetSDN_Key(key_flit32);
-			}
+			message[i++] = 0x20000 | addr; //0x20000 enable bit 17
+			message[i++] = packet_size-2; //payload
+			message[i++] = 0x000; //source
+			message[i++] = key_flit32; //init k1 and k2
+			packet_size = packet_size - 4;
+
+			if (turn_flag)
+				y--;
+			else
+				y++;
 		}
 	}
+
+	/*for (int k=0; k<i; k++){
+		Puts("["); Puts(itoa(k)); Puts("]="); Puts(itoh(message[k])); Puts("\n");
+	}*/
+
+	SendRaw(message, i);
+
+	while(!NoCSendFree());
+
 	Puts("End SDN Key config\n");
+
 }
 
 void main(){

@@ -41,6 +41,7 @@ SC_MODULE(fila){
   sc_signal<sc_uint<4> >  first,last;
   sc_signal<bool > tem_espaco_na_fila, auxack_rx;
   sc_signal<regflit > counter_flit;
+  sc_signal<bool > sdn_cfg_mode;
 
   void in_proc_FSM();
   void in_proc_updPtr();
@@ -50,23 +51,28 @@ SC_MODULE(fila){
   void change_state_sequ();
   void change_state_comb();
 
-  SC_CTOR(fila){
-    SC_METHOD(in_proc_FSM);
-    sensitive << reset_n.neg();
-    sensitive << clock.pos();
+  SC_HAS_PROCESS(fila);
+  	fila(sc_module_name name_, regaddress my_address_ = 0x0000) :
+  	sc_module(name_), address(my_address_) {
 
-    SC_METHOD(out_proc_data);
-    sensitive << first;
-    sensitive << last;
+		SC_METHOD(in_proc_FSM);
+		sensitive << reset_n.neg();
+		sensitive << clock.pos();
 
-    SC_METHOD(out_proc_FSM);
-    sensitive << reset_n.neg();
-    sensitive << clock.pos();
+		SC_METHOD(out_proc_data);
+		sensitive << first;
+		sensitive << last;
 
-    SC_METHOD(in_proc_updPtr);
-    sensitive << reset_n.neg();
-    sensitive << clock.neg();
+		SC_METHOD(out_proc_FSM);
+		sensitive << reset_n.neg();
+		sensitive << clock.pos();
+
+		SC_METHOD(in_proc_updPtr);
+		sensitive << reset_n.neg();
+		sensitive << clock.neg();
   }
+  private:
+	regaddress address;
 
 };
 

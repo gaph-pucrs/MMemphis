@@ -14,10 +14,6 @@ void dmni_qos::comb_update(){
 	regSubnet s_active_aux, r_active_aux;
 	regSubnet intr_aux = 0;
 
-	//SDN local key configuration
-	sdn_local_key_en.write( config_valid.read() && config_code.read() == CODE_LOCAL_KEY );
-	sdn_local_key.write(config_data.read());
-
 	s_active_aux = 0;
 	r_active_aux = 0;
 

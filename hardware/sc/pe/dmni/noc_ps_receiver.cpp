@@ -169,9 +169,6 @@ void noc_ps_receiver::sdn_config_sequential(){
 		} else if ( PS.read() == check_key && key_valid.read() ) {
 			k1.write(k2.read());
 			k2.write(data_in.read().range(15, 0) ^ k2.read());
-		} else if ( local_key_en.read() ){
-			k1.write(local_key.read().range(31, 16));
-			k2.write(local_key.read().range(15, 0));
 		}
 
 	}

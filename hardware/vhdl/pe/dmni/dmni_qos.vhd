@@ -81,10 +81,6 @@ architecture dmni_qos of dmni_qos is
 	signal dmni_mode :std_logic; -- 0 send     1 receive
 	signal timer  : std_logic_vector(3 downto 0);
 	
-	--SDN configuration signals
-	signal sdn_local_key_en :std_logic;
-	signal sdn_local_key	:std_logic_vector(31 downto 0);
-   	
 begin
 	
 	noc_injector_gen: for i in 0 to SUBNETS_NUMBER-1 generate
@@ -146,19 +142,12 @@ begin
 				--SDN configuration interface
 				config_inport  => sdn_config_inport,
 				config_outport => sdn_config_outport,
-				config_valid   => sdn_config_valid,
-				
-				local_key_en   => sdn_local_key_en,
-				local_key	   => sdn_local_key
+				config_valid   => sdn_config_valid
 			);
 			
 		end generate PS_net;
 
 	end generate noc_injector_gen;
-	
-	--SDN local key configuration
-	sdn_local_key_en <= '1' when config_valid = '1' and config_code = CODE_LOCAL_KEY else '0';
-	sdn_local_key <= config_data; 
 	
 	s_valid <= s_wheel and s_ready and (not busy); --enable to send
 	r_valid <= r_wheel and r_ready and valid_receive; -- enable to receive

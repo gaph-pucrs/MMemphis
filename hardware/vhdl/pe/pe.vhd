@@ -376,9 +376,9 @@ begin
 
   
   --Router config  
-  	config_r_cpu_inport   	<= cpu_mem_data_write_reg(15 downto 13) when (cpu_mem_address_reg = CONFIG_VALID_NET) and write_enable = '1' else config_inport_subconfig;
-  	config_r_cpu_outport 	<= cpu_mem_data_write_reg(12 downto 10) when (cpu_mem_address_reg = CONFIG_VALID_NET) and write_enable = '1' else config_outport_subconfig;
-	config_r_cpu_valid		<= cpu_mem_data_write_reg(CS_SUBNETS_NUMBER downto 1) when cpu_mem_address_reg = CONFIG_VALID_NET and write_enable = '1' else config_valid_subconfig;
+  	config_r_cpu_inport   	<= config_inport_subconfig;
+  	config_r_cpu_outport 	<= config_outport_subconfig;
+	config_r_cpu_valid		<= config_valid_subconfig;
 
 
 	--DMNI config
@@ -388,7 +388,6 @@ begin
 						CODE_MEM_ADDR2 	when cpu_mem_address_reg = DMNI_MEM_ADDR2 	else
 						CODE_MEM_SIZE2 	when cpu_mem_address_reg = DMNI_MEM_SIZE2 	else
 						CODE_OP			when cpu_mem_address_reg = DMNI_OP		   	else
-						CODE_LOCAL_KEY	when cpu_mem_address_reg = DMNI_CFG_KEY	  	else
 						(others=> '0');
 	cpu_valid_dmni <= '0' when cpu_code_dmni = 0 else '1';
 	

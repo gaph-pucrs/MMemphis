@@ -32,9 +32,6 @@
 #define END_SIM 				0x20000080
 #define NET_ADDRESS 			0x20000140
 
-//Multi-channel config
-#define CONFIG_VALID_NET 		0x20000150
-
 //DMNI mapping
 #define DMNI_NET	 			0x20000200
 #define DMNI_MEM_ADDR 			0x20000210
@@ -44,7 +41,6 @@
 #define DMNI_OP 				0x20000230
 #define DMNI_SEND_ACTIVE 		0x20000250
 #define DMNI_RECEIVE_ACTIVE 	0x20000260
-#define	DMNI_CFG_KEY			0x20000264
 
 #define SCHEDULING_REPORT		0x20000270
 #define ADD_PIPE_DEBUG			0x20000280
@@ -72,7 +68,6 @@
 #define CODE_MEM_ADDR2			4
 #define CODE_MEM_SIZE2			5
 #define CODE_OP					6
-#define CODE_LOCAL_KEY			7
 
 #define MEMORY_WORD_SIZE	4
 

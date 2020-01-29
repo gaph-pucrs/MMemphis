@@ -105,7 +105,7 @@ SC_MODULE(router_cc){
 		for(i=0; i<NPORT; i++)
 		{
 			memset(temp, 0, sizeof(temp)); sprintf(temp,"fila%d",i);
-			myQueue[i] = new fila(temp);
+			myQueue[i] = new fila(temp, address_);
 			myQueue[i]->clock(clock);
 			myQueue[i]->reset_n(reset_n);
 			myQueue[i]->data_in(data_in[i]);

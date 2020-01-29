@@ -183,7 +183,7 @@ void request_SDN_path(int source_addr, int target_addr){
 
 	coordinator_task_ID = nc_x + (nc_y*SDN_X_CLUSTER_NUM) + sdn_offset;
 
-	Puts("\nController addr is "); Puts(itoa(coordinator_task_ID)); Puts("\n");
+	//Puts("\nController addr is "); Puts(itoa(coordinator_task_ID)); Puts("\n");
 
 	send_message = get_message_slot();
 	send_message[0] = PATH_CONNECTION_REQUEST;
@@ -193,9 +193,11 @@ void request_SDN_path(int source_addr, int target_addr){
 	send_message[4] = 1; //Not used by the noc_manager - can be deleted
 	send_message[5] = net_address; //Secure SDN context: added to allows SDN manager check the addresse of manager
 
-	SendService(coordinator_task_ID, send_message, 5);
+	SendService(coordinator_task_ID, send_message, 6);
 
-	Puts("\nPath request from "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr)); Puts(" sucessifully sent...\n\n");
+	//putsv("Proc_address = ", net_address);
+
+	Puts("\nPath request "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr));  Puts("\n");
 	putsv("Start time: ", GetTick());
 }
 

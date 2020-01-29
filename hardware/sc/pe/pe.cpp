@@ -95,20 +95,11 @@ void pe::comb_assignments(){
 	irq_status.write(l_irq_status);
 
 	//Router config
-	if (write_enable.read() == 1 && (cpu_mem_address_reg.read() == CONFIG_VALID_NET)){
-		config_r_cpu_inport.write(cpu_mem_data_write_reg.read().range(15,13));
-		config_r_cpu_outport.write(cpu_mem_data_write_reg.read().range(12,10));
-	} else {
-		config_r_cpu_inport.write(config_inport_subconfig);
-		config_r_cpu_outport.write(config_outport_subconfig);
-	}
+	config_r_cpu_inport.write(config_inport_subconfig);
+	config_r_cpu_outport.write(config_outport_subconfig);
+
 	for (int i=0; i<CS_SUBNETS_NUMBER; i++){
-		int j = i+1;
-		if (write_enable.read() == 1 && cpu_mem_address_reg.read() == CONFIG_VALID_NET){
-			config_r_cpu_valid[i].write(cpu_mem_data_write_reg.read().range(j,j));
-		} else {
-			config_r_cpu_valid[i].write(config_valid_subconfig.read().range(i,i) );
-		}
+		config_r_cpu_valid[i].write(config_valid_subconfig.read().range(i,i) );
 	}
 
 	//DMNI config
@@ -119,7 +110,6 @@ void pe::comb_assignments(){
 		case DMNI_MEM_ADDR2:cpu_code_dmni.write(CODE_MEM_ADDR2);break;
 		case DMNI_MEM_SIZE2:cpu_code_dmni.write(CODE_MEM_SIZE2);break;
 		case DMNI_OP: 		cpu_code_dmni.write(CODE_OP); 		break;
-		case DMNI_CFG_KEY:  cpu_code_dmni.write(CODE_LOCAL_KEY);break;
 		default: 		  	cpu_code_dmni.write(0); 			break;
 	}
 	cpu_valid_dmni.write( (cpu_code_dmni.read() == 0 ? 0 : 1) );

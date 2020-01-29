@@ -79,6 +79,7 @@
 #define 	NI_STATUS_RESPONSE				0x00001024 //Message sent from the SDN controller to QoS manager replying the NI_STATUS_REQUEST
 
 #define 	SET_CS_ROUTER					0x00001025 //This service is never used, it only exist to allows the Deloream (Graphical Debugger) correctly represent the CS routers setup
+#define 	SET_CS_ROUTER_ACK_MANAGER		0x00001026 //Message sent by the source kernel of the path to the manager, notifying about the end of the physical path configuration
 
 
 #endif

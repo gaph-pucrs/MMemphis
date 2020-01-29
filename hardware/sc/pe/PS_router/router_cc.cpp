@@ -152,13 +152,8 @@ void router_cc::upd_dataout(){
 	for (int i=0; i<NPORT; i++){
 		sc_uint<3> j=localmux_out.range(i*3+2,i*3);
 		//Removido warning - codigo antigo: if (i==j){
-		if (i==((int)j)){
-			data_out[i].write(0);
-		}
-		else{
-			if (free[i].read()==0){
-				data_out[i].write(data[j]);
-			}
+		if (free[i].read()==0){
+			data_out[i].write(data[j]);
 		}
 	}
 }
@@ -172,16 +167,11 @@ void router_cc::upd_dataack(){
 
 	for (int i=0; i<NPORT; i++){
 		int j=local_mux_in.range(i*3+2,i*3);
-		if (i==j){
-			sgn_data_ack[i].write(0);
+		if (sgn_data_av[i].read()==1){
+			sgn_data_ack[i].write(credit_i[j]);
 		}
 		else{
-			if (sgn_data_av[i].read()==1){
-				sgn_data_ack[i].write(credit_i[j]);
-			}
-			else{
-				sgn_data_ack[i].write(0);
-			}
+			sgn_data_ack[i].write(0);
 		}
 	}
 	
@@ -193,20 +183,15 @@ void router_cc::upd_tx(){
 
 	for (int i=0; i<NPORT; i++){
 		int j=local_mux_out.range(i*3+2,i*3);
-		if (i==j){
-			tx[i].write(0);
-		}
-		else{
-			if (free[i].read()==0){
-				tx[i].write(sgn_data_av[j]);
-			}
+		if (free[i].read()==0){
+			tx[i].write(sgn_data_av[j]);
 		}
 	}
 }
 
 
 void router_cc::upd_clock_tx(){
-	
+
 		if(reset_n.read() == 0){
 			total_flits=0;
 			wire_EAST=0;
@@ -214,29 +199,29 @@ void router_cc::upd_clock_tx(){
 			wire_NORTH=0;
 			wire_SOUTH=0;
 			wire_LOCAL=0;
-			
+
 			fluxo_0=0;
 			fluxo_1=0;
 			fluxo_2=0;
 			fluxo_3=0;
 			fluxo_4=0;
 			fluxo_5=0;
-			
+
 			aux=0;
-			
+
 		}
 		else{
 			if((tx[0].read() == 1 and credit_i[0].read() == 1) or (tx[1].read() == 1 and credit_i[1].read() == 1) or (tx[2].read() == 1 and credit_i[2].read() == 1) or
 				(tx[3].read() == 1 and credit_i[3].read() == 1) or (tx[4].read() == 1 and credit_i[4].read() == 1)){
-					
-				aux=(tx[0].read() == 1 and credit_i[0].read() == 1) + (tx[1].read() == 1 and credit_i[1].read() == 1) + (tx[2].read() == 1 and credit_i[2].read() == 1) + 
+
+				aux=(tx[0].read() == 1 and credit_i[0].read() == 1) + (tx[1].read() == 1 and credit_i[1].read() == 1) + (tx[2].read() == 1 and credit_i[2].read() == 1) +
 					(tx[3].read() == 1 and credit_i[3].read() == 1) + (tx[4].read() == 1 and credit_i[4].read() == 1);
-					
-				
+
+
 				if(aux == 1){
 					fluxo_1++;
 				}
-				
+
 				else if(aux ==2){
 					fluxo_2++;
 				}
@@ -249,8 +234,8 @@ void router_cc::upd_clock_tx(){
 				else{
 					fluxo_5++;
 				}
-						
-					
+
+
 				if((tx[0].read() == 1 and credit_i[0].read() == 1)){
 					wire_EAST++;
 				}
@@ -261,11 +246,11 @@ void router_cc::upd_clock_tx(){
 				else if((tx[2].read() == 1 and credit_i[2].read() == 1)){
 
 					wire_NORTH++;
-				}				
+				}
 				else if((tx[3].read() == 1 and credit_i[3].read() == 1)){
 
 					wire_SOUTH++;
-				}				
+				}
 				else if((tx[4].read() == 1 and credit_i[4].read() == 1)){
 
 					wire_LOCAL++;
