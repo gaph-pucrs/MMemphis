@@ -9,7 +9,6 @@
 #define NOC_MANAGER_H_
 
 #include "../common_include.h"
-#include <management_api.h>
 #include "sdn_config_manager.h"
 
 #define SDN_DEBUG 0
@@ -29,8 +28,6 @@
 #define SOUTH		3
 #define LOCAL_OUT	4
 #define LOCAL_IN	5
-
-unsigned int x_offset, y_offset;
 
 
 int pow_base2(int pow){

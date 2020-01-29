@@ -55,7 +55,7 @@ void fila::in_proc_updPtr(){
 	}
 	else{
 		if((tem_espaco_na_fila.read()==true) && (rx.read()==true)){
-//New lines added to support sequential SDN configuration
+//Start of new lines added to support sequential SDN configuration
 //Testa se o header possui o endereco do roteador e se o bit 17 ou 16 estao ligados, caso verdade iss
 //significa um flit the configuracao.
 			if (EA == S_INIT && data_in.read().range(15, 0) == address && data_in.read().range(17, 16) > 0){

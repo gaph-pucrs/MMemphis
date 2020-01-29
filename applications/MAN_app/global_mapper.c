@@ -357,11 +357,6 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 
 		Puts("\nInitializing ALL MA TASKS complete\n");
 
-		//Used only to evaluate secure DMNI
-		//request_SDN_path(0x002,  0x202);
-		//request_SDN_path(0x000,  0x201);
-		//request_SDN_path(0x102,  0x200);
-
 		/*Sending MAPPING COMPLETE to APP INJECTOR*/
 		message = get_message_slot();
 		message[0] = APP_INJECTOR;
@@ -521,11 +516,6 @@ void handle_message(unsigned int * data_msg){
 			break;
 		case PATH_CONNECTION_ACK:
 			Puts("ACK received from SDN controller at time: "); Puts(itoa(GetTick())); Puts("\n");
-			break;
-		case SET_CS_ROUTER_ACK_MANAGER:
-			putsv("CS path ACK: ", GetTick());
-			Puts("Source: "); Puts(itoh(data_msg[1])); Puts("\n");
-			Puts("Target: "); Puts(itoh(data_msg[2])); Puts("\n");
 			break;
 		default:
 			Puts("Error message unknown"); Puts(itoh(data_msg[0])); Puts("\n");
