@@ -11,13 +11,17 @@
 
 #include "../common_include.h"
 
+#define CONST_SERVICE_PACKET_SIZE	13//13 is the size of a standard Service Packet, see packet.h.
+#define	ACK_MANAGER_SIZE		  	3 //3 is the size of the additional payload, handled by the MA task of requester
+
+
 
 unsigned short int key1[SDN_XCLUSTER][SDN_YCLUSTER];
 unsigned short int key2[SDN_XCLUSTER][SDN_YCLUSTER];
 
 
 /*Messages used to control the configuration packet*/
-unsigned int config_message[SDN_XCLUSTER*SDN_XCLUSTER*4+13];//Worst case of config message (PE COUNT + (SIZE OF EACH MSG) + ACK MESSAGE)
+unsigned int config_message[SDN_XCLUSTER*SDN_XCLUSTER*4+(CONST_SERVICE_PACKET_SIZE+ACK_MANAGER_SIZE)];//Worst case of config message (PE COUNT + (SIZE OF EACH MSG) + ACK MESSAGE) //20 means 13 + 3 fltits of additional msg. I inserted 20 to be safe
 unsigned char config_size;
 unsigned int source_addr;
 unsigned int target_addr;
@@ -56,10 +60,8 @@ void CommitConfigRouter(int requester_ID){
 
 	unsigned int requester_proc;
 	unsigned int config_packet_payload;
-	const int const_packet_size = 13;//13 is the size of a standard Service Packet, see packet.h.
-	const int ack_msg_data_size = 3; //3 is the size of the additional payload, handled by the MA task of requester
 
-	config_packet_payload = config_size + const_packet_size + ack_msg_data_size;
+	config_packet_payload = config_size + CONST_SERVICE_PACKET_SIZE + ACK_MANAGER_SIZE;
 	//Set the payload size of each sub-packet
 	for (int payload_size_index=1; payload_size_index<config_size; payload_size_index=payload_size_index+4){
 		//Set the payload at each position of the sub-packets
@@ -71,14 +73,14 @@ void CommitConfigRouter(int requester_ID){
 
 	//Add the last packet: the ack to the source kernel of the path
 	config_message[config_size] = requester_proc;
-	config_message[config_size+1] = const_packet_size-2 + ack_msg_data_size; //CONSTANT_PACKT_SIZE -2
+	config_message[config_size+1] = CONST_SERVICE_PACKET_SIZE-2 + ACK_MANAGER_SIZE; //CONSTANT_PACKT_SIZE -2
 	config_message[config_size+2] = SET_CS_ROUTER_ACK_MANAGER; //source
 	config_message[config_size+4] = requester_ID; //consumer_task
 	config_message[config_size+5] = source_addr; //source_PE
-	config_message[config_size+8] = ack_msg_data_size; //msg_lenght
+	config_message[config_size+8] = ACK_MANAGER_SIZE; //msg_lenght
 	config_message[config_size+9] = target_addr; //consumer_processor
 
-	config_size = config_size + const_packet_size; //Fills the remaining of the message
+	config_size = config_size + CONST_SERVICE_PACKET_SIZE; //Fills the remaining of the message
 
 	config_message[config_size++] = SET_CS_ROUTER_ACK_MANAGER; //consumer_processor
 	config_message[config_size++] = source_addr; //consumer_processor
@@ -89,6 +91,7 @@ void CommitConfigRouter(int requester_ID){
 	/*putsv("pkt_size = ", config_size);
 	for (int k=0; k<config_size; k++){
 		Puts("["); Puts(itoa(k)); Puts("]="); Puts(itoh(config_message[k])); Puts("\n");
+		if ((k+1)%4 == 0) Puts("\n");
 	}*/
 
 	SendRaw(config_message, config_size);
@@ -143,5 +146,36 @@ void ConfigRouter(unsigned int target, unsigned int input_port, unsigned int out
 
 }
 
+/*
+//NOT SECURE
+void ConfigRouter(unsigned int target, unsigned int input_port, unsigned int output_port, unsigned int subnet){
+
+	unsigned int config_msg, x, y;
+	unsigned short int k1, k2, k3;
+
+	//5 is a value used by software to distinguish between the LOCAL_IN e LOCAL_OUT port
+	//At the end of all, the port 5 not exists inside the router, and the value is configured to 4.
+	if (input_port == 5)
+		input_port = 4;
+	else if (output_port == 5)
+		output_port = 4;
+
+	config_msg = (input_port << 13) | (output_port << 10) | (2 << subnet) | 0;
+
+	//Extracts x and y
+
+	//Config packet update
+	config_message[config_size++] = 0x10000 | target;;
+	config_size = config_size + 2;
+	config_message[config_size++] = config_msg;
+
+	if (target_addr == -1){
+		target_addr = target;
+	}
+
+	//Always update source_addr, the last call will set the source since retrace execute backtrack
+	source_addr = target;
+}
+*/
 
 #endif /* APPLICATIONS_MAN_APP_SDN_INCLUDES_DMNI_KEY_MANAGER_H_ */
