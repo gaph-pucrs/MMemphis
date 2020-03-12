@@ -121,6 +121,7 @@ void noc_ps_receiver::sdn_config_sequential(){
 					break;
 
 				case check_src:
+					//if (data_in.read() == 0 && k1.read() == 0){ //Only accepts configuration from PE 0x0
 					if (data_in.read() == 0){ //Only accepts configuration from PE 0x0
 						PS.write(set_key);
 					} else {

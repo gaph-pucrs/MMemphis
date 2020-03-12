@@ -435,13 +435,7 @@ void handle_message(unsigned int * data_msg){
 			break;
 		case PATH_CONNECTION_ACK:
 			//Commented because I am testing the secure DMNI, remove the comment after
-			putsv("SDN path ACK: ", GetTick());
-			//handle_SDN_ack(data_msg);
-			break;
-		case SET_CS_ROUTER_ACK_MANAGER:
-			putsv("CS path ACK: ", GetTick());
-			Puts("Source: "); Puts(itoh(data_msg[1])); Puts("\n");
-			Puts("Target: "); Puts(itoh(data_msg[2])); Puts("\n");
+			handle_SDN_ack(data_msg);
 			break;
 		default:
 			while(1){

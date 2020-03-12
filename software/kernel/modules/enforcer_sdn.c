@@ -112,6 +112,13 @@ void add_ctp_online(TCB * task_to_add){
 	int producer_address;
 
 	producer_task = task_to_add->add_ctp & 0xFFFF;
+
+	//Removes the old subnet registry
+	subnet = get_subnet(producer_task, task_to_add->id, DMNI_RECEIVE_OP);
+	if (subnet != -1){
+		remove_ctp(subnet, DMNI_RECEIVE_OP);
+	}
+
 	subnet = task_to_add->add_ctp >> 16;
 
 	add_ctp(producer_task, task_to_add->id, DMNI_RECEIVE_OP, subnet);
@@ -265,6 +272,7 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 	CTP * ctp_ptr = 0;
 	unsigned int message[4];
 	static unsigned int qos_master_id, qos_master_addr;
+	int aux_subnet;
 
 	switch (p->service) {
 
@@ -280,7 +288,7 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 
 		if (p->cs_mode) {  //Stablish Circuit-Switching
 
-			puts("Set CS command received from QoS manager\n");
+			//puts("Set CS command received from QoS manager\n"); //Deixar esse comentario, eh importante, removi para metricas de tempo
 
 			tcb_ptr->add_ctp = p->cs_net << 16 | p->producer_task;
 
@@ -306,7 +314,14 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 		//puts("++++++ SET_NOC_SWITCHING_PRODUCER\n");
 
 		if (p->cs_mode) {
-			puts("CS mode enabled at producer\n");
+			//puts("CS mode enabled at producer\n"); //Deixar esse comentario, eh importante, removi para metricas de tempo
+
+			//Removes the old subnet registry
+			aux_subnet = get_subnet(p->producer_task, p->consumer_task, DMNI_SEND_OP);
+			if (aux_subnet != -1){
+				remove_ctp(aux_subnet, DMNI_SEND_OP);
+			}
+
 			ctp_ptr = add_ctp(p->producer_task, p->consumer_task, DMNI_SEND_OP, p->cs_net);
 			ctp_ptr->CS_enabled = 1;
 		} else {
@@ -325,7 +340,7 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 		if (p->cs_mode){
 			ctp_ptr = get_ctp_ptr(p->cs_net, DMNI_RECEIVE_OP);
 			ctp_ptr->CS_enabled = 1;
-			puts("CS mode enabled at consumer\n");
+			//puts("CS mode enabled at consumer\n"); //Deixar esse comentario, eh importante, removi para metricas de tempo
 		} else {
 			puts("PS mode enabled at consumer\n");
 		}

@@ -26,6 +26,8 @@ int main()
 
 	for(i=0; i<PROD_CONS_ITERATIONS; i++){
 		Send(&msg, cons);
+		//for(t=0;t<550; t++); //50%
+		//for(t=0;t<3860; t++); //10%
 	}
 
 

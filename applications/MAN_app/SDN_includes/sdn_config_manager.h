@@ -12,7 +12,7 @@
 #include "../common_include.h"
 
 #define CONST_SERVICE_PACKET_SIZE	13//13 is the size of a standard Service Packet, see packet.h.
-#define	ACK_MANAGER_SIZE		  	3 //3 is the size of the additional payload, handled by the MA task of requester
+#define	ACK_MANAGER_SIZE		  	5 //5 is the size of the additional payload, handled by the MA task of requester
 
 
 
@@ -56,10 +56,14 @@ void InitConfigRouter(){
 	while(!NoCSendFree());
 }
 
-void CommitConfigRouter(int requester_ID){
+/**Assembles and sent the configuration packet. The configuration packet travels to alls SDN routers, configuring the respective router and at end it returns to the
+ * controller using the service: SET_CS_ROUTER_ACK_MANAGER
+ *
+ */
+void CommitConfigRouter(int subnet, int requester_ID){
 
-	unsigned int requester_proc;
 	unsigned int config_packet_payload;
+	unsigned int my_id, my_address;
 
 	config_packet_payload = config_size + CONST_SERVICE_PACKET_SIZE + ACK_MANAGER_SIZE;
 	//Set the payload size of each sub-packet
@@ -69,13 +73,14 @@ void CommitConfigRouter(int requester_ID){
 		config_packet_payload = config_packet_payload - 4;
 	}
 
-	requester_proc = GetTaskLocation(requester_ID);
+	my_id = GetMyID();
+	my_address = GetNetAddress();
 
 	//Add the last packet: the ack to the source kernel of the path
-	config_message[config_size] = requester_proc;
+	config_message[config_size] = my_address;
 	config_message[config_size+1] = CONST_SERVICE_PACKET_SIZE-2 + ACK_MANAGER_SIZE; //CONSTANT_PACKT_SIZE -2
 	config_message[config_size+2] = SET_CS_ROUTER_ACK_MANAGER; //source
-	config_message[config_size+4] = requester_ID; //consumer_task
+	config_message[config_size+4] = my_id; //consumer_task
 	config_message[config_size+5] = source_addr; //source_PE
 	config_message[config_size+8] = ACK_MANAGER_SIZE; //msg_lenght
 	config_message[config_size+9] = target_addr; //consumer_processor
@@ -83,8 +88,10 @@ void CommitConfigRouter(int requester_ID){
 	config_size = config_size + CONST_SERVICE_PACKET_SIZE; //Fills the remaining of the message
 
 	config_message[config_size++] = SET_CS_ROUTER_ACK_MANAGER; //consumer_processor
-	config_message[config_size++] = source_addr; //consumer_processor
+	config_message[config_size++] = source_addr; //producer_processor
 	config_message[config_size++] = target_addr; //consumer_processor
+	config_message[config_size++] = subnet; //consumer_processor
+	config_message[config_size++] = requester_ID; //consumer_processor
 
 
 	//Just print the message before sending it

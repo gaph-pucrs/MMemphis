@@ -120,7 +120,7 @@ void handle_SDN_ack(unsigned int * recv_message){
 	Puts("] target ["); Puts(itoa(target >> 8)); Puts("x"); Puts(itoa(target & 0xFF));
 	Puts("] subnet ["); Puts(itoa(subnet)); Puts("]\n\n");
 
-	handle_connection_response(source, target, subnet);
+	//handle_connection_response(source, target, subnet);
 
 }
 

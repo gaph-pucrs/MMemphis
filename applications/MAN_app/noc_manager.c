@@ -19,7 +19,6 @@ enum ControllerStates controller_status;
 
 //Structure used only by the coordinator to store the global path request information
 ConnectionRequest 	global_path_request;
-int					global_path_coordinator_addr;
 unsigned int 		controllers_response_counter;
 unsigned int 		token_coordinator_address;
 unsigned char 		token_requested;
@@ -38,7 +37,7 @@ void update_cluster_border(int, int, unsigned int *);
 void handle_component_request(int, int, int, int);
 void handle_local_release_ack(unsigned int, int, int);
 void init_cluster_address_offset(unsigned int);
-void send_global_mode_release_ack(unsigned int);
+void send_global_mode_release_ack(unsigned int, unsigned int);
 
 /*################################## TOKEN FUNCTIONS #####################################*/
 void send_token_request(){
@@ -164,9 +163,6 @@ void handle_token_grant(){
 	token_requested = 0;
 
 	if (global_path_request.subnet == -1){//-1 means path request, otherwise means path release
-
-		//Sets global path coordinator with my address since i am the coordinator
-		global_path_coordinator_addr = cluster_addr;
 
 		send_update_border_request();
 
@@ -552,7 +548,7 @@ void send_global_mode_release(int path_success){
 
 		retrace(global_path_request.subnet, my_inport, my_outport);
 
-		CommitConfigRouter(GetMyID());
+		CommitConfigRouter(global_path_request.subnet, 0); //Zero at requester because this is the coordinator
 
 #if SDN_DEBUG
 		//print_router_status(global_path_request.subnet);
@@ -1222,7 +1218,7 @@ void build_border_status(){
 
 }
 
-void send_global_mode_release_ack(unsigned int path_success){
+void send_global_mode_release_ack(unsigned int coordinator_addr, unsigned int path_success){
 	unsigned int * message;
 	int msg_size;
 
@@ -1245,7 +1241,7 @@ void send_global_mode_release_ack(unsigned int path_success){
 #endif
 	}
 
-	send(global_path_coordinator_addr, message, msg_size);
+	send(coordinator_addr, message, msg_size);
 
 #if SDN_DEBUG
 	Puts("\nMessage GLOBAL_MODE_RELEASE_ACK sent to coordinator \n");
@@ -1276,7 +1272,7 @@ int handle_global_mode_release(unsigned int * rcv_msg){
 
 		retrace(subnet, inport, outport);
 
-		CommitConfigRouter(GetMyID());
+		CommitConfigRouter(subnet, coordinator_addr);
 
 		//Return 0 means controller needs wait for CS config ok
 		return 0;
@@ -1287,7 +1283,7 @@ int handle_global_mode_release(unsigned int * rcv_msg){
 
 	}
 
-	send_global_mode_release_ack(path_success);
+	send_global_mode_release_ack(coordinator_addr, path_success);
 
 	return 1;
 
@@ -1434,31 +1430,54 @@ void initialize_noc_manager(unsigned int * msg){
 }
 
 
-int handle_packet(unsigned int * recv_message){
 
-	int inport, outport;
+void handle_SDN_config_ack(unsigned int source_addr, unsigned int target_addr, unsigned int subnet, unsigned int master_to_reply_addr){
+#if SDN_DEBUG
+	Puts("Receiving SET_CS_ROUTER_ACK_MANAGER\n");
+	Puts("Source: "); Puts(itoh(source_addr)); Puts("\n");
+	Puts("Target: "); Puts(itoh(target_addr)); Puts("\n");
+	Puts("Subnet: "); Puts(itoh(subnet)); Puts("\n");
+	Puts("Master to reply: "); Puts(itoh(master_to_reply_addr)); Puts("\n");
+#endif
+
+	if (controller_status == GLOBAL_SLAVE){
+
+		//Arg. 1 means path success. It is safe to conclude that path was sucess because the SET_CS_ROUTER_ACK_MANAGER mark the end of physical configuration
+		send_global_mode_release_ack(master_to_reply_addr, 1);
+
+		controller_status = IDLE;
+
+#if SDN_DEBUG
+		Puts("Controller IDLE 4\n");
+#endif
+	} else if (controller_status == GLOBAL_MASTER){
+		//Zero argument means that this function is called by the coordinator
+		handle_global_mode_release_ack(0);
+
+	} else { //Local path ack
+
+		send_ack_requester(subnet, source_addr, target_addr, master_to_reply_addr, 0, ESTABLISH);
+	}
+}
+
+
+int handle_packet(unsigned int * recv_message){
 
 	switch (recv_message[0]) {
 		case PATH_CONNECTION_REQUEST:
 			//Only serves for authorized managers
-			//if (check_path_requester_authenticity(recv_message[3], recv_message[5])){
 
-				/*InitConfigRouter();
-				ConfigRouter(0x300, inport, outport, 0);
-				ConfigRouter(0x200, inport, outport, 0);
-				ConfigRouter(0x100, inport, outport, 0);
-				ConfigRouter(0x000, inport, outport, 0);
-				ConfigRouter(0x001, inport, outport, 0);
-				CommitConfigRouter(1, 0x001, 0x300);*/
-
+			//Puts("Path received\n");
+			//configuration_round(0);
+			if (check_path_requester_authenticity(recv_message[3], recv_message[5])){
 				handle_component_request(recv_message[1], recv_message[2], recv_message[3], -1);
-			//}
+			}
 			break;
 		case PATH_CONNECTION_RELEASE:
 			//Only serves for authorized managers
-			//if (check_path_requester_authenticity(recv_message[3], recv_message[5])){
+			if (check_path_requester_authenticity(recv_message[3], recv_message[5])){
 				handle_component_request(recv_message[1], recv_message[2], recv_message[3], recv_message[4]);
-			//}
+			}
 			break;
 		case NI_STATUS_REQUEST:
 			handle_NI_status_request(recv_message[1], recv_message[2]);
@@ -1479,8 +1498,6 @@ int handle_packet(unsigned int * recv_message){
 			handle_token_release();
 			break;
 		case UPDATE_BORDER_REQUEST:
-
-			global_path_coordinator_addr = recv_message[1];
 
 			handle_update_border_request(recv_message[1]);
 
@@ -1508,7 +1525,6 @@ int handle_packet(unsigned int * recv_message){
 				while(controller_status != GLOBAL_SLAVE) Puts("ERROR: controller is not in GLOBAL_SLAVE\n");
 
 				controller_status = IDLE;
-				global_path_coordinator_addr = -1;
 #if SDN_DEBUG
 				Puts("Controller IDLE 3\n");
 #endif
@@ -1521,33 +1537,14 @@ int handle_packet(unsigned int * recv_message){
 			initialize_noc_manager(recv_message);
 			break;
 		case SET_CS_ROUTER_ACK_MANAGER:
+			//config_time = GetTick() - config_time;
+			//configuration_round(config_time);
 
-#if SDN_DEBUG
-			Puts("Receiving SET_CS_ROUTER_ACK_MANAGER\n");
-			Puts("Source: "); Puts(itoh(recv_message[1])); Puts("\n");
-			Puts("Target: "); Puts(itoh(recv_message[2])); Puts("\n");
-#endif
-
-			if (global_path_coordinator_addr != cluster_addr){
-
-				//Arg. 1 means path success. It is safe to conclude that path was sucess because the SET_CS_ROUTER_ACK_MANAGER mark the end of physical configuration
-				send_global_mode_release_ack(1);
-
-				while(controller_status != GLOBAL_SLAVE) Puts("ERROR: controller is not in GLOBAL_SLAVE\n");
-
-				controller_status = IDLE;
-
-#if SDN_DEBUG
-				Puts("Controller IDLE 4\n");
-#endif
-			} else {
-				//Zero argument means that this function is called by the coordinator
-				handle_global_mode_release_ack(0);
-
-			}
-
-			global_path_coordinator_addr = -1;
-
+			//DESCOMENTE PARA VOLTAR A FUNCIONAR NORMALMENTE
+			config_time = GetTick() - config_time;
+			putsv("Overhead step 3: ", config_time);
+			putsv("Begin step 4:", GetTick());
+			handle_SDN_config_ack(recv_message[1], recv_message[2], recv_message[3], recv_message[4]);
 			break;
 		default:
 			Puts("ERROR message not identified\n");
@@ -1826,6 +1823,9 @@ void new_local_path(ConnectionRequest * conn_request_ptr){
 	//Overhead for local paths
 	path_overhead = GetTick();
 
+	putsv("End step 1:", path_overhead);
+	config_time = GetTick();
+
 	//Switches to local routing mode
 	enable_local_routing();
 
@@ -1845,19 +1845,23 @@ void new_local_path(ConnectionRequest * conn_request_ptr){
 		InitConfigRouter();
 
 		connection_ret = CS_connection_setup(source_x, source_y, target_x, target_y);
+		config_time = GetTick() - config_time;
+		putsv("Overhead step 2:", config_time);
+		config_time = GetTick();
 
 		if (connection_ret != -1){
 			//Assembles and sends the configuration packet
-			CommitConfigRouter(conn_request_ptr->requester_address);
+			config_time = GetTick();
+			CommitConfigRouter(connection_ret, conn_request_ptr->requester_address);
 		}
-
+/*
 #if PATH_DEBUG
 		addPath(cluster_addr, print_paths, print_path_size);
 #else
 		printPathSize += print_path_size;
 #endif
 		send_ack_requester(connection_ret, conn_request_ptr->source, conn_request_ptr->target, conn_request_ptr->requester_address, 0, ESTABLISH);
-
+*/
 	}
 	
 #if SDN_DEBUG

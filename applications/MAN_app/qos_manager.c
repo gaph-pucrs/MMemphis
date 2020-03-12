@@ -35,9 +35,22 @@ void initialize_qos_manager(unsigned int * msg){
 
 void fires_SDN_request(){
 
-	while(GetTick() < 200000);
+	static int counter = 0;
 
-	request_SDN_path(0x101, 0x102);
+	if (counter == 0){
+		//APAGAR
+		while(GetTick() < 1000000); //3
+		putsv("**************\nbegin step 1:", GetTick());
+		request_SDN_path(0x101, 0x201);
+		counter++;
+		//APAGAR
+	} else if (counter == 1){
+		//APAGAR
+		while(GetTick() < 1500000); //5
+		putsv("**************\nbegin step 1:", GetTick());
+		request_SDN_path(0x101, 0x201);
+		//APAGAR
+	}
 }
 
 void handle_SDN_ack(unsigned int * recv_message){
@@ -45,7 +58,7 @@ void handle_SDN_ack(unsigned int * recv_message){
 	unsigned int * message;
 	static unsigned int global_path_counter = 0;
 	int is_global = 0, local_success_rate = 0, global_success_rate = 0;
-	unsigned int source, target, subnet, aux_address, connection_ok, sx, sy, tx, ty;
+	unsigned int source, target, subnet, ovhd_aux, connection_ok;
 	int path_size, overhead;
 
 	//Puts("ACK received from SDN controller at time: "); Puts(itoa(GetTick())); Puts("\n");
@@ -60,13 +73,16 @@ void handle_SDN_ack(unsigned int * recv_message){
 	path_size 		= recv_message[8];
 
 
-	Puts("\nPATH NR: "); Puts(itoa(++global_path_counter));
+	/*Puts("\nPATH NR: "); Puts(itoa(++global_path_counter));
 	Puts(" - ACK received from ["); Puts(itoa(recv_message[1]));
 	Puts("] sucess ["); Puts(itoa(connection_ok));
 	Puts("] source [");  Puts(itoa(source >> 8)); Puts("x"); Puts(itoa(source & 0xFF));
 	Puts("] target ["); Puts(itoa(target >> 8)); Puts("x"); Puts(itoa(target & 0xFF));
-	Puts("] subnet ["); Puts(itoa(subnet)); Puts("]\n\n");
+	Puts("] subnet ["); Puts(itoa(subnet)); Puts("]\n\n");*/
 
+	putsv("4->5: ", GetTick());
+
+	putsv("Subnet: ", subnet);
 
 	message = get_message_slot();
 	message[0] = target;
@@ -80,7 +96,7 @@ void handle_SDN_ack(unsigned int * recv_message){
 	message[11] = 1;//p->cs_mode 1 establish. 0 release
 	SendRaw(message, 13);
 
-	Puts("SET_NOC_SWITCHING_CONSUMER CS mode sent\n");
+	//Puts("SET_NOC_SWITCHING_CONSUMER CS mode sent\n");
 }
 
 void CTP_set_PS_switching(unsigned int consumer_task, unsigned int producer_task, unsigned int consumer_addr){
@@ -115,7 +131,8 @@ void handle_message(unsigned int * data_msg){
 			handle_SDN_ack(data_msg);
 			break;
 		case NOC_SWITCHING_CTP_CONCLUDED:
-			Puts(" ACK received, CS protocol finished\n");
+			putsv("5:", GetTick());
+			Puts(" ******************\n ACK received, CS protocol finished\n");
 			/*while(flag_apagar){
 				while(GetTick() > 400000 ){
 					Puts("aqui\n");
@@ -124,6 +141,8 @@ void handle_message(unsigned int * data_msg){
 					break;
 				}
 			}*/
+
+			fires_SDN_request();
 			break;
 		default:
 			Puts("Error message unknown\n");

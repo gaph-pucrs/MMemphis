@@ -179,7 +179,7 @@ void request_SDN_path(int source_addr, int target_addr){
 	nc_x = src_x / SDN_XCLUSTER;
 	nc_y = src_y / SDN_YCLUSTER;
 
-	sdn_offset = 5;//TODO Please edit when you add a new MA task
+	sdn_offset = 2;//TODO Please edit when you add a new MA task
 
 	coordinator_task_ID = nc_x + (nc_y*SDN_X_CLUSTER_NUM) + sdn_offset;
 
@@ -197,8 +197,8 @@ void request_SDN_path(int source_addr, int target_addr){
 
 	//putsv("Proc_address = ", net_address);
 
-	Puts("\nPath request "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr));  Puts("\n");
-	putsv("Start time: ", GetTick());
+	//Puts("\nPath request "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr));  Puts("\n");
+	//putsv("Start time: ", GetTick());
 }
 
 
