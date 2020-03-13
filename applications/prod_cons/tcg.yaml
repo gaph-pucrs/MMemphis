@@ -1,5 +1,5 @@
 real-time: 0
-secure: 0
+secure: 1
 prod:
  - cons
   

@@ -1537,13 +1537,6 @@ int handle_packet(unsigned int * recv_message){
 			initialize_noc_manager(recv_message);
 			break;
 		case SET_CS_ROUTER_ACK_MANAGER:
-			//config_time = GetTick() - config_time;
-			//configuration_round(config_time);
-
-			//DESCOMENTE PARA VOLTAR A FUNCIONAR NORMALMENTE
-			config_time = GetTick() - config_time;
-			putsv("Overhead step 3: ", config_time);
-			putsv("Begin step 4:", GetTick());
 			handle_SDN_config_ack(recv_message[1], recv_message[2], recv_message[3], recv_message[4]);
 			break;
 		default:
@@ -1823,9 +1816,6 @@ void new_local_path(ConnectionRequest * conn_request_ptr){
 	//Overhead for local paths
 	path_overhead = GetTick();
 
-	putsv("End step 1:", path_overhead);
-	config_time = GetTick();
-
 	//Switches to local routing mode
 	enable_local_routing();
 
@@ -1845,13 +1835,9 @@ void new_local_path(ConnectionRequest * conn_request_ptr){
 		InitConfigRouter();
 
 		connection_ret = CS_connection_setup(source_x, source_y, target_x, target_y);
-		config_time = GetTick() - config_time;
-		putsv("Overhead step 2:", config_time);
-		config_time = GetTick();
 
 		if (connection_ret != -1){
 			//Assembles and sends the configuration packet
-			config_time = GetTick();
 			CommitConfigRouter(connection_ret, conn_request_ptr->requester_address);
 		}
 /*

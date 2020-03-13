@@ -120,9 +120,89 @@ void handle_SDN_ack(unsigned int * recv_message){
 	Puts("] target ["); Puts(itoa(target >> 8)); Puts("x"); Puts(itoa(target & 0xFF));
 	Puts("] subnet ["); Puts(itoa(subnet)); Puts("]\n\n");
 
-	//handle_connection_response(source, target, subnet);
+	handle_connection_response(source, target, subnet);
 
 }
+
+
+/** Each time that this function is called it send a packet SET_INITIAL_CS_PRODUCER. This causes one round of the
+ * protocol to setup CS at the beggining of a secure app.
+ *
+ */
+int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_task){
+	Puts("AQUUII\n\n");
+
+	int prod_address, cons_address;
+	unsigned int * send_message;
+	ConsumerTask * ct;
+	Task * t;
+
+	//I receives the prod_task to the for loop continue in the same task than previously
+	for(int i = prod_task; i<app_ptr->tasks_number; i++){
+		t = &app_ptr->tasks[i];
+
+		//K receives (cons_task+1) to the for loop considerar the next task
+		for(int k = (cons_task+1); k < t->consumers_number; k++){
+			ct = &t->consumer[k];
+
+			if (ct->id != -1 && ct->subnet != PS_SUBNET){
+
+				prod_task = t->id;
+				cons_task = ct->id;
+
+				send_message = get_message_slot();
+
+				prod_address = get_task_location(prod_task);
+				cons_address = get_task_location(cons_task);
+
+				//Message is always sent to producer task
+				send_message[0] = cons_address;
+				send_message[1] = CONSTANT_PKT_SIZE;
+				send_message[2] = cons_task;
+				send_message[3] = get_task_location(cons_task);
+
+
+			}
+
+		}
+
+		return 1; //Return 1 se achou
+	}
+
+
+	return 0;
+
+}
+
+
+message = get_message_slot();
+
+	for (int i =0; i<app->tasks_number; i++){
+
+		message[msg_size++] = app->tasks[i].allocated_proc;
+		//Puts("Send task release"); Puts(itoa(app->app_ID << 8 | i)); Puts(" loc "); Puts(itoh(app->tasks[i].allocated_proc)); Puts("\n");
+	}
+
+	//putsv("MEssage size: ", msg_size);
+
+	for (int i =0; i<app->tasks_number; i++){
+
+		while(!NoCSendFree());
+
+		message[0] = app->tasks[i].allocated_proc;
+		message[1] = msg_size - 2;
+		message[2] = TASK_RELEASE;
+		message[3] = app->tasks[i].id; //p->task_ID
+		message[8] = app->tasks_number; //p->app_task_number
+		message[9] = app->tasks[i].data_size; //p->data_size
+		//message[10] = ignored
+		message[11] = app->tasks[i].bss_size; //p->bss_size
+
+		if (app->tasks[i].allocated_proc == net_address){
+			SetTaskRelease(message, msg_size);
+		} else {
+			SendRaw(message, msg_size);
+		}
 
 
 #endif /* APPLICATIONS_MAN_APP_MAPPING_INCLUDES_LOCAL_MAPPER_CIRCUIT_SWITCHING_H_ */

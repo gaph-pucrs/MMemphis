@@ -338,9 +338,17 @@ void handle_task_allocated(unsigned int task_id){
 		/****************************************************/
 
 
-		//Puts("\nSEND TASK RELEASE\n\n");
-		/*Send the TASK RELEASE to all tasks begin its execution*/
-		send_task_release(app_ptr);
+		//If the App. is secure first establish CS for all CTPs
+		if (app_ptr->is_secure){
+
+			initial_CS_setup_protocol(app_ptr, 0, 0);
+
+		} else { //Otherwise the Manager can realease the app to run
+
+			//Puts("\nSEND TASK RELEASE\n\n");
+			/*Send the TASK RELEASE to all tasks begin its execution*/
+			send_task_release(app_ptr);
+		}
 	}
 }
 
@@ -406,6 +414,22 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 	}
 }
 
+void handle_set_initial_cs_ack(unsigned int producer_id, unsigned int consumer_id){
+	Application * app_ptr;
+
+	app_ptr = get_application_ptr(consumer_id >> 8);
+
+	while (!app_ptr) Puts("ERROR: app id invalid\n");
+
+	putsv("Set initial ACK received, consumer id: ", consumer_id);
+
+	if (initial_CS_setup_protocol(app_ptr, producer_id, consumer_id) == 0){
+
+		send_task_release(app_ptr);
+	}
+
+}
+
 void handle_message(unsigned int * data_msg){
 
 	switch (data_msg[0]) {
@@ -437,6 +461,12 @@ void handle_message(unsigned int * data_msg){
 			//Commented because I am testing the secure DMNI, remove the comment after
 			handle_SDN_ack(data_msg);
 			break;
+
+		case SET_INITIAL_CS_ACK:
+
+			handle_set_initial_cs_ack(data_msg[1], data_msg[2]);
+			break;
+
 		default:
 			while(1){
 				Puts("Error service message unknown: "); Puts(itoh(*(data_msg++))); Puts("\n");

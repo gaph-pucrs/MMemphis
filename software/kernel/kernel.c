@@ -65,7 +65,8 @@ int OS_syscall_handler(unsigned int service, unsigned int arg0, unsigned int arg
 
 			puts("Task id: "); puts(itoa(current->id)); putsv(" terminated at ", HAL_get_tick());
 
-			//send_task_terminated(current, arg0);
+			clear_all_ctps_of_task(current->id);
+
 			send_task_terminated(current);
 
 			clear_scheduling(current->scheduling_ptr);

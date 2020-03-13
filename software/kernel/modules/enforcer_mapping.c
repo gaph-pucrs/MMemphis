@@ -310,7 +310,7 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 		//Secure context variables
 		uint64_t calculated_hash, received_hash, *ptr_rcv, Km;
 		unsigned int  lo, hi;
-		char key[16] = {0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf};
+		char Rnd[16] = {0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf};
 
 		//Remove the size of code lenght size the last two words are keys and not useful code
 		code_lenght = code_lenght - 2;
@@ -319,7 +319,7 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 		puts("The App. is SECURE\n");
 
 		//putsv("Init MAC - ", HAL_get_tick());
-		calculated_hash = siphash24((void *)tcb_ptr->offset, code_lenght*4, key);
+		calculated_hash = siphash24((void *)tcb_ptr->offset, code_lenght*4, Rnd);
 
 		ptr_rcv = (uint64_t *)(tcb_ptr->offset + (code_lenght*4));
 		received_hash =  *ptr_rcv;

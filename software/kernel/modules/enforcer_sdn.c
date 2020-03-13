@@ -87,6 +87,18 @@ void remove_ctp(int subnet, int dmni_op){
 	while(1);
 }
 
+void clear_all_ctps_of_task(int task_id){
+	for(int i=0; i<MAX_CTP; i++){
+		if (ctp[i].subnet != -1 && (ctp[i].producer_task == task_id || ctp[i].consumer_task == task_id) ){
+			ctp[i].subnet = -1;
+			ctp[i].dmni_op = -1;
+			ctp[i].CS_enabled = 0;
+			//puts("Removed CTP, prod: "); puts(itoa(ctp[i].producer_task)); putsv(" cons: ", ctp[i].consumer_task);
+		}
+	}
+
+}
+
 
 int get_subnet(int producer_task, int consumer_task, int dmni_op){
 	for(int i=0; i<MAX_CTP; i++){

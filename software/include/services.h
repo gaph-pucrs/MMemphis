@@ -50,6 +50,9 @@
 #define 	SET_NOC_SWITCHING_PRODUCER		0x00000370 //QoS (Circuit-Switching):	Message sent from slave PE of consumer task to slave PE of producer task requesting to start to use CS to communicate
 #define 	NOC_SWITCHING_PRODUCER_ACK		0x00000380 //QoS (Circuit-Switching):	Message sent from slave PE of producer task to slave PE of consumer task acknowledging the reception of SET_NOC_SWITCHING_PRODUCER
 #define 	NOC_SWITCHING_CTP_CONCLUDED		0x00000390 //QoS (Circuit-Switching):	Message sent from slavE PE of producer task to the QoS manager informing about the conclusion of the dynamic CS establishment
+#define		SET_INITIAL_CS_PRODUCER			0x00000400 //QoS/Security (Circuit-Switching):	Message sent from Manager to slave PE of the producer task configuring the CS for the producer and consumer task pair
+#define		SET_INITIAL_CS_CONSUMER			0x00000405 //QoS/Security (Circuit-Switching):	Message sent from the producer task configuring the CS of the consumer task
+#define		SET_INITIAL_CS_ACK				0x00000410 //QoS/Security (Circuit-Switching):  Message sent from the consumer task to the Manager, acknowledging the protocol of initial CS setup
 #define 	LEARNED_TASK_PROFILE			0x00000420 //DAPE(Dynamic App. Profiling Extraction): Message	sent from slave PE to the DATE manager updating the profiling of a given task
 #define		APP_MAPPING_COMPLETE			0x00000440 //Mapping:					Message sent from GM to AppInjector notifying that current application was mapped and AppInjector can send a new application request if it exists
 

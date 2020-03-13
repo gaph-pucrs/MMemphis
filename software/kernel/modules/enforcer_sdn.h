@@ -40,6 +40,8 @@ CTP * add_ctp(int, int, int, int);
 
 void remove_ctp(int, int);
 
+void clear_all_ctps_of_task(int);
+
 int get_subnet(int, int, int);
 
 void check_ctp_reconfiguration(TCB *);
