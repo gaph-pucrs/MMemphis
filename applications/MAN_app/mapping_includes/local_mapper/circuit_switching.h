@@ -10,6 +10,9 @@
 
 #include "application.h"
 
+/*Stores the utilization of the local in (0xF0) and local out (0x0F) port for each router*/
+unsigned char cs_utilization[MAPPING_XCLUSTER][MAPPING_YCLUSTER];
+unsigned char cs_utilization_updated = 0;
 Application   * app_ctp_ptr = 0;
 Task		  * producer_task_ptr = 0;
 ConsumerTask  * consumer_ptr = 0;
@@ -57,6 +60,9 @@ int request_connection(Application * app){
 
 	request_SDN_path(source_pe, target_pe);
 
+	//After request CS it is safe to set the cs utilization as not updated
+	cs_utilization_updated = 0;
+
 	//Return 1 meaning that the circuit-switching was NOT completed yet
 	return 0;
 }
@@ -94,10 +100,9 @@ void handle_connection_response(unsigned int source_pe, unsigned int target_pe, 
 
 void handle_SDN_ack(unsigned int * recv_message){
 
-	unsigned int * message;
 	static unsigned int global_path_counter = 0;
-	int is_global = 0, local_success_rate = 0, global_success_rate = 0;
-	unsigned int source, target, subnet, aux_address, connection_ok, sx, sy, tx, ty;
+	int is_global = 0;
+	unsigned int source, target, subnet, connection_ok;
 	int path_size, overhead;
 
 	overhead = GetTick();
@@ -130,21 +135,25 @@ void handle_SDN_ack(unsigned int * recv_message){
  *
  */
 int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_task){
-	Puts("AQUUII\n\n");
-
-	int prod_address, cons_address;
+	int prod_address, cons_address, cons_index;
 	unsigned int * send_message;
 	ConsumerTask * ct;
 	Task * t;
+
+	cons_index = cons_task + 1;
 
 	//I receives the prod_task to the for loop continue in the same task than previously
 	for(int i = prod_task; i<app_ptr->tasks_number; i++){
 		t = &app_ptr->tasks[i];
 
 		//K receives (cons_task+1) to the for loop considerar the next task
-		for(int k = (cons_task+1); k < t->consumers_number; k++){
-			ct = &t->consumer[k];
+		while(cons_index < t->consumers_number){
 
+			cons_task = 0;
+
+			ct = &t->consumer[cons_index];
+
+			//Message sent to the consumer task
 			if (ct->id != -1 && ct->subnet != PS_SUBNET){
 
 				prod_task = t->id;
@@ -155,54 +164,83 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 				prod_address = get_task_location(prod_task);
 				cons_address = get_task_location(cons_task);
 
+
+				//Usefull info: prod_ID, prod_PE, cons_ID, cons_PE, master id, master addr
 				//Message is always sent to producer task
-				send_message[0] = cons_address;
-				send_message[1] = CONSTANT_PKT_SIZE;
-				send_message[2] = cons_task;
-				send_message[3] = get_task_location(cons_task);
+				send_message[0] = cons_address;				//header
+				send_message[1] = CONSTANT_PKT_SIZE-2;		//payload_size
+				send_message[2] = SET_INITIAL_CS_CONSUMER;  //service
+				send_message[3] = prod_task;				//producer_task
+				send_message[4] = cons_task;				//consumer_task
+				send_message[8] = prod_address;				//producer_processor
+				send_message[9] = cons_address;				//consumer_processor
+				send_message[10] = ct->subnet;				//cs_net
 
+				//Create a syscall in case a RT task is running at same proc of local mapper
+				/*if (t->allocated_proc == net_address){
+					SetInitialCS(send_message, CONSTANT_PKT_SIZE);
+				} else {*/
+					SendRaw(send_message, CONSTANT_PKT_SIZE);
+				//}
 
+				//puts("Sent SET_INITIAL_CS_CONSUMER\n");
+
+				return 1; //Return 1 se achou
 			}
 
+			cons_index++;
 		}
 
-		return 1; //Return 1 se achou
-	}
+		cons_index = 0;
 
+	}
 
 	return 0;
 
 }
 
 
-message = get_message_slot();
+void request_cs_utilization(){
+	int SDN_Controller_ID = 2; //TODO Please edit when you add a new MA task
+	unsigned int * send_message;
 
-	for (int i =0; i<app->tasks_number; i++){
+	Puts("\nSend CS_UTILIZATION_REQUEST\n");
 
-		message[msg_size++] = app->tasks[i].allocated_proc;
-		//Puts("Send task release"); Puts(itoa(app->app_ID << 8 | i)); Puts(" loc "); Puts(itoh(app->tasks[i].allocated_proc)); Puts("\n");
+	send_message = get_message_slot();
+	send_message[0] = CS_UTILIZATION_REQUEST;
+	send_message[1] = GetMyID(); //source
+	send_message[2] = cluster_x_offset << 8 | cluster_y_offset; //target
+	send_message[3] = MAPPING_XCLUSTER << 8 | MAPPING_YCLUSTER;
+
+	SendService(SDN_Controller_ID, send_message, 4);
+
+}
+
+void handle_cs_utilization_response(unsigned int * data_msg){
+	int index, conn_in, conn_out;
+
+	//Puts("\nCS_UTILIZATION_RESPONSE received\n");
+
+	cs_utilization_updated = 1;
+
+	index = 1;
+
+	for(int y = 0; y < MAPPING_YCLUSTER; y++){
+		for (int x = 0; x < MAPPING_XCLUSTER; x++){
+
+			conn_in = data_msg[index] >> 16;
+			conn_out = data_msg[index] & 0xFFFF;
+
+			Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(": in:");
+			Puts(itoa(conn_in)); putsv(", out:", conn_out);
+
+			cs_utilization[x][y] = (unsigned char) ((conn_in << 4) | conn_out);
+
+			index++;
+		}
 	}
 
-	//putsv("MEssage size: ", msg_size);
-
-	for (int i =0; i<app->tasks_number; i++){
-
-		while(!NoCSendFree());
-
-		message[0] = app->tasks[i].allocated_proc;
-		message[1] = msg_size - 2;
-		message[2] = TASK_RELEASE;
-		message[3] = app->tasks[i].id; //p->task_ID
-		message[8] = app->tasks_number; //p->app_task_number
-		message[9] = app->tasks[i].data_size; //p->data_size
-		//message[10] = ignored
-		message[11] = app->tasks[i].bss_size; //p->bss_size
-
-		if (app->tasks[i].allocated_proc == net_address){
-			SetTaskRelease(message, msg_size);
-		} else {
-			SendRaw(message, msg_size);
-		}
+}
 
 
 #endif /* APPLICATIONS_MAN_APP_MAPPING_INCLUDES_LOCAL_MAPPER_CIRCUIT_SWITCHING_H_ */

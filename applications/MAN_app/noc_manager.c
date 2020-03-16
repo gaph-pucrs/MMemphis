@@ -1358,11 +1358,79 @@ void handle_update_border_ack(unsigned int * msg){
 }
 
 
+void handle_sdn_utilization_request(unsigned int req_id, unsigned int starting_xy, unsigned int ending_xy){
+	unsigned int conn_in, conn_out, sx, sy, tx, ty, data_msg, msg_size;
+	unsigned int in_msg, out_msg;
+	unsigned int * message;
 
-void handle_NI_status_request(unsigned int targetPE, unsigned int req_address){
+	conn_in = 0;
+	conn_out = 0;
+
+	//Broke the xy address
+	sx = starting_xy >> 8;
+	sy = starting_xy & 0xFF;
+	tx = ending_xy >> 8;
+	ty = ending_xy & 0xFF;
+
+	//Sets ending xy at right position
+	tx = sx + tx;
+	ty = sy + ty;
+
+	//Sets x and y according to the Controller management space offsets
+	sx = sx - x_offset;
+	tx = tx - x_offset;
+	sy = sy - y_offset;
+	ty = ty - y_offset;
+
+	//-1 == FREE
+
+	message = get_message_slot();
+	message[0] = CS_UTILIZATION_RESPONSE;
+	msg_size = 1;
+
+	for(int y = sy; y < ty; y++){
+		for (int x = sx; x < tx; x++){
+
+			data_msg = 0;
+			//in_msg = 0;
+			//out_msg = 0;
+
+			conn_out = 0;
+			conn_in = 0;
+			for(int i=0; i<CS_NETS; i++){
+
+				if ( cs_inport[x][y][i][LOCAL_IN] == -1){
+					conn_out++;
+					//out_msg = out_msg | (1 << i);
+
+				}
+
+				if ( cs_inport[x][y][i][LOCAL_OUT] == -1 ){
+					conn_in++;
+					//in_msg = in_msg | (1 << i);
+				}
+			}
+			Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(": in:");
+			Puts(itoa(conn_in)); putsv(", out:", conn_out);
+
+			//data_msg = in_msg << 16 | out_msg;
+			data_msg = conn_in << 16 | conn_out;
+			message[msg_size++] = data_msg;
+		}
+	}
+	//Puts("end\n\n");
+
+	while (msg_size > MAX_MANAG_MSG_SIZE) Puts("ERROR: size of msg exceeded\n");
+
+	SendService(req_id, message, msg_size);
+
+}
+
+/*Old implementation*/
+/*void handle_sdn_utilization_request(unsigned int targetPE, unsigned int req_address){
 
 	unsigned int conn_in, conn_out, tx, ty;
-	unsigned int * message = get_message_slot();
+	unsigned int * message;
 
 	conn_in = 0;
 	conn_out = 0;
@@ -1378,12 +1446,12 @@ void handle_NI_status_request(unsigned int targetPE, unsigned int req_address){
 			conn_in++;
 	}
 
-
-	message[0] = NI_STATUS_RESPONSE;
+	message = get_message_slot();
+	message[0] = SDN_UTILIZATION_RESPONSE;
 	message[1] = conn_in;
 	message[2] = conn_out;
-	send(req_address, message, 3);
-}
+	send(req_id, message, 3);
+}*/
 
 void initialize_noc_manager(unsigned int * msg){
 	unsigned int max_ma_tasks, index;
@@ -1479,8 +1547,8 @@ int handle_packet(unsigned int * recv_message){
 				handle_component_request(recv_message[1], recv_message[2], recv_message[3], recv_message[4]);
 			}
 			break;
-		case NI_STATUS_REQUEST:
-			handle_NI_status_request(recv_message[1], recv_message[2]);
+		case CS_UTILIZATION_REQUEST:
+			handle_sdn_utilization_request(recv_message[1], recv_message[2], recv_message[3]);
 			break;
 		case DETAILED_ROUTING_REQUEST:
 			detailed_routing(recv_message);

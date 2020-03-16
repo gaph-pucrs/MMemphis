@@ -327,10 +327,11 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case PATH_CONNECTION_REQUEST:
 	case PATH_CONNECTION_RELEASE:
 	case PATH_CONNECTION_ACK:
-	case NI_STATUS_REQUEST:
-	case NI_STATUS_RESPONSE:
+	case CS_UTILIZATION_REQUEST:
+	case CS_UTILIZATION_RESPONSE:
 	case NOC_SWITCHING_CTP_CONCLUDED:
 	case SET_CS_ROUTER_ACK_MANAGER:
+	case SET_INITIAL_CS_ACK:
 
 		handle_MA_message(p->consumer_task, p->msg_lenght);
 
@@ -344,6 +345,10 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 
 		break;
 
+	//Initial
+	case SET_INITIAL_CS_PRODUCER:
+	case SET_INITIAL_CS_CONSUMER:
+	//Dynamic switching establishment
 	case SET_NOC_SWITCHING_CONSUMER:
 	case SET_NOC_SWITCHING_PRODUCER:
 	case NOC_SWITCHING_PRODUCER_ACK:

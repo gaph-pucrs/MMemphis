@@ -283,8 +283,9 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 	TCB * tcb_ptr = 0;
 	CTP * ctp_ptr = 0;
 	unsigned int message[4];
-	static unsigned int qos_master_id, qos_master_addr;
-	int aux_subnet;
+	static unsigned int master_id, master_addr;
+	int aux_subnet, prod_task, prod_address;
+	ServiceHeader * pkt_ptr;
 
 	switch (p->service) {
 
@@ -294,8 +295,8 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 
 		while(!tcb_ptr) puts("ERROR: tcb is null at SET_NOC_SWITCHING_CONSUMER\n");
 
-		qos_master_id = p->task_number;
-		qos_master_addr = p->source_PE;
+		master_id = p->task_number;
+		master_addr = p->source_PE;
 
 
 		if (p->cs_mode) {  //Stablish Circuit-Switching
@@ -363,20 +364,85 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 		message[2] = p->consumer_task;
 		message[3] = p->cs_mode;
 
-		if (qos_master_addr == net_address){
+		if (master_addr == net_address){
 
-			write_local_service_to_MA(qos_master_id, message, 4);
+			write_local_service_to_MA(master_id, message, 4);
 
 		} else {
 
-			send_service_to_MA(qos_master_id, qos_master_addr, message, 4);
+			send_service_to_MA(master_id, master_addr, message, 4);
 
 			while(HAL_is_send_active(PS_SUBNET));
 
 		}
 
 		break;
+
+	case SET_INITIAL_CS_PRODUCER:
+
+		tcb_ptr = searchTCB(p->producer_task);
+
+		//Gets the task ID
+		master_id = tcb_ptr->master_address >> 16;
+		//Gets the task localion
+		master_addr = tcb_ptr->master_address & 0xFFFF;
+
+		aux_subnet = p->cs_net;
+
+
+		//Set CS
+		ctp_ptr = add_ctp(tcb_ptr->id, p->consumer_task, DMNI_SEND_OP, aux_subnet);
+		ctp_ptr->CS_enabled = 1;
+
+		puts("Initial CS set to "); puts(itoa(tcb_ptr->id)); puts(" -> ");
+		puts(itoa(p->consumer_task)); putsv(" subnet ", aux_subnet);
+
+		//Send confirmation to QoS master
+		message[0] = SET_INITIAL_CS_ACK;
+		message[1] = p->producer_task;
+		message[2] = p->consumer_task;
+
+		if (master_addr == net_address){
+
+			write_local_service_to_MA(master_id, message, 3);
+
+		} else {
+
+			send_service_to_MA(master_id, master_addr, message, 3);
+
+			while(HAL_is_send_active(PS_SUBNET));
+
+		}
+
+		break;
+
+	case SET_INITIAL_CS_CONSUMER:
+
+		tcb_ptr = searchTCB(p->consumer_task);
+
+		prod_task = p->producer_task;
+		prod_address = p->producer_processor;
+		aux_subnet = p->cs_net;
+
+		//Set CS
+		ctp_ptr = add_ctp(prod_task, tcb_ptr->id, DMNI_RECEIVE_OP, aux_subnet);
+		ctp_ptr->CS_enabled = 1;
+
+		puts("Initial CS set to "); puts(itoa(prod_task)); puts(" -> ");
+		puts(itoa(tcb_ptr->id)); putsv(" subnet ", aux_subnet);
+
+		//Send the packet to producer, including the consumer address
+		pkt_ptr = get_service_header_slot();
+		pkt_ptr->header = prod_address;
+		pkt_ptr->service = SET_INITIAL_CS_PRODUCER;
+		pkt_ptr->producer_task = prod_task;
+		pkt_ptr->consumer_task = tcb_ptr->id;
+		pkt_ptr->cs_net = aux_subnet;
+		send_packet(pkt_ptr, 0, 0);
+
+		break;
 	}
+
 
 }
 

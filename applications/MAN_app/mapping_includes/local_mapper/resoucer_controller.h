@@ -62,6 +62,7 @@ void page_released(int proc_address, int task_ID){
 */
 
 
+
 int application_mapping(int app_id){
 
 	Application * app;
@@ -300,6 +301,19 @@ int diamond_search_initial(int begining_core){
 
 	return -1;
 }
+
+
+/**Request the SDN utilization of a list of SDN routers that are free to receive one task at least
+ *
+ */
+void request_SDN_utilization(){
+
+}
+
+void handle_SDN_utilization_reply(){
+
+}
+
 
 
 #endif /* APPLICATIONS_MAN_CONTROL_APPLICATION_RESOUCER_CONTROLLER_H_ */

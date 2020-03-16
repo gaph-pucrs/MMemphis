@@ -1,4 +1,5 @@
 real-time: 1 #If task is a real-time (1) or best-effort (0)
+secure: 1
 #Lines below informs the communication task pairs 
 start:
  - ivlc

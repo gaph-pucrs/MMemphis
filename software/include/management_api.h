@@ -27,6 +27,7 @@
 extern int SystemCall();
 
 #define RequestServiceMode()				SystemCall(REQSERVICEMODE, 0, 0, 0)
+//Send used only by management task to send messages to another management tasks
 #define SendService(target, msg, uint_size) while(!SystemCall(WRITESERVICE, target, (unsigned int *)msg, uint_size))
 #define ReceiveService(msg)					while(!SystemCall(READSERVICE, 	(unsigned int *)msg, 0, 0))
 #define Puts(str) 							while(!SystemCall(PUTS, 		(char*)str,			0, 0))

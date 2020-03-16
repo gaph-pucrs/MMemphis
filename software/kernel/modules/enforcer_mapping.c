@@ -143,8 +143,6 @@ void set_task_release(unsigned int source_addr, char from_noc){
 
 	} else {
 
-		puts("Release manual\n");
-
 		data_addr = (unsigned int *) source_addr;
 
 		task_id 		= data_addr[3];//This index is at same position than p->task_ID

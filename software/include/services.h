@@ -78,8 +78,8 @@
 #define		PATH_CONNECTION_REQUEST			0x00001020 //Message sent from a given component to the SDN controller requesting a SDN path establishment
 #define		PATH_CONNECTION_RELEASE			0x00001021 //Message sent from a given component to the SDN controller requesting a SDN path release
 #define 	PATH_CONNECTION_ACK				0x00001022 //Message sent from the SDN controller to a given component notifying that the path was established or not
-#define		NI_STATUS_REQUEST				0x00001023 //Message sent from the QoS manager to SDN controller requesting the CS allocation status of its DMNI
-#define 	NI_STATUS_RESPONSE				0x00001024 //Message sent from the SDN controller to QoS manager replying the NI_STATUS_REQUEST
+#define		CS_UTILIZATION_REQUEST			0x00001023 //Message sent from the QoS manager to SDN controller requesting the CS allocation status of its DMNI
+#define 	CS_UTILIZATION_RESPONSE			0x00001024 //Message sent from the SDN controller to QoS manager replying the NI_STATUS_REQUEST
 
 #define 	SET_CS_ROUTER					0x00001025 //This service is never used, it only exist to allows the Deloream (Graphical Debugger) correctly represent the CS routers setup
 #define 	SET_CS_ROUTER_ACK_MANAGER		0x00001026 //Message sent by the source kernel of the path to the manager, notifying about the end of the physical path configuration

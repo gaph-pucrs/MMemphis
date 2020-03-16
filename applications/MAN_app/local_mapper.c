@@ -292,10 +292,11 @@ void send_task_release(Application * app){
 
 		app->tasks[i].status = TASK_RUNNING;
 
-		//putsv("\n -> send TASK_RELEASE to task ", app->tasks[i].id);
+		//putsv("Sent TASK_RELEASE to task ", app->tasks[i].id);
 		//puts(" in proc "); puts(itoh(p->header)); puts("\n----\n");
 	}
 
+	Puts("\nTASK_RELEASE sent, app is RUNNING!");
 	app->status = RUNNING;
 
 }
@@ -338,10 +339,10 @@ void handle_task_allocated(unsigned int task_id){
 		/****************************************************/
 
 
-		//If the App. is secure first establish CS for all CTPs
+		//If the App. is secure first configures CS at tasks kernel for all CTPs
 		if (app_ptr->is_secure){
 
-			initial_CS_setup_protocol(app_ptr, 0, 0);
+			initial_CS_setup_protocol(app_ptr, 0, -1);
 
 		} else { //Otherwise the Manager can realease the app to run
 
@@ -421,10 +422,16 @@ void handle_set_initial_cs_ack(unsigned int producer_id, unsigned int consumer_i
 
 	while (!app_ptr) Puts("ERROR: app id invalid\n");
 
-	putsv("Set initial ACK received, consumer id: ", consumer_id);
+	//putsv("ACK received\nproducer id: ", producer_id);
+	//putsv("consumer id: ", consumer_id);
+
+	producer_id = producer_id & 0xFF; //Removes app ID
+	consumer_id = consumer_id & 0xFF; //Removes app ID
 
 	if (initial_CS_setup_protocol(app_ptr, producer_id, consumer_id) == 0){
 
+
+		Puts("\nInitial CS protocol concluded!\n");
 		send_task_release(app_ptr);
 	}
 
@@ -465,6 +472,11 @@ void handle_message(unsigned int * data_msg){
 		case SET_INITIAL_CS_ACK:
 
 			handle_set_initial_cs_ack(data_msg[1], data_msg[2]);
+			break;
+
+		case CS_UTILIZATION_RESPONSE:
+
+			handle_cs_utilization_response(data_msg);
 			break;
 
 		default:
