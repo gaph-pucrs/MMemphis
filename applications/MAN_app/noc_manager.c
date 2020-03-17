@@ -1399,22 +1399,29 @@ void handle_sdn_utilization_request(unsigned int req_id, unsigned int starting_x
 			conn_in = 0;
 			for(int i=0; i<CS_NETS; i++){
 
-				if ( cs_inport[x][y][i][LOCAL_IN] == -1){
-					conn_out++;
-					//out_msg = out_msg | (1 << i);
+				for(int p=0; p<PORT_NUMBER; p++){
 
-				}
+					//Count all ports
+					if ( cs_inport[x][y][i][p] == -1){
+						data_msg++;
+					}
 
-				if ( cs_inport[x][y][i][LOCAL_OUT] == -1 ){
-					conn_in++;
-					//in_msg = in_msg | (1 << i);
+					/*if ( cs_inport[x][y][i][LOCAL_IN] == -1){
+						conn_out++;
+						//out_msg = out_msg | (1 << i);
+
+					}
+					if ( cs_inport[x][y][i][LOCAL_OUT] == -1 ){
+						conn_in++;
+						//in_msg = in_msg | (1 << i);
+					}*/
 				}
 			}
-			Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(": in:");
-			Puts(itoa(conn_in)); putsv(", out:", conn_out);
+			Puts(itoa(x)); Puts("x"); Puts(itoa(y));
+			putsv(", free:", data_msg);
 
 			//data_msg = in_msg << 16 | out_msg;
-			data_msg = conn_in << 16 | conn_out;
+			//data_msg = conn_in << 16 | conn_out;
 			message[msg_size++] = data_msg;
 		}
 	}

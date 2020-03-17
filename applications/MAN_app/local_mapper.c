@@ -182,6 +182,8 @@ void handle_pending_application(){
 
 		case WAITING_CIRCUIT_SWITCHING:
 
+			//request_cs_utilization();//Used to test the cs utilization protocol
+
 			complete = request_connection(app);
 
 			if (complete){ //If circuit-switching is complete for that application
@@ -194,6 +196,8 @@ void handle_pending_application(){
 			break;
 
 		case READY_TO_LOAD:
+
+			//request_cs_utilization();//Used to test the cs utilization protocol
 
 			request_application(app);
 

@@ -12,6 +12,8 @@
 #include "processors.h"
 #include "globals.h"
 
+#define CS_NETS 		(SUBNETS_NUMBER-1)
+
 
 int diamond_search_initial(int);
 
@@ -51,6 +53,194 @@ void page_released(int proc_address, int task_ID){
 	//Puts("Released: "); Puts(itoh(proc_address)); putsv(" free ", free_resources);
 }
 
+
+#if 1
+
+int get_initial_pe(unsigned int * initial_pe_list, int initial_size, int * excluded_initial_pe_list, int secure_app){
+	int max_avg_manhatam, initial_app_pe;
+	int man_sum, man_count, man_curr;
+	int xi, yi, xj, yj;
+	int proc_addr;
+
+	//Puts("\napplication_mapping\n");
+
+	max_avg_manhatam = -1;
+	initial_app_pe = -1;
+
+	if (initial_size){
+
+		//For each free PE of the cluster
+		for(int i=0; i<MAX_PROCESSORS; i++){
+
+			//Tests if the selected PE is a excluded PE
+			if (excluded_initial_pe_list[i] == 0)
+				continue;
+
+			proc_addr = get_proc_address(i);
+
+			if(secure_app && get_proc_free_pages(proc_addr) == MAX_TASK              get_proc_free_pages(proc_addr) > 0){
+
+				man_sum = 0;
+				man_count = 0;
+
+				xi = proc_addr >> 8;
+				yi = proc_addr & 0xFF;
+				//For each initial_PE compute  the avg manhatam from the proc_addr
+				for(int j=0; j<initial_size; j++){
+
+					xj = initial_pe_list[j] >> 8;
+					yj = initial_pe_list[j] & 0xFF;
+
+					//Computes the manhatam distance
+					man_curr = (abs(xi - xj) + abs(yi - yj));
+
+					man_sum = man_sum + man_curr;
+					man_count++;
+				}
+
+				//After the for computes the mean
+				man_curr = (man_sum / man_count);
+				//Puts("Current Avg mean for PE "); Puts(itoh(proc_addr)); putsv(" is ", man_curr);
+
+				if (man_curr > max_avg_manhatam){
+					max_avg_manhatam = man_curr;
+					initial_app_pe = proc_addr;
+					//Puts("PE selected\n");
+				}
+			}
+
+		}
+
+	} else {
+		initial_app_pe = (cluster_x_offset << 8 | (cluster_y_offset + MAPPING_YCLUSTER -1));
+		//Puts("Very first time\n");
+	}
+
+	Puts("SELECTED initial addr: "); Puts(itoh(initial_app_pe)); Puts("\n");
+
+	return initial_app_pe;
+}
+
+
+
+int application_mapping(int app_id){
+
+	Application * app;
+	Task *t;
+	int proc_address;
+	int initial_pe_list[MAX_CLUSTER_TASKS];
+	int initial_size;
+	int initial_app_pe;
+	int proc_addr;
+	int max_avg_manhatam;
+	int man_sum, man_count, man_curr;
+	int xi, yi, xj, yj;
+
+	//Used to store the position of the already tested initial PEs (<< 16 -- parte alta) e seu acumulador de utilizacao CS (>>16 -- parte baixa)
+	int tested_initial_PEs[MAX_PROCESSORS];
+
+	for(int i=0; i<MAPPING_XCLUSTER; i++){
+		tested_initial_PEs[i] = 1;
+	}
+
+	app = get_application_ptr(app_id);
+
+	//Puts("\n----------------Defining list of initial PE------------\n");
+	get_initial_pe_list(initial_pe_list, &initial_size);
+
+	//Algoritms that selects the intial PE
+	initial_app_pe = get_initial_pe(initial_pe_list, initial_size, tested_initial_PEs, 1);
+
+
+/*Heuristica de mapeamento aging e CS
+ * OBS: Tarefas de diferentes apps nao podem compartilhar mesmo PE
+ * 1. Selecionar o initial PE (ja feito acima)
+ * 2. Executar o mapeamento diamante e anotar a utilizacao CS acumulada daquela regiao.
+ * 3. Deslocar o initial PE para o proximo PE livre, exceto o ultimo selecionado.
+ * 4. Repetir esse processo até:
+		- N vezes (N numbero de PEs do cluster) ou um valor parametrizavel
+		- utilizacao de CS esteja abaixo de um limiar
+ * */
+	int N = MAX_PROCESSORS;
+	int MIN_CS_UTIL = CS_NETS;
+	int total_cs_util;
+	int x_proc, y_proc;
+
+	for(int i=0; i<N; i++){
+
+		total_cs_util = 0;
+
+		//Executa o mapeamento em diamante ao redor do PE inicial
+		for(int i=0; i<app->tasks_number; i++){
+
+			t = &app->tasks[i];
+
+			//Search for static mapping
+			if (t->allocated_proc == -1){
+				proc_address = diamond_search_initial(initial_app_pe);
+			}
+
+
+
+			if (proc_address == -1){
+
+				return 0;
+
+			} else {
+
+
+			}
+		}
+
+
+
+	}
+
+
+
+
+
+
+
+	//Executa o mapeamento baseado no Initial core
+	for(int i=0; i<app->tasks_number; i++){
+
+		t = &app->tasks[i];
+
+		//Search for static mapping
+		if (t->allocated_proc != -1){
+			proc_address = t->allocated_proc;
+			Puts("Task id "); Puts(itoa(t->id)); Puts(" statically mapped at processor "); Puts(itoh(proc_address)); Puts("\n");
+		} else
+			//Diamon retorna com o offset
+			proc_address = diamond_search_initial(initial_app_pe);
+
+		if (proc_address == -1){
+
+			return 0;
+
+		} else {
+
+			t->allocated_proc = proc_address;
+
+			page_used(proc_address, t->id);
+
+			Puts("Task id "); Puts(itoa(t->id)); Puts(" dynamically mapped at processor "); Puts(itoh(proc_address)); Puts("\n");
+
+		}
+	}
+
+
+
+
+	Puts("App have all its task mapped\n");
+
+	return 1;
+}
+#endif
+
+/*Original Heuristic*/
+#if 0
 /**This heuristic maps all task of an application
  * Note that some task can not be mapped due the cluster is full or the processors not satisfies the
  * task requiriments. In this case, the reclustering will be used after the application_mapping funcion calling
@@ -60,8 +250,6 @@ void page_released(int proc_address, int task_ID){
  * \param app_id ID of the application to be mapped
  * \return 1 if mapping OK, 0 if there are no available resources
 */
-
-
 
 int application_mapping(int app_id){
 
@@ -166,6 +354,7 @@ int application_mapping(int app_id){
 
 	return 1;
 }
+#endif
 
 
 /** Maps a task into a cluster processor. This function only selects the processor not modifying any management structure

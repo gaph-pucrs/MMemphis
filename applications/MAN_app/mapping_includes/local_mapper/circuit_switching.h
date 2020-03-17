@@ -228,13 +228,18 @@ void handle_cs_utilization_response(unsigned int * data_msg){
 	for(int y = 0; y < MAPPING_YCLUSTER; y++){
 		for (int x = 0; x < MAPPING_XCLUSTER; x++){
 
-			conn_in = data_msg[index] >> 16;
-			conn_out = data_msg[index] & 0xFFFF;
+			//conn_in = data_msg[index] >> 16;
+			//conn_out = data_msg[index] & 0xFFFF;
 
-			Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(": in:");
-			Puts(itoa(conn_in)); putsv(", out:", conn_out);
+			//Puts(itoa(x)); Puts("x"); Puts(itoa(y)); Puts(": in:");
+			//Puts(itoa(conn_in)); putsv(", out:", conn_out);
 
-			cs_utilization[x][y] = (unsigned char) ((conn_in << 4) | conn_out);
+			//cs_utilization[x][y] = (unsigned char) ((conn_in << 4) | conn_out);
+
+			cs_utilization[x][y] = data_msg[index];
+
+			Puts(itoa(x)); Puts("x"); Puts(itoa(y));
+			putsv(", free:", data_msg[index]);
 
 			index++;
 		}
