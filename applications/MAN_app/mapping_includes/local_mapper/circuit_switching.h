@@ -247,5 +247,20 @@ void handle_cs_utilization_response(unsigned int * data_msg){
 
 }
 
+unsigned int compute_bounding_box_cs_utilization(int x_min, int y_min, int x_max, int y_max){
+
+	unsigned int accumulated_util = 0;
+	unsigned int conv_utilzation;
+
+	for(int x=x_min; x<=x_max; x++){
+		for(int y=y_min; y<=y_max; y++){
+			conv_utilzation = (unsigned int) cs_utilization[x][y];
+			accumulated_util = accumulated_util + conv_utilzation;
+		}
+	}
+
+	return accumulated_util;
+}
+
 
 #endif /* APPLICATIONS_MAN_APP_MAPPING_INCLUDES_LOCAL_MAPPER_CIRCUIT_SWITCHING_H_ */

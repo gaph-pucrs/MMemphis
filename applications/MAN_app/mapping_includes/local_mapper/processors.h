@@ -44,6 +44,8 @@ int get_proc_address(int);
 
 int get_task_location(int);
 
+int check_security_allocation_requirements(int);
+
 
 
 /**Internal function to search by a processor - not visible to the other software part
@@ -61,6 +63,29 @@ Processor * search_processor(int proc_address){
 	Puts("ERROR: Processor not found "); Puts(itoa( proc_address )); Puts("\n");
 	while(1);
 	return 0;
+}
+
+/**Aplly the security processor allocation requirement, by looking if there is a task from another application running
+ * and if there is free space into the PE
+ * \param proc_address Processor address
+ * \param app_id ID of the secure application
+ * \return Yes(1) or Not(0)
+ */
+int check_security_allocation_requirements(int proc_address, int app_id){
+	Processor * proc_ptr = search_processor(proc_address);
+
+	if (proc_ptr->free_pages <= 0){
+		return 0;
+	}
+
+	for(int i=0; i<MAX_LOCAL_TASKS; i++){
+		//Test if the processor is running a task and that task bellongs to a diferent application
+		if (proc_ptr->task[i] != -1 && (proc_ptr->task[i] >> 8) != app_id){
+			return 0;
+		}
+	}
+
+	return 1;
 }
 
 /**Gets the processor address stored in the index parameter
