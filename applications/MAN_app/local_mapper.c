@@ -31,9 +31,9 @@ void initialize_local_mapper(unsigned int * msg){
 	cluster_x_offset = (cluster_position >> 8) * MAPPING_XCLUSTER;
 	cluster_y_offset = (cluster_position & 0xFF) * MAPPING_YCLUSTER;
 
-	Puts("Cluster position: "); Puts(itoh(cluster_position)); Puts("\n");
-	Puts("Cluster x offset: "); Puts(itoa(cluster_x_offset)); Puts("\n");
-	Puts("Cluster y offset: "); Puts(itoa(cluster_y_offset)); Puts("\n");
+	//Puts("Cluster position: "); Puts(itoh(cluster_position)); Puts("\n");
+	//Puts("Cluster x offset: "); Puts(itoa(cluster_x_offset)); Puts("\n");
+	//Puts("Cluster y offset: "); Puts(itoa(cluster_y_offset)); Puts("\n");
 
 	//Initialize processors and global variable
 	init_procesors();
@@ -146,12 +146,12 @@ void handle_pending_application(){
 	Application *app = 0;
 	int complete = 0;
 
-	Puts("Handle next application \n");
+	//Puts("Handle next application \n");
 
 	/*Selects an application pending to be mapped due reclustering*/
 	app = get_next_pending_app();
 
-	putsv("Pending app ID: ", app->app_ID);
+	//putsv("Pending app ID: ", app->app_ID);
 
 	switch (app->status) {
 
@@ -188,7 +188,7 @@ void handle_pending_application(){
 
 			if (complete){ //If circuit-switching is complete for that application
 
-				Puts("CS complete - app READY_TO_LOAD\n");
+				Puts("\nCS complete - app READY_TO_LOAD\n\n");
 
 				app->status = READY_TO_LOAD;
 			}
@@ -300,17 +300,41 @@ void send_task_release(Application * app){
 		//puts(" in proc "); puts(itoh(p->header)); puts("\n----\n");
 	}
 
-	Puts("\nTASK_RELEASE sent, app is RUNNING!");
+	Puts("\nTASK_RELEASE sent, app is RUNNING!\n\n");
 	app->status = RUNNING;
 
 }
 
+void send_app_allocated(Application * app_ptr){
+	unsigned int msg_size;
+	unsigned int * message;
+	Task * task_ptr;
+
+	/*********** Send APP_ALLOCTED to global************/
+	message = get_message_slot();
+	message[0] = APP_ALLOCATED;
+	message[1] = app_ptr->app_ID;
+	message[2] = app_ptr->tasks_number;
+	msg_size = 3;
+	for(int task = 0; task < app_ptr->tasks_number; task++){
+		task_ptr = &app_ptr->tasks[task];
+
+		if (task_ptr->borrowed_master == -1){
+			message[msg_size++] = cluster_position;
+		} else {
+			message[msg_size++] = task_ptr->borrowed_master;
+		}
+		//Puts("Task "); Puts(itoa(task_ptr->id)); Puts(" to cluster "); Puts(itoh(message[msg_size-1])); Puts("\n");
+	}
+	SendService(global_task_ID, message, msg_size);
+	Puts("APP_ALLOCATED sent\n\n");
+	/****************************************************/
+}
+
 void handle_task_allocated(unsigned int task_id){
 
-	unsigned int app_id, allocated_tasks, msg_size;
+	unsigned int app_id, allocated_tasks;
 	Application * app_ptr;
-	Task * task_ptr;
-	unsigned int * message;
 
 	putsv("-> TASK ALLOCATED from task ", task_id);
 
@@ -322,33 +346,16 @@ void handle_task_allocated(unsigned int task_id){
 
 	if (allocated_tasks == app_ptr->tasks_number){
 
-		/*********** Send APP_ALLOCTED to global************/
-		message = get_message_slot();
-		message[0] = APP_ALLOCATED;
-		message[1] = app_ptr->app_ID;
-		message[2] = app_ptr->tasks_number;
-		msg_size = 3;
-		for(int task = 0; task < app_ptr->tasks_number; task++){
-			task_ptr = &app_ptr->tasks[task];
-
-			if (task_ptr->borrowed_master == -1){
-				message[msg_size++] = cluster_position;
-			} else {
-				message[msg_size++] = task_ptr->borrowed_master;
-			}
-			//Puts("Task "); Puts(itoa(task_ptr->id)); Puts(" to cluster "); Puts(itoh(message[msg_size-1])); Puts("\n");
-		}
-		SendService(global_task_ID, message, msg_size);
-		Puts("APP_ALLOCATED sent\n\n");
-		/****************************************************/
-
-
 		//If the App. is secure first configures CS at tasks kernel for all CTPs
 		if (app_ptr->is_secure){
+
+			Puts("\nInit CS protocol...\n");
 
 			initial_CS_setup_protocol(app_ptr, 0, -1);
 
 		} else { //Otherwise the Manager can realease the app to run
+
+			send_app_allocated(app_ptr);
 
 			//Puts("\nSEND TASK RELEASE\n\n");
 			/*Send the TASK RELEASE to all tasks begin its execution*/
@@ -436,6 +443,9 @@ void handle_set_initial_cs_ack(unsigned int producer_id, unsigned int consumer_i
 
 
 		Puts("\nInitial CS protocol concluded!\n");
+
+		send_app_allocated(app_ptr);
+
 		send_task_release(app_ptr);
 	}
 
@@ -446,6 +456,8 @@ void handle_message(unsigned int * data_msg){
 	switch (data_msg[0]) {
 		case INITIALIZE_MA_TASK:
 			initialize_local_mapper(data_msg);
+			Puts("Update request\n");
+			request_cs_utilization();//Used to test the cs utilization protocol
 			break;
 		case NEW_APP:
 			handle_new_app(data_msg);

@@ -10,9 +10,11 @@
 
 #include "application.h"
 #include "processors.h"
+#include "circuit_switching.h"
 #include "globals.h"
 
 #define CS_NETS 		(SUBNETS_NUMBER-1)
+#define PORT_NUMBER		6 //Total number of ports (LOCAL_IN, LOCAL_OUT, WEAST, EAST, NORTH, SOUTH)
 
 
 int diamond_search_initial(int, int);
@@ -56,16 +58,17 @@ void page_released(int proc_address, int task_ID){
 
 #if 1
 
-int select_initial_PE(unsigned int * initial_pe_list, int initial_size, int * excluded_initial_pe_list, int secure_app){
+int select_initial_PE(int * initial_pe_list, int initial_size, char * valid_pe_list, int secure_app){
 	int max_avg_manhatam, initial_app_pe, intial_pe_index;
 	int man_sum, man_count, man_curr;
 	int xi, yi, xj, yj;
 	int proc_addr;
 
-	//Puts("\napplication_mapping\n");
+	Puts("\nselect_initial_PE\n");
 
 	max_avg_manhatam = -1;
 	initial_app_pe = -1;
+	intial_pe_index = -1;
 
 	if (initial_size){
 
@@ -75,7 +78,7 @@ int select_initial_PE(unsigned int * initial_pe_list, int initial_size, int * ex
 			putsv("Testing index = ", i);
 
 			//Tests if the selected PE is a excluded PE
-			if (excluded_initial_pe_list[i] == 0){
+			if (valid_pe_list[i] == 0){
 				Puts("Intial excluded\n");
 				Puts("...\n");
 				continue;
@@ -83,7 +86,7 @@ int select_initial_PE(unsigned int * initial_pe_list, int initial_size, int * ex
 
 			proc_addr = get_proc_address(i);
 
-			Puts("Proc address: "); Puts(itoh(proc_addr)); Puts("\n");
+			Puts("Candidato address: "); Puts(itoh(proc_addr)); Puts("\n");
 
 			//So considera um PE que esta vazio em caso de app. segura, ou qualquer PE que possui um espaco vazio, caso de app nao segura
 			if( (secure_app && get_proc_free_pages(proc_addr) == MAX_LOCAL_TASKS) || ( !secure_app && get_proc_free_pages(proc_addr) > 0) ){
@@ -123,12 +126,13 @@ int select_initial_PE(unsigned int * initial_pe_list, int initial_size, int * ex
 		}
 
 	} else {
-		initial_app_pe = (cluster_x_offset << 8 | (cluster_y_offset + MAPPING_YCLUSTER -1));
-		//Puts("Very first time\n");
+		//The first initial PE is manually sected at the top left corner
+		initial_app_pe = (cluster_x_offset + MAPPING_XCLUSTER - 1) << 8 | (cluster_y_offset + MAPPING_YCLUSTER -1);
+		Puts("Very first time\n");
 	}
 
-	if (initial_app_pe != -1){
-		excluded_initial_pe_list[intial_pe_index] = 1;
+	if (intial_pe_index != -1){
+		valid_pe_list[intial_pe_index] = 1;
 		putsv("Excluded PE index: ", intial_pe_index);
 	}
 
@@ -137,38 +141,45 @@ int select_initial_PE(unsigned int * initial_pe_list, int initial_size, int * ex
 	return initial_app_pe;
 }
 
-
+/*Heuristica de mapeamento aging e CS
+ * OBS: Tarefas de diferentes apps nao podem compartilhar mesmo PE
+ * 1. Selecionar o initial PE
+ * 2. Executar o mapeamento diamante da applicacai neste initial PE e anotar a utilizacao CS acumulada daquela regiao.
+ * 3. Deslocar o initial PE para o proximo PE livre, exceto o ultimo selecionado.
+ * 4. Repetir esse processo até:
+		- N vezes (N numbero de PEs do cluster) ou um valor parametrizavel
+		- utilizacao de CS esteja abaixo de um limiar
+ * */
 
 int application_mapping(int app_id){
-
 	Application * app;
 	Task *t;
+	char mapping_completed;
+	int N;
 	int proc_address;
 	int initial_pe_list[MAX_CLUSTER_TASKS];
 	int initial_size;
 	int initial_app_pe;
-	int proc_addr, initial_index;
-
-	//New variables -- necessary to see if they will be used
-	int N = MAX_PROCESSORS;
-	int MIN_CS_UTIL = CS_NETS;
-	int total_cs_util;
 	int x_proc, y_proc;
 	int bb_min_x, bb_min_y, bb_max_x, bb_max_y;
-	int current_bb_utilization, ref_bb_utilization, ref_initial_address;
+	int current_bb_utilization, ref_bb_utilization, bb_utilization_TH, ref_initial_address;
 
-	//Used to store the position of the already tested initial PEs (<< 16 -- parte alta) e seu acumulador de utilizacao CS (>>16 -- parte baixa)
-	int tested_initial_PEs[MAX_PROCESSORS];
+	//Used to store the position of the valid_initial_PE
+	char valid_initial_PE[MAX_PROCESSORS];
 
 	/*################## STEP 0 - INITIALIZATION AND SEARCH FOR THE FIRST INITIAL PE ####################### */
 
-	//Zeroes the list of excluded initial PEs
-	for(int i=0; i<MAPPING_XCLUSTER; i++){
-		tested_initial_PEs[i] = 1;
+	//Set the list of valid initial PEs
+	for(int i=0; i<MAX_PROCESSORS; i++){
+		valid_initial_PE[i] = 1;
 	}
 
 	//Set the reference utilization to the worst value
 	ref_bb_utilization = 0;
+	ref_initial_address = -1;
+
+	//Set mapping completed as false
+	mapping_completed = 0;
 
 	//Get the pplication ptr
 	app = get_application_ptr(app_id);
@@ -176,8 +187,10 @@ int application_mapping(int app_id){
 	//Puts("\n----------------Defining list of initial PE------------\n");
 	get_initial_pe_list(initial_pe_list, &initial_size);
 
+	Puts("\n\nStarting APP MAPPING. ID: "); Puts(itoa(app->app_ID)); putsv(" task number: ", app->tasks_number);
+
 	//Algorithm that selects the initial PE
-	initial_app_pe = select_initial_PE(initial_pe_list, initial_size, tested_initial_PEs, app->is_secure);
+	initial_app_pe = select_initial_PE(initial_pe_list, initial_size, valid_initial_PE, app->is_secure);
 
 	//Case there is not possible to find a initial PE then return zero to signals that the system is full
 	if (initial_app_pe == -1){
@@ -186,120 +199,174 @@ int application_mapping(int app_id){
 	}
 
 
-
 	if (app->is_secure){
 
-		/*################## STEP 1 - DIAMON-BASED MAPPING OF TASKS USING THE INITIAL PE ####################### */
+		Puts("\nApp is secure, starting heuristics...\n");
 
-		//Initializes the bounding box limits to the worst-cases
-		bb_min_x = MAPPING_XCLUSTER;
-		bb_min_y = MAPPING_YCLUSTER;
-		bb_max_x = 0;
-		bb_max_y = 0;
+		//Computes the utilization threshold based on the bounding box
+		bb_utilization_TH = PORT_NUMBER * CS_NETS;
 
-		total_cs_util = 0;
+		N = MAX_PROCESSORS;
 
-		//Executa o mapeamento em diamante ao redor do PE inicial
+		while(N > 0){
+
+			/*################## STEP 1 - DIAMON-BASED MAPPING OF TASKS USING THE INITIAL PE ####################### */
+
+			//Initializes the bounding box limits to the worst-cases
+			bb_min_x = MAPPING_XCLUSTER;
+			bb_min_y = MAPPING_YCLUSTER;
+			bb_max_x = 0;
+			bb_max_y = 0;
+
+			//Executa o mapeamento em diamante ao redor do PE inicial
+			for(int i=0; i<app->tasks_number; i++){
+
+				t = &app->tasks[i];
+
+				//Search for static mapping
+				if (t->allocated_proc != -1){
+					proc_address = t->allocated_proc;
+				} else {
+					proc_address = diamond_search_initial(initial_app_pe, app->app_ID);
+				}
+
+
+				//Case the diamind search cannot find any free PE to the secure task, the mapping return zero
+				if (proc_address == -1){
+					Puts("Returning zero, not resource available\n");
+					return 0;
+
+				} else {
+
+					Puts("Task "); Puts(itoa(t->id)); Puts(" mapped to "); Puts(itoh(proc_address)); Puts("\n");
+					t->allocated_proc = proc_address;
+					page_used(proc_address, t->id);
+
+					//Update bounding box limits
+					x_proc = proc_address >> 8;
+					y_proc = proc_address & 0xFF;
+
+					//Update x axis
+					if (x_proc < bb_min_x)
+						bb_min_x = x_proc;
+					if (x_proc > bb_max_x)
+						bb_max_x = x_proc;
+
+					//Update y axis
+					if (y_proc < bb_min_y)
+						bb_min_y = y_proc;
+					if (y_proc > bb_max_y)
+						bb_max_y = y_proc;
+				}
+			}
+
+			/*################## STEP 2 - CS UTILIZATION SUM INTO THE BOUNDING BOX ####################### */
+			//Remove the offset
+			bb_min_x = bb_min_x - cluster_x_offset;
+			bb_max_x = bb_max_x - cluster_x_offset;
+			bb_min_y = bb_min_y - cluster_y_offset;
+			bb_max_y = bb_max_y - cluster_y_offset;
+
+			//Reuses x_proc to store the number of PE of the bounding box
+			x_proc = (bb_max_x-bb_min_x+1)*(bb_max_y-bb_min_y+1);
+
+			Puts("Final BB: "); Puts(itoh(bb_min_x << 8 | bb_min_y)); Puts(" - ");
+			Puts(itoh(bb_max_x << 8 | bb_max_y)); Puts("\n");
+
+			current_bb_utilization = compute_bounding_box_cs_utilization(bb_min_x, bb_min_y, bb_max_x, bb_max_y);
+
+
+			/*################## STEP 3 - TEST IF THE UTILIZATION FILLS THE THRESHOLD OR IS BETTER THAN REFERENCE ####################### */
+
+			putsv("\nBB util TH: ", bb_utilization_TH);
+			putsv("Computed BB util: ", current_bb_utilization);
+			putsv("Ref BB util: ", ref_bb_utilization);
+
+			//From this moment the total utilization is converted to a utilization rate, dividing the accumulated utilization
+			//by the number of PE of the bounding box
+			current_bb_utilization = current_bb_utilization / x_proc;
+
+			putsv("Computed BB ratio: ", current_bb_utilization);
+
+			//If YES then the current utilization is good enough to stop the mapping
+			if (current_bb_utilization >= bb_utilization_TH){
+				Puts("BEST util\n");
+				mapping_completed = 1;
+				Puts("Mapping completed, exiting while N\n");
+				break; //while(N > 0)
+
+			} else {
+
+				Puts("Mapping not completed, releasing pages\n");
+				mapping_completed = 0;
+				//Reverts all page used
+				for(int i=0; i<app->tasks_number; i++){
+					//Reusing x_proc
+					t = &app->tasks[i];
+					page_released(t->allocated_proc, t->id);
+				}
+
+			}
+
+			//Test if the current bb utilization is best than the reference
+			if (current_bb_utilization > ref_bb_utilization){
+				ref_bb_utilization = current_bb_utilization;
+				ref_initial_address = initial_app_pe;
+				Puts("Better util\n");
+
+			} else {
+				//Case YES, repeats the algorithm that selects the initial PE
+				proc_address = select_initial_PE(initial_pe_list, initial_size, valid_initial_PE, app->is_secure);
+
+				//Case there is no more initial proc available, then get the one that has the best cs utilization
+				if (proc_address == -1){
+					initial_app_pe = ref_initial_address;
+					break; //while(N > 0)
+				}
+			}
+
+			N--;
+		}//End while(N > 0)
+
+	}//End if (app->is_secure)
+
+
+	/*################## FINAL STEP - MAPPS INDEED THE TASKS INTO THE SYSTEM ####################### */
+	if (!mapping_completed){
+		//Executa o mapeamento baseado no Initial core
 		for(int i=0; i<app->tasks_number; i++){
 
 			t = &app->tasks[i];
 
 			//Search for static mapping
-			if (t->allocated_proc == -1){
-				proc_address = diamond_search_initial(initial_app_pe, app->app_ID);
-			}
+			if (t->allocated_proc != -1){
+				proc_address = t->allocated_proc;
+				Puts("Task id "); Puts(itoa(t->id)); Puts(" statically mapped at processor "); Puts(itoh(proc_address)); Puts("\n");
+			} else
+				//Diamon retorna com o offset
+				if(app->is_secure)
+					proc_address = diamond_search_initial(initial_app_pe, app->app_ID);
+				else
+					proc_address = diamond_search_initial(initial_app_pe, 0);
 
-			//Case the diamind search cannot find any free PE to the secure task, the mapping return zero
 			if (proc_address == -1){
+
 				return 0;
 
 			} else {
 
-				//Update bounding box limits
-				x_proc = proc_addr >> 8;
-				y_proc = proc_addr & 0xFF;
+				t->allocated_proc = proc_address;
 
-				//Update x axis
-				if (x_proc < bb_min_x)
-					bb_min_x = x_proc;
-				if (x_proc > bb_max_x)
-					bb_max_x = x_proc;
+				page_used(proc_address, t->id);
 
-				//Update y axis
-				if (y_proc < bb_min_y)
-					bb_min_y = y_proc;
-				if (y_proc > bb_max_y)
-					bb_max_y = y_proc;
+				Puts("Task id "); Puts(itoa(t->id)); Puts(" dynamically mapped at processor "); Puts(itoh(proc_address)); Puts("\n");
+
 			}
 		}
-
-		/*################## STEP 2 - CS UTILIZATION SUM INTO THE BOUNDING BOX ####################### */
-		//Remove the offset
-		bb_min_x = bb_min_x - cluster_x_offset;
-		bb_max_x = bb_max_x - cluster_x_offset;
-		bb_min_y = bb_min_y - cluster_y_offset;
-		bb_max_y = bb_max_y - cluster_y_offset;
-
-		current_bb_utilization = compute_bounding_box_cs_utilization(bb_min_x, bb_min_y, bb_max_x, bb_max_y);
-		
-		if (current_bb_utilization < ref_bb_utilization){
-
-		}
-
 	}
 
 
-
-/*Heuristica de mapeamento aging e CS
- * OBS: Tarefas de diferentes apps nao podem compartilhar mesmo PE
- * 1. Selecionar o initial PE (ja feito acima)
- * 2. Executar o mapeamento diamante e anotar a utilizacao CS acumulada daquela regiao.
- * 3. Deslocar o initial PE para o proximo PE livre, exceto o ultimo selecionado.
- * 4. Repetir esse processo até:
-		- N vezes (N numbero de PEs do cluster) ou um valor parametrizavel
-		- utilizacao de CS esteja abaixo de um limiar
- * */
-
-
-
-
-
-
-
-
-
-	//Executa o mapeamento baseado no Initial core
-	for(int i=0; i<app->tasks_number; i++){
-
-		t = &app->tasks[i];
-
-		//Search for static mapping
-		if (t->allocated_proc != -1){
-			proc_address = t->allocated_proc;
-			Puts("Task id "); Puts(itoa(t->id)); Puts(" statically mapped at processor "); Puts(itoh(proc_address)); Puts("\n");
-		} else
-			//Diamon retorna com o offset
-			proc_address = diamond_search_initial(initial_app_pe);
-
-		if (proc_address == -1){
-
-			return 0;
-
-		} else {
-
-			t->allocated_proc = proc_address;
-
-			page_used(proc_address, t->id);
-
-			Puts("Task id "); Puts(itoa(t->id)); Puts(" dynamically mapped at processor "); Puts(itoh(proc_address)); Puts("\n");
-
-		}
-	}
-
-
-
-
-	Puts("App have all its task mapped\n");
+	Puts("\nApp have all its task mapped\n\n");
 
 	return 1;
 }

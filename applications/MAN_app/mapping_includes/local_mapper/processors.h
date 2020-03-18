@@ -44,7 +44,7 @@ int get_proc_address(int);
 
 int get_task_location(int);
 
-int check_security_allocation_requirements(int);
+int check_security_allocation_requirements(int, int);
 
 
 
@@ -144,7 +144,7 @@ void add_procesor(int proc_address){
 		p->task[i] = -1;
 	}
 
-	Puts("Adding processor address "); Puts(itoh(proc_address)); Puts("\n");
+	//Puts("Adding processor address "); Puts(itoh(proc_address)); Puts("\n");
 
 }
 

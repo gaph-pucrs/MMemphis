@@ -25,9 +25,10 @@ int request_connection(Application * app){
 	Task * t;
 	unsigned int source_pe, target_pe;
 
-	Puts("\n---- Request connection\n");
+	//Puts("\n---- Request connection\n");
 
 	app_ctp_ptr = 0;
+	target_pe = 0;
 	producer_task_ptr = 0;
 	consumer_ptr = 0;
 
@@ -41,7 +42,12 @@ int request_connection(Application * app){
 			if (ct->id != -1 && ct->subnet == PS_SUBNET){
 				target_pe = get_task_location(ct->id);
 
-				Puts("ctp found: ["); Puts(itoa(t->id)); Puts("] -> ["); Puts(itoa(ct->id)); Puts("]\n");
+				if (source_pe == target_pe){
+					//Puts("CS not necessary\n");
+					continue;
+				}
+
+				Puts("Requesting CS for ctp: "); Puts(itoa(t->id)); putsv(" -> ", ct->id);
 
 				app_ctp_ptr = app;
 				producer_task_ptr = t;
@@ -83,9 +89,16 @@ void handle_connection_response(unsigned int source_pe, unsigned int target_pe, 
 		Puts("ERROR: consumer PE does not match\n");
 	}
 
-	Puts("Subnet: "); Puts(itoa(subnet)); Puts(" defined\n");
+	if (subnet > -1) {
+		consumer_ptr->subnet = subnet;
+		Puts("Subnet: "); Puts(itoa(subnet)); Puts(" defined\n\n");
+	} else {
+		consumer_ptr->subnet = PS_SUBNET;
+		Puts("Subnet PS_SUBNET defined\n\n");
+	}
 
-	consumer_ptr->subnet = subnet;
+
+
 
 	//Request the next pending connection for the application
 	cs_complete = request_connection(app_ctp_ptr);
@@ -100,13 +113,13 @@ void handle_connection_response(unsigned int source_pe, unsigned int target_pe, 
 
 void handle_SDN_ack(unsigned int * recv_message){
 
-	static unsigned int global_path_counter = 0;
+	//static unsigned int global_path_counter = 0;
 	int is_global = 0;
 	unsigned int source, target, subnet, connection_ok;
 	int path_size, overhead;
 
 	overhead = GetTick();
-	Puts("ACK received from SDN controller at time: "); Puts(itoa(overhead)); Puts("\n");
+	//Puts("ACK received from SDN controller at time: "); Puts(itoa(overhead)); Puts("\n");
 
 	connection_ok	= recv_message[2];
 	source 			= recv_message[3];
@@ -118,7 +131,7 @@ void handle_SDN_ack(unsigned int * recv_message){
 	path_size 		= recv_message[8];
 
 
-	Puts("PATH NR: "); Puts(itoa(++global_path_counter));
+	//Puts("PATH NR: "); Puts(itoa(++global_path_counter));
 	Puts(" - ACK received from ["); Puts(itoa(recv_message[1]));
 	Puts("] sucess ["); Puts(itoa(connection_ok));
 	Puts("] source [");  Puts(itoa(source >> 8)); Puts("x"); Puts(itoa(source & 0xFF));
@@ -146,7 +159,6 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 	for(int i = prod_task; i<app_ptr->tasks_number; i++){
 		t = &app_ptr->tasks[i];
 
-		//K receives (cons_task+1) to the for loop considerar the next task
 		while(cons_index < t->consumers_number){
 
 			cons_task = 0;
@@ -159,14 +171,14 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 				prod_task = t->id;
 				cons_task = ct->id;
 
-				send_message = get_message_slot();
-
 				prod_address = get_task_location(prod_task);
 				cons_address = get_task_location(cons_task);
 
+				Puts("Setting up to "); Puts(itoa(prod_task)); putsv(" -> ", cons_task);
 
 				//Usefull info: prod_ID, prod_PE, cons_ID, cons_PE, master id, master addr
 				//Message is always sent to producer task
+				send_message = get_message_slot();
 				send_message[0] = cons_address;				//header
 				send_message[1] = CONSTANT_PKT_SIZE-2;		//payload_size
 				send_message[2] = SET_INITIAL_CS_CONSUMER;  //service
@@ -217,7 +229,7 @@ void request_cs_utilization(){
 }
 
 void handle_cs_utilization_response(unsigned int * data_msg){
-	int index, conn_in, conn_out;
+	int index;//, conn_in, conn_out;
 
 	//Puts("\nCS_UTILIZATION_RESPONSE received\n");
 
@@ -238,8 +250,8 @@ void handle_cs_utilization_response(unsigned int * data_msg){
 
 			cs_utilization[x][y] = data_msg[index];
 
-			Puts(itoa(x)); Puts("x"); Puts(itoa(y));
-			putsv(", free:", data_msg[index]);
+			//Puts(itoa(x)); Puts("x"); Puts(itoa(y));
+			//putsv(", free:", data_msg[index]);
 
 			index++;
 		}
@@ -252,9 +264,13 @@ unsigned int compute_bounding_box_cs_utilization(int x_min, int y_min, int x_max
 	unsigned int accumulated_util = 0;
 	unsigned int conv_utilzation;
 
+	Puts("Computing BB utilization\n");
+
 	for(int x=x_min; x<=x_max; x++){
 		for(int y=y_min; y<=y_max; y++){
 			conv_utilzation = (unsigned int) cs_utilization[x][y];
+			Puts(itoa(x)); Puts("x"); Puts(itoa(y));
+			putsv(", free:",conv_utilzation);
 			accumulated_util = accumulated_util + conv_utilzation;
 		}
 	}

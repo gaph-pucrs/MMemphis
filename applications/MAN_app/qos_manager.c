@@ -23,7 +23,7 @@ void initialize_qos_manager(unsigned int * msg){
 	for(int i=0; i<max_ma_tasks; i++){
 		task_id = msg[i+4] >> 16;
 		proc_addr = msg[i+4] & 0xFFFF;
-		Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(proc_addr)); Puts("\n");
+		//Puts("Task MA "); Puts(itoa(task_id)); Puts(" allocated at "); Puts(itoh(proc_addr)); Puts("\n");
 		AddTaskLocation(task_id, proc_addr);
 	}
 

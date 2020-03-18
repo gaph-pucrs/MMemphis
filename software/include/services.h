@@ -71,8 +71,8 @@
 #define 	UPDATE_BORDER_ACK				0x00001007 //Message sent from any controller to its respective coordinator information that it already update the status of border
 #define 	LOCAL_RELEASE_REQUEST			0x00001009 //Message sent from a controller to another in order to release all router of the path
 #define 	LOCAL_RELEASE_ACK				0x00001010 //Message sent from each controller to the coordinator, informing that it release the path and passing which router was released
-#define 	GLOBAL_MODE_RELEASE				0x00001011 //Message sent from the coordinator to all controller canceling the its detailed routing
-#define 	GLOBAL_MODE_RELEASE_ACK			0x00001012 //Message sent from each controller to the coordinator informing that it received the order to cancel the detailed routing
+#define 	GLOBAL_MODE_END					0x00001011 //Message sent from the coordinator to all controller canceling the its detailed routing
+#define 	GLOBAL_MODE_END_ACK				0x00001012 //Message sent from each controller to the coordinator informing that it received the order to cancel the detailed routing
 
 //External - SDN services
 #define		PATH_CONNECTION_REQUEST			0x00001020 //Message sent from a given component to the SDN controller requesting a SDN path establishment
@@ -82,7 +82,7 @@
 #define 	CS_UTILIZATION_RESPONSE			0x00001024 //Message sent from the SDN controller to QoS manager replying the NI_STATUS_REQUEST
 
 #define 	SET_CS_ROUTER					0x00001025 //This service is never used, it only exist to allows the Deloream (Graphical Debugger) correctly represent the CS routers setup
-#define 	SET_CS_ROUTER_ACK_MANAGER		0x00001026 //Message sent by the source kernel of the path to the manager, notifying about the end of the physical path configuration
+#define 	SET_CS_ROUTER_ACK				0x00001026 //Message sent by the source kernel of the path to the manager, notifying about the end of the physical path configuration
 
 #define		SET_KEY							0 //Important to not cause error into graphical debugger
 #endif

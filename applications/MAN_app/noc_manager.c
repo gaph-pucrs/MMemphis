@@ -406,7 +406,7 @@ void send_update_border_request(){
 /**Coordinator controller handle the CONFIGURE_PATH_RESPONSE sent from the controllers
  *
  */
-void handle_global_mode_release_ack(unsigned int * msg){
+void handle_global_mode_end_ack(unsigned int * msg){
 
 	controllers_response_counter++;
 
@@ -460,7 +460,7 @@ void handle_global_mode_release_ack(unsigned int * msg){
  *   	 - if NOT set the message[1] = NOT_CONFIGURE
  *
  */
-void send_global_mode_release(int path_success){
+void send_global_mode_end(int path_success){
 
 	unsigned int curr_x, curr_y, clust_addr_aux;
 	unsigned int * message;
@@ -501,7 +501,7 @@ void send_global_mode_release(int path_success){
 				if (clust_addr_aux != cluster_addr){
 
 					message = get_message_slot();
-					message[0] = GLOBAL_MODE_RELEASE;
+					message[0] = GLOBAL_MODE_END;
 					message[1] = 1; //Configure
 					message[2] = cluster_addr;
 					message[3] = inport;
@@ -523,7 +523,7 @@ void send_global_mode_release(int path_success){
 			} else if (clust_addr_aux != cluster_addr){
 
 				message = get_message_slot();
-				message[0] = GLOBAL_MODE_RELEASE;
+				message[0] = GLOBAL_MODE_END;
 				message[1] = 0; //not configure anything
 				message[2] = cluster_addr;
 				send(clust_addr_aux, message, 3);
@@ -654,7 +654,7 @@ void handle_detailed_routing_response(int response, int source_controller, unsig
 
 			//configure_path_to_all_controllers();
 			//Release and configure controllers
-			send_global_mode_release(1);
+			send_global_mode_end(1);
 
 		} else {
 
@@ -1038,7 +1038,7 @@ void global_routing(){
 #if SDN_DEBUG
 		Puts("\n\nGlobal path TOTAL failure\n\n");
 #endif
-		send_global_mode_release(0);
+		send_global_mode_end(0);
 		//send_ack_requester(-1, global_path_request.source, global_path_request.target, global_path_request.requester_address, 1, ESTABLISH);
 		//send_token_release();
 
@@ -1223,7 +1223,7 @@ void send_global_mode_release_ack(unsigned int coordinator_addr, unsigned int pa
 	int msg_size;
 
 	message = get_message_slot();
-	message[0] = GLOBAL_MODE_RELEASE_ACK;
+	message[0] = GLOBAL_MODE_END_ACK;
 	message[1] = cluster_addr;
 	message[2] = 0;
 	msg_size = 3;
@@ -1248,7 +1248,7 @@ void send_global_mode_release_ack(unsigned int coordinator_addr, unsigned int pa
 #endif
 }
 
-int handle_global_mode_release(unsigned int * rcv_msg){
+int handle_global_mode_end(unsigned int * rcv_msg){
 	unsigned int path_success, coordinator_addr, inport, outport, subnet;
 
 	path_success 		= rcv_msg[1];
@@ -1360,7 +1360,7 @@ void handle_update_border_ack(unsigned int * msg){
 
 void handle_sdn_utilization_request(unsigned int req_id, unsigned int starting_xy, unsigned int ending_xy){
 	unsigned int conn_in, conn_out, sx, sy, tx, ty, data_msg, msg_size;
-	unsigned int in_msg, out_msg;
+	//unsigned int in_msg, out_msg;
 	unsigned int * message;
 
 	conn_in = 0;
@@ -1417,8 +1417,8 @@ void handle_sdn_utilization_request(unsigned int req_id, unsigned int starting_x
 					}*/
 				}
 			}
-			Puts(itoa(x)); Puts("x"); Puts(itoa(y));
-			putsv(", free:", data_msg);
+			/*Puts(itoa(x)); Puts("x"); Puts(itoa(y));
+			putsv(", free:", data_msg);*/
 
 			//data_msg = in_msg << 16 | out_msg;
 			//data_msg = conn_in << 16 | conn_out;
@@ -1506,9 +1506,9 @@ void initialize_noc_manager(unsigned int * msg){
 
 
 
-void handle_SDN_config_ack(unsigned int source_addr, unsigned int target_addr, unsigned int subnet, unsigned int master_to_reply_addr){
+void handle_cs_config_ack(unsigned int source_addr, unsigned int target_addr, unsigned int subnet, unsigned int master_to_reply_addr){
 #if SDN_DEBUG
-	Puts("Receiving SET_CS_ROUTER_ACK_MANAGER\n");
+	Puts("Receiving SET_CS_ROUTER_ACK\n");
 	Puts("Source: "); Puts(itoh(source_addr)); Puts("\n");
 	Puts("Target: "); Puts(itoh(target_addr)); Puts("\n");
 	Puts("Subnet: "); Puts(itoh(subnet)); Puts("\n");
@@ -1527,7 +1527,7 @@ void handle_SDN_config_ack(unsigned int source_addr, unsigned int target_addr, u
 #endif
 	} else if (controller_status == GLOBAL_MASTER){
 		//Zero argument means that this function is called by the coordinator
-		handle_global_mode_release_ack(0);
+		handle_global_mode_end_ack(0);
 
 	} else { //Local path ack
 
@@ -1593,9 +1593,9 @@ int handle_packet(unsigned int * recv_message){
 		case LOCAL_RELEASE_ACK:
 			handle_local_release_ack(recv_message[1], recv_message[2], recv_message[3]);
 			break;
-		case GLOBAL_MODE_RELEASE:
+		case GLOBAL_MODE_END:
 			
-			if (handle_global_mode_release(recv_message)){
+			if (handle_global_mode_end(recv_message)){
 
 				while(controller_status != GLOBAL_SLAVE) Puts("ERROR: controller is not in GLOBAL_SLAVE\n");
 
@@ -1605,14 +1605,14 @@ int handle_packet(unsigned int * recv_message){
 #endif
 			}
 			break;
-		case GLOBAL_MODE_RELEASE_ACK:
-			handle_global_mode_release_ack(recv_message);
+		case GLOBAL_MODE_END_ACK:
+			handle_global_mode_end_ack(recv_message);
 			break;
 		case INITIALIZE_MA_TASK:
 			initialize_noc_manager(recv_message);
 			break;
-		case SET_CS_ROUTER_ACK_MANAGER:
-			handle_SDN_config_ack(recv_message[1], recv_message[2], recv_message[3], recv_message[4]);
+		case SET_CS_ROUTER_ACK:
+			handle_cs_config_ack(recv_message[1], recv_message[2], recv_message[3], recv_message[4]);
 			break;
 		default:
 			Puts("ERROR message not identified\n");
@@ -1914,6 +1914,10 @@ void new_local_path(ConnectionRequest * conn_request_ptr){
 		if (connection_ret != -1){
 			//Assembles and sends the configuration packet
 			CommitConfigRouter(connection_ret, conn_request_ptr->requester_address);
+
+		} else {
+
+			send_ack_requester(connection_ret, conn_request_ptr->source, conn_request_ptr->target, conn_request_ptr->requester_address, 0, ESTABLISH);
 		}
 /*
 #if PATH_DEBUG
@@ -2007,16 +2011,20 @@ int main(){
 						conn_request = get_next_global_connection_request();
 						if (conn_request){
 							new_global_path(conn_request);
+							break; //case
 						}
 					} 
 					
-					if (!conn_request){
-						conn_request = get_next_local_connection_request();
-						if (conn_request){
-							new_local_path(conn_request);
-						}
+					conn_request = get_next_local_connection_request();
+					if (conn_request){
+						new_local_path(conn_request);
+						break; //case
 					}
-					
+
+					//Case IDLE is not doing anything listen the NoC
+					ReceiveService(data_message);
+					handle_packet(data_message);
+
 				}
 				
 				break;

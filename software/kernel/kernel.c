@@ -322,15 +322,15 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case UPDATE_BORDER_ACK:
 	case LOCAL_RELEASE_REQUEST:
 	case LOCAL_RELEASE_ACK:
-	case GLOBAL_MODE_RELEASE:
-	case GLOBAL_MODE_RELEASE_ACK:
+	case GLOBAL_MODE_END:
+	case GLOBAL_MODE_END_ACK:
 	case PATH_CONNECTION_REQUEST:
 	case PATH_CONNECTION_RELEASE:
 	case PATH_CONNECTION_ACK:
 	case CS_UTILIZATION_REQUEST:
 	case CS_UTILIZATION_RESPONSE:
 	case NOC_SWITCHING_CTP_CONCLUDED:
-	case SET_CS_ROUTER_ACK_MANAGER:
+	case SET_CS_ROUTER_ACK:
 	case SET_INITIAL_CS_ACK:
 
 		handle_MA_message(p->consumer_task, p->msg_lenght);

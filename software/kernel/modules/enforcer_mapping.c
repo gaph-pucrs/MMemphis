@@ -64,7 +64,7 @@ void add_task_location(int task_ID, int proc){
 		if (task_location[i].id == -1){
 			task_location[i].id = task_ID;
 			task_location[i].proc_address = proc;
-			puts("Add task location - task id "); puts(itoa(task_ID)); puts(" proc "); puts(itoh(proc)); puts("\n");
+			//puts("Add task location - task id "); puts(itoa(task_ID)); puts(" proc "); puts(itoh(proc)); puts("\n");
 			return;
 		}
 	}
@@ -182,7 +182,7 @@ void set_task_release(unsigned int source_addr, char from_noc){
 
 	for (int i = 0; i < app_task_number; i++){
 		add_task_location(app_ID << 8 | i, data_addr[i]);
-		puts("Add task "); puts(itoa(app_ID << 8 | i)); puts(" loc "); puts(itoh(data_addr[i])); puts("\n");
+		//puts("Add task "); puts(itoa(app_ID << 8 | i)); puts(" loc "); puts(itoh(data_addr[i])); puts("\n");
 	}
 
 }

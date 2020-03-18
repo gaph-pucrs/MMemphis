@@ -279,7 +279,7 @@ Application * read_and_create_application(unsigned int app_id, unsigned int * re
 		Puts("	code_size: 		"); Puts(itoh( tp->code_size )); Puts("\n");
 		Puts("	data_size: 		"); Puts(itoh( tp->data_size )); Puts("\n");
 		Puts("	bss_size: 		");	Puts(itoh( tp->bss_size )); Puts("\n");*/
-		Puts("	is_secure: 		");	Puts(itoh( app->is_secure )); Puts("\n");
+		//Puts("	is_secure: 		");	Puts(itoa( app->is_secure )); Puts("\n");
 
 		for(int j=0; j < MAX_TASK_DEPENDECES; j++){
 

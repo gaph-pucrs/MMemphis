@@ -79,7 +79,7 @@ void CommitConfigRouter(int subnet, int requester_ID){
 	//Add the last packet: the ack to the source kernel of the path
 	config_message[config_size] = my_address;
 	config_message[config_size+1] = CONST_SERVICE_PACKET_SIZE-2 + ACK_MANAGER_SIZE; //CONSTANT_PACKT_SIZE -2
-	config_message[config_size+2] = SET_CS_ROUTER_ACK_MANAGER; //source
+	config_message[config_size+2] = SET_CS_ROUTER_ACK; //source
 	config_message[config_size+4] = my_id; //consumer_task
 	config_message[config_size+5] = source_addr; //source_PE
 	config_message[config_size+8] = ACK_MANAGER_SIZE; //msg_lenght
@@ -87,7 +87,7 @@ void CommitConfigRouter(int subnet, int requester_ID){
 
 	config_size = config_size + CONST_SERVICE_PACKET_SIZE; //Fills the remaining of the message
 
-	config_message[config_size++] = SET_CS_ROUTER_ACK_MANAGER; //consumer_processor
+	config_message[config_size++] = SET_CS_ROUTER_ACK; //consumer_processor
 	config_message[config_size++] = source_addr; //producer_processor
 	config_message[config_size++] = target_addr; //consumer_processor
 	config_message[config_size++] = subnet; //consumer_processor
