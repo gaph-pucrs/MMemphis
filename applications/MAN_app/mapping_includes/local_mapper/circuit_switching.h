@@ -17,27 +17,47 @@ Application   * app_ctp_ptr = 0;
 Task		  * producer_task_ptr = 0;
 ConsumerTask  * consumer_ptr = 0;
 
-int request_connection(Application * app){
+void request_connection(Application * app){
  //1. Organize the CTPs
  //2. Send they to the SDN controller
  //3. Set app waiting reclustering
 	ConsumerTask * ct;
 	Task * t;
 	unsigned int source_pe, target_pe;
+	int task_index, ct_index;
 
 	//Puts("\n---- Request connection\n");
-
-	app_ctp_ptr = 0;
 	target_pe = 0;
-	producer_task_ptr = 0;
-	consumer_ptr = 0;
+	task_index=0;
+	ct_index=0;
 
-	for(int i=0; i<app->tasks_number; i++){
-		t = &app->tasks[i];
+	//ARRUMAR
+	if (app_ctp_ptr){
+		//Sets task_index in the last task index
+		for(; task_index<app->tasks_number; task_index++){
+			t = &app->tasks[task_index];
+			if (t == producer_task_ptr)
+				break;
+		}
+
+		//Sets the ct_index in the last consumer task index
+		for(; ct_index < t->consumers_number; ct_index++){
+			ct = &t->consumer[ct_index];
+			if (ct == consumer_ptr){
+				ct_index++; //Increments to the algorithm below get the next ctp
+				break;
+			}
+		}
+	}
+
+
+	for(; task_index<app->tasks_number; task_index++){
+		t = &app->tasks[task_index];
+
 		source_pe = t->allocated_proc;
 
-		for(int k=0; k<t->consumers_number; k++){
-			ct = &t->consumer[k];
+		for(; ct_index<t->consumers_number; ct_index++){
+			ct = &t->consumer[ct_index];
 
 			if (ct->id != -1 && ct->subnet == PS_SUBNET){
 				target_pe = get_task_location(ct->id);
@@ -53,24 +73,26 @@ int request_connection(Application * app){
 				producer_task_ptr = t;
 				consumer_ptr = ct;
 
-				i = app->tasks_number; //Break the 1st for
-				break; //Break the current for
+
+				request_SDN_path(source_pe, target_pe);
+				//After request CS it is safe to set the cs utilization as not updated
+				cs_utilization_updated = 0;
+
+				//Return 0 meaning that the circuit-switching was NOT completed yet
+				return;
 			}
 		}
+
+		ct_index = 0;
 	}
+
+	Puts("CS complete - app READY_TO_LOAD\n\n");
+	app->status = READY_TO_LOAD;
 
 	//If there is no more CTP usng PS_SUBNET
-	if (consumer_ptr == 0){
-		return 1; //Return 1 meaning that the circuit-switching was completed
-	}
-
-	request_SDN_path(source_pe, target_pe);
-
-	//After request CS it is safe to set the cs utilization as not updated
-	cs_utilization_updated = 0;
-
-	//Return 1 meaning that the circuit-switching was NOT completed yet
-	return 0;
+	app_ctp_ptr = 0;
+	producer_task_ptr = 0;
+	consumer_ptr = 0;
 }
 
 int is_CS_not_active(){
@@ -79,8 +101,6 @@ int is_CS_not_active(){
 
 
 void handle_connection_response(unsigned int source_pe, unsigned int target_pe, int subnet){
-
-	int cs_complete;
 
 	while (producer_task_ptr->allocated_proc != source_pe){
 		Puts("ERROR: source PE does not match\n");
@@ -97,17 +117,8 @@ void handle_connection_response(unsigned int source_pe, unsigned int target_pe, 
 		Puts("Subnet PS_SUBNET defined\n\n");
 	}
 
-
-
-
 	//Request the next pending connection for the application
-	cs_complete = request_connection(app_ctp_ptr);
-
-	//When the app have no more CTP to establishes a connection set it as READY_TO_LOAD
-	if (cs_complete){
-		Puts("App READY_TO_LOAD\n");
-		app_ctp_ptr->status = READY_TO_LOAD;
-	}
+	request_connection(app_ctp_ptr);
 
 }
 
@@ -136,7 +147,7 @@ void handle_SDN_ack(unsigned int * recv_message){
 	Puts("] sucess ["); Puts(itoa(connection_ok));
 	Puts("] source [");  Puts(itoa(source >> 8)); Puts("x"); Puts(itoa(source & 0xFF));
 	Puts("] target ["); Puts(itoa(target >> 8)); Puts("x"); Puts(itoa(target & 0xFF));
-	Puts("] subnet ["); Puts(itoa(subnet)); Puts("]\n\n");
+	Puts("] subnet ["); Puts(itoa(subnet)); Puts("]\n");
 
 	handle_connection_response(source, target, subnet);
 
@@ -148,22 +159,22 @@ void handle_SDN_ack(unsigned int * recv_message){
  *
  */
 int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_task){
-	int prod_address, cons_address, cons_index;
+	int prod_address, cons_address, prod_index, cons_index;
 	unsigned int * send_message;
 	ConsumerTask * ct;
 	Task * t;
 
-	cons_index = cons_task + 1;
-
 	//I receives the prod_task to the for loop continue in the same task than previously
-	for(int i = prod_task; i<app_ptr->tasks_number; i++){
+	for(int i = prod_index; i<app_ptr->tasks_number; i++){
 		t = &app_ptr->tasks[i];
+
+		putsv("\n", t->id);
 
 		while(cons_index < t->consumers_number){
 
-			cons_task = 0;
-
 			ct = &t->consumer[cons_index];
+
+			putsv("-> ", ct->id);
 
 			//Message sent to the consumer task
 			if (ct->id != -1 && ct->subnet != PS_SUBNET){

@@ -184,14 +184,8 @@ void handle_pending_application(){
 
 			//request_cs_utilization();//Used to test the cs utilization protocol
 
-			complete = request_connection(app);
-
-			if (complete){ //If circuit-switching is complete for that application
-
-				Puts("\nCS complete - app READY_TO_LOAD\n\n");
-
-				app->status = READY_TO_LOAD;
-			}
+			Puts("\nInit CS establishment protocol...\n\n");
+			request_connection(app);
 
 			break;
 
@@ -351,7 +345,7 @@ void handle_task_allocated(unsigned int task_id){
 
 			Puts("\nInit CS protocol...\n");
 
-			initial_CS_setup_protocol(app_ptr, 0, -1);
+			initial_CS_setup_protocol(app_ptr, 0, 0);
 
 		} else { //Otherwise the Manager can realease the app to run
 
@@ -435,9 +429,6 @@ void handle_set_initial_cs_ack(unsigned int producer_id, unsigned int consumer_i
 
 	//putsv("ACK received\nproducer id: ", producer_id);
 	//putsv("consumer id: ", consumer_id);
-
-	producer_id = producer_id & 0xFF; //Removes app ID
-	consumer_id = consumer_id & 0xFF; //Removes app ID
 
 	if (initial_CS_setup_protocol(app_ptr, producer_id, consumer_id) == 0){
 
