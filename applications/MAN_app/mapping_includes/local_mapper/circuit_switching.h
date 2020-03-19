@@ -74,7 +74,7 @@ void request_connection(Application * app){
 				consumer_ptr = ct;
 
 
-				request_SDN_path(source_pe, target_pe);
+				request_SDN_path(source_pe, target_pe, -1);
 				//After request CS it is safe to set the cs utilization as not updated
 				cs_utilization_updated = 0;
 
@@ -111,10 +111,10 @@ void handle_connection_response(unsigned int source_pe, unsigned int target_pe, 
 
 	if (subnet > -1) {
 		consumer_ptr->subnet = subnet;
-		Puts("Subnet: "); Puts(itoa(subnet)); Puts(" defined\n\n");
+		//Puts("Subnet: "); Puts(itoa(subnet)); Puts(" defined\n\n");
 	} else {
 		consumer_ptr->subnet = PS_SUBNET;
-		Puts("Subnet PS_SUBNET defined\n\n");
+		//Puts("Subnet PS_SUBNET defined\n\n");
 	}
 
 	//Request the next pending connection for the application
@@ -161,20 +161,38 @@ void handle_SDN_ack(unsigned int * recv_message){
 int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_task){
 	int prod_address, cons_address, prod_index, cons_index;
 	unsigned int * send_message;
-	ConsumerTask * ct;
-	Task * t;
+	ConsumerTask * ct = 0;
+	Task * t = 0;
+
+	//Alinha prod_index e cons_index com a ultima execucao da funcao, poderia usar static mas prefiro nao usar data memory region
+
+	if (prod_task){
+		prod_index = -1;
+		cons_index = -1;
+		do{
+			prod_index++; //MAIS MAIS
+			t = &app_ptr->tasks[prod_index];
+		} while(t->id != prod_task);
+
+		do {
+			cons_index++;
+			ct = &t->consumer[cons_index];
+		} while(ct->id != cons_task);
+		cons_index++;
+	} else{
+		Puts("Init CS protocol...\n");
+		prod_index = 0;
+		cons_index = 0;
+	}
+
 
 	//I receives the prod_task to the for loop continue in the same task than previously
-	for(int i = prod_index; i<app_ptr->tasks_number; i++){
-		t = &app_ptr->tasks[i];
+	for(; prod_index<app_ptr->tasks_number; prod_index++){
+		t = &app_ptr->tasks[prod_index];
 
-		putsv("\n", t->id);
-
-		while(cons_index < t->consumers_number){
+		for(; cons_index < t->consumers_number; cons_index++){
 
 			ct = &t->consumer[cons_index];
-
-			putsv("-> ", ct->id);
 
 			//Message sent to the consumer task
 			if (ct->id != -1 && ct->subnet != PS_SUBNET){
@@ -211,13 +229,14 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 				return 1; //Return 1 se achou
 			}
 
-			cons_index++;
 		}
 
 		cons_index = 0;
 
 	}
 
+	//There is no more CTP to setup CS at kernel, terminates the CS protocol
+	Puts("\nInitial CS protocol concluded!\n");
 	return 0;
 
 }
@@ -275,13 +294,13 @@ unsigned int compute_bounding_box_cs_utilization(int x_min, int y_min, int x_max
 	unsigned int accumulated_util = 0;
 	unsigned int conv_utilzation;
 
-	Puts("Computing BB utilization\n");
+	//Puts("Computing BB utilization\n");
 
 	for(int x=x_min; x<=x_max; x++){
 		for(int y=y_min; y<=y_max; y++){
 			conv_utilzation = (unsigned int) cs_utilization[x][y];
-			Puts(itoa(x)); Puts("x"); Puts(itoa(y));
-			putsv(", free:",conv_utilzation);
+			//Puts(itoa(x)); Puts("x"); Puts(itoa(y));
+			//putsv(", free:",conv_utilzation);
 			accumulated_util = accumulated_util + conv_utilzation;
 		}
 	}

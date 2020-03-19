@@ -41,14 +41,14 @@ void fires_SDN_request(){
 		//APAGAR
 		while(GetTick() < 1000000); //3
 		putsv("**************\nbegin step 1:", GetTick());
-		request_SDN_path(0x101, 0x201);
+		request_SDN_path(0x101, 0x201, -1);
 		counter++;
 		//APAGAR
 	} else if (counter == 1){
 		//APAGAR
 		while(GetTick() < 1500000); //5
 		putsv("**************\nbegin step 1:", GetTick());
-		request_SDN_path(0x101, 0x201);
+		request_SDN_path(0x101, 0x201, -1);
 		//APAGAR
 	}
 }

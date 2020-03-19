@@ -166,7 +166,12 @@ void send(unsigned int destination, unsigned int * msg, int msg_uint_size){
 	SendService(destination, msg, msg_uint_size);
 }
 
-void request_SDN_path(int source_addr, int target_addr){
+/**Send a message to the SDN controller requesting a path request or path release
+ * \param source_addr XY address of the source PE
+ * \param target_addr XY address of the target PE
+ * \param subnet -1 when is a PATH_REQUEST, otherwise, specifies the current subnet of the path
+ */
+void request_SDN_path(int source_addr, int target_addr, int subnet){
 	int coordinator_task_ID;
 	int src_x, src_y, nc_x, nc_y;
 	int sdn_offset;
@@ -186,11 +191,15 @@ void request_SDN_path(int source_addr, int target_addr){
 	//Puts("\nController addr is "); Puts(itoa(coordinator_task_ID)); Puts("\n");
 
 	send_message = get_message_slot();
-	send_message[0] = PATH_CONNECTION_REQUEST;
+	if (subnet == -1){
+		send_message[0] = PATH_CONNECTION_REQUEST;
+	} else {
+		send_message[0] = PATH_CONNECTION_RELEASE;
+	}
 	send_message[1] = source_addr; //source
 	send_message[2] = target_addr; //target
 	send_message[3] = GetMyID();
-	send_message[4] = 1; //Not used by the noc_manager - can be deleted
+	send_message[4] = subnet;
 	send_message[5] = net_address; //Secure SDN context: added to allows SDN manager check the addresse of manager
 
 	SendService(coordinator_task_ID, send_message, 6);

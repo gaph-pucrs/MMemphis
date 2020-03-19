@@ -10,7 +10,7 @@
 
 #include "connection_request.h"
 
-#define LOCAL_REQ_QUEUE_SIZE		NC_NUMBER
+#define LOCAL_REQ_QUEUE_SIZE		NC_NUMBER*10 //Estou aumentado para 10 para suportar multiploes releases enviado pelo LM. Eu tirei (comentei) a necessidade de ACK desse processor, por isso ele gera multiplos release
 
 unsigned int local_req_first;	//!<first valid array index
 unsigned int local_req_last;	//!<last valid array index

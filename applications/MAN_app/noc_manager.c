@@ -1661,11 +1661,11 @@ void handle_local_release_ack(unsigned int source_controller, int controllers_nm
 
 	if (controllers_response_counter == global_path_size){
 
-#if SDN_DEBUG
+//#if SDN_DEBUG
 		Puts("\n\n\t\tEND RELEASE PROCESS\n\n");
-#endif
+//#endif
 
-		send_ack_requester(global_path_request.subnet, global_path_request.source, global_path_request.target, global_path_request.requester_address, 1, RELEASE);
+		//send_ack_requester(global_path_request.subnet, global_path_request.source, global_path_request.target, global_path_request.requester_address, 1, RELEASE);
 
 		send_token_release();
 	}
@@ -1903,7 +1903,7 @@ void new_local_path(ConnectionRequest * conn_request_ptr){
 			while(1);
 		}
 
-		send_ack_requester(conn_request_ptr->subnet, conn_request_ptr->source, conn_request_ptr->target, conn_request_ptr->requester_address, 0, RELEASE);
+		//send_ack_requester(conn_request_ptr->subnet, conn_request_ptr->source, conn_request_ptr->target, conn_request_ptr->requester_address, 0, RELEASE);
 
 	} else {
 

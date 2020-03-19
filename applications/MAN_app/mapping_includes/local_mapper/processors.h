@@ -243,7 +243,7 @@ int get_task_location(int task_id){
 		}
 	}
 
-	Puts("Warining: Task not found at any processor "); Puts(itoa( task_id )); Puts("\n");
+	Puts("Warning: Task not found at any processor "); Puts(itoa( task_id )); Puts("\n");
 	return -1;
 }
 

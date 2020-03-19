@@ -341,30 +341,30 @@ void handle_task_allocated(unsigned int task_id){
 	if (allocated_tasks == app_ptr->tasks_number){
 
 		//If the App. is secure first configures CS at tasks kernel for all CTPs
-		if (app_ptr->is_secure){
-
-			Puts("\nInit CS protocol...\n");
-
-			initial_CS_setup_protocol(app_ptr, 0, 0);
-
-		} else { //Otherwise the Manager can realease the app to run
-
-			send_app_allocated(app_ptr);
-
-			//Puts("\nSEND TASK RELEASE\n\n");
-			/*Send the TASK RELEASE to all tasks begin its execution*/
-			send_task_release(app_ptr);
+		if (app_ptr->is_secure && initial_CS_setup_protocol(app_ptr, 0, 0) ){
+			//This means that the protocol was started and it will resume the execution when a ack packet is received
+			return;
 		}
+
+	//Otherwise the Manager can realease the app to run
+
+	send_app_allocated(app_ptr);
+
+	//Puts("\nSEND TASK RELEASE\n\n");
+	/*Send the TASK RELEASE to all tasks begin its execution*/
+	send_task_release(app_ptr);
 	}
 }
 
 void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 	Application * app_ptr;
 	Task * task_ptr;
+	ConsumerTask * ct;
 	unsigned int master_address;
 	unsigned int master_id;
 	unsigned int * message;
 	unsigned int msg_size;
+	unsigned int target_addr;
 
 	putsv("TASK_TERMINATED received from task: ", task_id);
 
@@ -377,10 +377,24 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 
 	task_ptr =  get_task_ptr(app_ptr, task_id);
 
-	if (task_ptr->borrowed_master == -1){
-		page_released(task_ptr->allocated_proc, task_id);
+	//Release all CS connections
+	for(int i=0; i<task_ptr->consumers_number; i++){
+		ct = &task_ptr->consumer[i];
+
+		if (ct->id != -1 && ct->subnet != PS_SUBNET){
+
+			target_addr = get_task_location(ct->id);
+
+			Puts("CS Releasing to "); Puts(itoa(task_ptr->id)); putsv(" -> ", ct->id);
+			request_SDN_path(task_ptr->allocated_proc, target_addr, ct->subnet);
+		}
+	}
+
+
+	if (task_ptr->borrowed_master != -1){
+		//page_released(task_ptr->allocated_proc, task_id);
 		//Puts("Task is local, page released\n");
-	} else {
+	//} else {
 		message = get_message_slot();
 		message[0] = TASK_TERMINATED_OTHER_CLUSTER;
 		message[1] = task_ptr->allocated_proc;
@@ -402,12 +416,15 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 
 		for (int i=0; i<app_ptr->tasks_number; i++){
 
+			task_ptr = &app_ptr->tasks[i];
+
 			//Puts("Task "); Puts(itoa(app_ptr->tasks[i].id));
-			if (app_ptr->tasks[i].borrowed_master != -1){
-				message[msg_size++] = app_ptr->tasks[i].borrowed_master;
-				//Puts(" master borrowed "); Puts(itoh(app_ptr->tasks[i].borrowed_master)); Puts("\n");
+			if (task_ptr->borrowed_master != -1){
+				message[msg_size++] = task_ptr->borrowed_master;
+				//Puts(" master borrowed "); Puts(itoh(task_ptr->borrowed_master)); Puts("\n");
 			} else {
 				message[msg_size++] = cluster_position;
+				page_released(task_ptr->allocated_proc, task_ptr->id);
 				//Puts(" master local "); Puts(itoh(cluster_position)); Puts("\n");
 			}
 		}
@@ -431,9 +448,6 @@ void handle_set_initial_cs_ack(unsigned int producer_id, unsigned int consumer_i
 	//putsv("consumer id: ", consumer_id);
 
 	if (initial_CS_setup_protocol(app_ptr, producer_id, consumer_id) == 0){
-
-
-		Puts("\nInitial CS protocol concluded!\n");
 
 		send_app_allocated(app_ptr);
 
