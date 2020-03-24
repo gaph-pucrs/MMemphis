@@ -11,7 +11,7 @@
 #include "../common_include.h"
 #include "sdn_config_manager.h"
 
-#define SDN_DEBUG 0
+#define SDN_DEBUG 1
 #define PATH_DEBUG 0
 
 #define NC_NUMBER		((XDIMENSION*YDIMENSION)/(SDN_XCLUSTER*SDN_YCLUSTER))

@@ -10,9 +10,14 @@
 
 #include "application.h"
 
+//CS Utilization Matrix status
+#define CS_UTIL_OUTDATED 	0
+#define CS_UTIL_REQUESTED	1
+#define CS_UTIL_UPDATED		2
+
 /*Stores the utilization of the local in (0xF0) and local out (0x0F) port for each router*/
 unsigned char cs_utilization[MAPPING_XCLUSTER][MAPPING_YCLUSTER];
-unsigned char cs_utilization_updated = 0;
+unsigned char cs_utilization_updated = CS_UTIL_OUTDATED;
 Application   * app_ctp_ptr = 0;
 Task		  * producer_task_ptr = 0;
 ConsumerTask  * consumer_ptr = 0;
@@ -76,7 +81,7 @@ void request_connection(Application * app){
 
 				request_SDN_path(source_pe, target_pe, -1);
 				//After request CS it is safe to set the cs utilization as not updated
-				cs_utilization_updated = 0;
+				cs_utilization_updated = CS_UTIL_OUTDATED;
 
 				//Return 0 meaning that the circuit-switching was NOT completed yet
 				return;
@@ -180,7 +185,7 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 		} while(ct->id != cons_task);
 		cons_index++;
 	} else{
-		Puts("Init CS protocol...\n");
+		Puts("\nInit CS protocol...\n");
 		prod_index = 0;
 		cons_index = 0;
 	}
@@ -236,17 +241,19 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 	}
 
 	//There is no more CTP to setup CS at kernel, terminates the CS protocol
-	Puts("\nInitial CS protocol concluded!\n");
+	Puts("Initial CS protocol concluded!\n\n");
 	return 0;
 
 }
 
 
-void request_cs_utilization(){
+void request_cs_util_update(){
 	int SDN_Controller_ID = 2; //TODO Please edit when you add a new MA task
 	unsigned int * send_message;
 
 	Puts("\nSend CS_UTILIZATION_REQUEST\n");
+
+	cs_utilization_updated = CS_UTIL_REQUESTED;
 
 	send_message = get_message_slot();
 	send_message[0] = CS_UTILIZATION_REQUEST;
@@ -261,9 +268,9 @@ void request_cs_utilization(){
 void handle_cs_utilization_response(unsigned int * data_msg){
 	int index;//, conn_in, conn_out;
 
-	//Puts("\nCS_UTILIZATION_RESPONSE received\n");
+	Puts("CS_UTILIZATION_RESPONSE received\n\n");
 
-	cs_utilization_updated = 1;
+	cs_utilization_updated = CS_UTIL_UPDATED;
 
 	index = 1;
 

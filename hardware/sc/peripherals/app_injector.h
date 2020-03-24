@@ -23,7 +23,7 @@ using namespace std;
 #define TASK_NUMBER_INDEX		8 	//Index where is the app task number information within packet APP_REQ_ACK
 #define MAX_DEPENDECES_SIZE		10	//Size of the maximum number of diferent tasks that a given task can perform Send() calls
 #define TASK_DESCRIPTOR_SIZE	(MAX_DEPENDECES_SIZE+7)	//7 is number of lines to represent a task description. Keeps this number equal to build_env/scripts/app_builder.py
-#define MAN_APP_DESCRIPTOR_SIZE	8 	//This number represents the number of lines that MAN_app has into the file my_scenario/appstart.txt. If you include a new MAN_app task, please increase this value in +1
+#define MAN_APP_DESCRIPTOR_SIZE	7 	//This number represents the number of lines that MAN_app has into the file my_scenario/appstart.txt. If you include a new MAN_app task, please increase this value in +1
 
 
 typedef sc_uint<TAM_FLIT > regflit;

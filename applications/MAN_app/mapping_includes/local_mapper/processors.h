@@ -74,7 +74,11 @@ Processor * search_processor(int proc_address){
 int check_security_allocation_requirements(int proc_address, int app_id){
 	Processor * proc_ptr = search_processor(proc_address);
 
+	//Puts("\nCheck security alloc requirements for proc "); Puts(itoh(proc_address));
+
+
 	if (proc_ptr->free_pages <= 0){
+		//Puts(" = No free pages\n");
 		return 0;
 	}
 
@@ -82,8 +86,11 @@ int check_security_allocation_requirements(int proc_address, int app_id){
 		//Test if the processor is running a task and that task bellongs to a diferent application
 		if (proc_ptr->task[i] != -1 && (proc_ptr->task[i] >> 8) != app_id){
 			return 0;
+			//Puts(" = Diferent app\n");
 		}
 	}
+
+	//Puts(" = Ok\n");
 
 	return 1;
 }

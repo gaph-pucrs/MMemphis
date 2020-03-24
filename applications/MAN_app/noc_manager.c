@@ -1363,6 +1363,10 @@ void handle_sdn_utilization_request(unsigned int req_id, unsigned int starting_x
 	//unsigned int in_msg, out_msg;
 	unsigned int * message;
 
+#if SDN_DEBUG
+	putsv("CS_UTILIZATION request received from ", req_id);
+#endif
+
 	conn_in = 0;
 	conn_out = 0;
 
@@ -1417,15 +1421,19 @@ void handle_sdn_utilization_request(unsigned int req_id, unsigned int starting_x
 					}*/
 				}
 			}
-			/*Puts(itoa(x)); Puts("x"); Puts(itoa(y));
-			putsv(", free:", data_msg);*/
+#if SDN_DEBUG
+			Puts(itoa(x)); Puts("x"); Puts(itoa(y));
+			putsv(", free:", data_msg);
+#endif
 
 			//data_msg = in_msg << 16 | out_msg;
 			//data_msg = conn_in << 16 | conn_out;
 			message[msg_size++] = data_msg;
 		}
 	}
-	//Puts("end\n\n");
+#if SDN_DEBUG
+	Puts("end\n\n");
+#endif
 
 	while (msg_size > MAX_MANAG_MSG_SIZE) Puts("ERROR: size of msg exceeded\n");
 
@@ -1542,7 +1550,7 @@ int handle_packet(unsigned int * recv_message){
 		case PATH_CONNECTION_REQUEST:
 			//Only serves for authorized managers
 
-			//Puts("Path received\n");
+			Puts("Path received\n");
 			//configuration_round(0);
 			if (check_path_requester_authenticity(recv_message[3], recv_message[5])){
 				handle_component_request(recv_message[1], recv_message[2], recv_message[3], -1);

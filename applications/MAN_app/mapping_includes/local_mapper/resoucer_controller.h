@@ -58,17 +58,19 @@ void page_released(int proc_address, int task_ID){
 
 #if 1
 
-int select_initial_PE(int * initial_pe_list, int initial_size, char * valid_pe_list, int secure_app){
-	int max_avg_manhatam, initial_app_pe, intial_pe_index;
-	int man_sum, man_count, man_curr;
+int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_list, int secure_app){
+	int max_manhatam, initial_app_pe, intial_pe_index;
+	int man_sum, man_curr;
 	int xi, yi, xj, yj;
 	int proc_addr;
 
 	//Puts("\nselect_initial_PE\n");
 
-	max_avg_manhatam = -1;
+	max_manhatam = -1;
 	initial_app_pe = -1;
 	intial_pe_index = -1;
+
+	Puts("\n----------------------------\n");
 
 	if (initial_size){
 
@@ -79,13 +81,13 @@ int select_initial_PE(int * initial_pe_list, int initial_size, char * valid_pe_l
 
 			//Tests if the selected PE is a excluded PE
 			if (valid_pe_list[i] == 0){
-				Puts("Intial excluded\n");
+				Puts("Address excluded: "); Puts(itoh(get_proc_address(i))); Puts("\n");
 				continue;
 			}
 
 			proc_addr = get_proc_address(i);
 
-			//Puts("Candidato address: "); Puts(itoh(proc_addr)); Puts("\n");
+			//Puts("\nCandidato address: "); Puts(itoh(proc_addr)); Puts("\n");
 
 			//So considera um PE que esta vazio em caso de app. segura, ou qualquer PE que possui um espaco vazio, caso de app nao segura
 			if( (secure_app && get_proc_free_pages(proc_addr) == MAX_LOCAL_TASKS) || ( !secure_app && get_proc_free_pages(proc_addr) > 0) ){
@@ -93,7 +95,6 @@ int select_initial_PE(int * initial_pe_list, int initial_size, char * valid_pe_l
 				//Puts("Proc entrou\n");
 
 				man_sum = 0;
-				man_count = 0;
 
 				xi = proc_addr >> 8;
 				yi = proc_addr & 0xFF;
@@ -106,16 +107,15 @@ int select_initial_PE(int * initial_pe_list, int initial_size, char * valid_pe_l
 					//Computes the manhatam distance
 					man_curr = (abs(xi - xj) + abs(yi - yj));
 
+
+					//Puts("Distance to initial: "); Puts(itoh(initial_pe_list[j])); putsv(" = ",man_curr);
 					man_sum = man_sum + man_curr;
-					man_count++;
 				}
 
-				//After the for computes the mean
-				man_curr = (man_sum / man_count);
-				//Puts("Current Avg mean for PE "); Puts(itoh(proc_addr)); putsv(" is ", man_curr);
+				//Puts("Sum for PE "); Puts(itoh(proc_addr)); putsv(" is ", man_sum);
 
-				if (man_curr > max_avg_manhatam){
-					max_avg_manhatam = man_curr;
+				if (man_sum > max_manhatam){
+					max_manhatam = man_sum;
 					initial_app_pe = proc_addr;
 					intial_pe_index = i;
 					//Puts("PE selected\n");
@@ -131,9 +131,9 @@ int select_initial_PE(int * initial_pe_list, int initial_size, char * valid_pe_l
 	}
 
 	if (intial_pe_index != -1){
-		valid_pe_list[intial_pe_index] = 1;
-		putsv("Excluded PE index: ", intial_pe_index);
-		putsv("Excluded addr: ", get_proc_address(intial_pe_index));
+		valid_pe_list[intial_pe_index] = 0;
+		//putsv("Excluded PE index: ", intial_pe_index);
+		//putsv("Excluded addr: ", get_proc_address(intial_pe_index));
 	}
 
 	Puts("SELECTED initial addr: "); Puts(itoh(initial_app_pe)); Puts("\n");
@@ -151,8 +151,7 @@ int select_initial_PE(int * initial_pe_list, int initial_size, char * valid_pe_l
 		- utilizacao de CS esteja abaixo de um limiar
  * */
 
-int application_mapping(int app_id){
-	Application * app;
+int application_mapping(Application * app){
 	Task *t;
 	char mapping_completed;
 	int N;
@@ -165,13 +164,21 @@ int application_mapping(int app_id){
 	int current_bb_utilization, ref_bb_utilization, bb_utilization_TH, ref_initial_address;
 
 	//Used to store the position of the valid_initial_PE
-	char valid_initial_PE[MAX_PROCESSORS];
+	int valid_initial_PE[MAX_PROCESSORS];
 
 	/*################## STEP 0 - INITIALIZATION AND SEARCH FOR THE FIRST INITIAL PE ####################### */
+
+	//Puts("\n----------------Defining list of initial PE------------\n");
+	initial_size = get_initial_pe_list(initial_pe_list);
+	/*putsv("Initial pe list size: ", initial_size);
+	for(int h=0; h<initial_size; h++){
+		Puts(itoh(initial_pe_list[h])); Puts("\n");
+	}*/
 
 	//Set the list of valid initial PEs
 	for(int i=0; i<MAX_PROCESSORS; i++){
 		valid_initial_PE[i] = 1;
+		//Puts(itoa(i)); putsv("=",valid_initial_PE[i]);
 	}
 
 	//Set the reference utilization to the worst value
@@ -181,13 +188,9 @@ int application_mapping(int app_id){
 	//Set mapping completed as false
 	mapping_completed = 0;
 
-	//Get the pplication ptr
-	app = get_application_ptr(app_id);
-
-	//Puts("\n----------------Defining list of initial PE------------\n");
-	get_initial_pe_list(initial_pe_list, &initial_size);
 
 	Puts("\n################# Starting APP MAPPING. ID: "); Puts(itoa(app->app_ID)); putsv(" task number: ", app->tasks_number);
+	putsv("time: ", GetTick());
 	Puts("\n");
 	//Algorithm that selects the initial PE
 	initial_app_pe = select_initial_PE(initial_pe_list, initial_size, valid_initial_PE, app->is_secure);
@@ -292,7 +295,6 @@ int application_mapping(int app_id){
 			if (current_bb_utilization >= bb_utilization_TH){
 				Puts("BEST util\n");
 				mapping_completed = 1;
-				Puts("Mapping completed, exiting while N\n");
 				break; //while(N > 0)
 
 			} else {
@@ -304,6 +306,7 @@ int application_mapping(int app_id){
 					//Reusing x_proc
 					t = &app->tasks[i];
 					page_released(t->allocated_proc, t->id);
+					t->allocated_proc = -1;
 				}
 
 			}
@@ -343,26 +346,28 @@ int application_mapping(int app_id){
 			//Search for static mapping
 			if (t->allocated_proc != -1){
 				mapped_addr = t->allocated_proc;
+				page_used(mapped_addr, t->id);
 				Puts("Task id "); Puts(itoa(t->id)); Puts(" statically mapped at processor "); Puts(itoh(mapped_addr)); Puts("\n");
-			} else
+			} else {
 				//Diamon retorna com o offset
 				if(app->is_secure)
 					mapped_addr = diamond_search_initial(initial_app_pe, app->app_ID);
 				else
 					mapped_addr = diamond_search_initial(initial_app_pe, 0);
 
-			if (mapped_addr == -1){
+				if (mapped_addr == -1){
 
-				return 0;
+					return 0;
 
-			} else {
+				} else {
 
-				t->allocated_proc = mapped_addr;
+					t->allocated_proc = mapped_addr;
 
-				page_used(mapped_addr, t->id);
+					page_used(mapped_addr, t->id);
 
-				Puts("Task id "); Puts(itoa(t->id)); Puts(" dynamically mapped at processor "); Puts(itoh(mapped_addr)); Puts("\n");
+					Puts("Task id "); Puts(itoa(t->id)); Puts(" dynamically mapped at processor "); Puts(itoh(mapped_addr)); Puts("\n");
 
+				}
 			}
 		}
 	}
@@ -539,7 +544,7 @@ int diamond_search_initial(int begining_core, int secure_app_id){
 
 	int ref_x, ref_y, max_round, hop_count, max_tested_proc;//XY address of the current processor of the task
 	int proc_x, proc_y, proc_count;
-	int candidate_proc;
+	int candidate_proc, proc_addr;
 	int max_x, max_y, min_x, min_y;
 
 	ref_x = (begining_core >> 8);
@@ -591,11 +596,13 @@ int diamond_search_initial(int begining_core, int secure_app_id){
 				//Increment the number of valid processors visited
 				proc_count++;
 
-				//Tests if the processor is available, if yes, mark it as used in free_core_map and return
-				if ( (secure_app_id && check_security_allocation_requirements((proc_x << 8 | proc_y), secure_app_id)) ||
-				   (!secure_app_id && get_proc_free_pages(proc_x << 8 | proc_y)) ){
+				proc_addr = proc_x << 8 | proc_y;
 
-					candidate_proc = proc_x << 8 | proc_y;
+				//Tests if the processor is available, if yes, mark it as used in free_core_map and return
+				if ( (secure_app_id && check_security_allocation_requirements((proc_addr), secure_app_id)) ||
+				   (!secure_app_id && get_proc_free_pages(proc_addr)) ){
+
+					candidate_proc = proc_addr;
 					//Puts("Proc selected: "); Puts(itoh(candidate_proc)); Puts("\n");
 					return candidate_proc;
 
@@ -626,18 +633,6 @@ int diamond_search_initial(int begining_core, int secure_app_id){
 	}
 
 	return -1;
-}
-
-
-/**Request the SDN utilization of a list of SDN routers that are free to receive one task at least
- *
- */
-void request_SDN_utilization(){
-
-}
-
-void handle_SDN_utilization_reply(){
-
 }
 
 

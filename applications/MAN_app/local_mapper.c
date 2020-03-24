@@ -37,7 +37,7 @@ void initialize_local_mapper(unsigned int * msg){
 
 	//Initialize processors and global variable
 	init_procesors();
-	pending_app_to_map = 0;
+	pending_app_control = 0;
 
 	max_ma_tasks = msg[3];
 
@@ -117,7 +117,7 @@ void request_application(Application *app){
 
 	Puts("\nRequest APP\n");
 
-	pending_app_to_map--;
+	pending_app_control--;
 
 	index_counter = 0;
 
@@ -146,7 +146,7 @@ void handle_pending_application(){
 	Application *app = 0;
 	int complete = 0;
 
-	//Puts("Handle next application \n");
+	Puts("Handle next application \n");
 
 	/*Selects an application pending to be mapped due reclustering*/
 	app = get_next_pending_app();
@@ -154,6 +154,42 @@ void handle_pending_application(){
 	//putsv("Pending app ID: ", app->app_ID);
 
 	switch (app->status) {
+
+		case WAITING_MAPPING:
+
+			//Avoids to map a secure app without have the cs_utilization matrix updated
+			if (app->is_secure && cs_utilization_updated != CS_UTIL_UPDATED){
+				if (cs_utilization_updated == CS_UTIL_OUTDATED)
+					request_cs_util_update();
+				break;
+			}
+
+			complete = application_mapping(app);
+
+			if (complete){
+
+				if (app->is_secure){
+
+					Puts("App WAITING_CIRCUIT_SWITCHING\n");
+
+					app->status = WAITING_CIRCUIT_SWITCHING;
+
+				} else {
+
+					Puts("App READY_TO_LOAD\n");
+
+					app->status = READY_TO_LOAD;
+				}
+
+			} else {
+
+				Puts("Application WAITING_RECLUSTERING\n");
+
+				app->status = WAITING_RECLUSTERING;
+
+			}
+
+			break;
 
 		case WAITING_RECLUSTERING:
 
@@ -182,8 +218,6 @@ void handle_pending_application(){
 
 		case WAITING_CIRCUIT_SWITCHING:
 
-			//request_cs_utilization();//Used to test the cs utilization protocol
-
 			Puts("\nInit CS establishment protocol...\n\n");
 			request_connection(app);
 
@@ -191,9 +225,11 @@ void handle_pending_application(){
 
 		case READY_TO_LOAD:
 
-			//request_cs_utilization();//Used to test the cs utilization protocol
-
 			request_application(app);
+
+			/*if (cs_utilization_updated == CS_UTIL_OUTDATED){
+				request_cs_util_update();
+			}*/
 
 			break;
 	}
@@ -205,7 +241,6 @@ void handle_new_app(unsigned int * msg){
 	Application * application;
 	unsigned int * ref_address;
 	unsigned int app_ID;
-	int mapping_completed = 0;
 
 
 	Puts("Handle new APP DESCRIPTOR from APP INJECTOR\n");
@@ -221,32 +256,12 @@ void handle_new_app(unsigned int * msg){
 	//Creates a new app by reading from ref_address
 	application = read_and_create_application(app_ID, ref_address);
 
-	pending_app_to_map++;
+	//This variable control the pending apps, i.e., apps that are already handled but are not in execution
+	pending_app_control++;
 
-	mapping_completed = application_mapping(application->app_ID);
+	application->status = WAITING_MAPPING;
 
-	if (mapping_completed){
-
-		if (application->is_secure){
-
-			Puts("App WAITING_CIRCUIT_SWITCHING\n");
-
-			application->status = WAITING_CIRCUIT_SWITCHING;
-
-		} else {
-
-			Puts("App READY_TO_LOAD\n");
-
-			application->status = READY_TO_LOAD;
-		}
-
-	} else {
-
-		Puts("Application WAITING_RECLUSTERING\n");
-
-		application->status = WAITING_RECLUSTERING;
-
-	}
+	handle_pending_application();
 
 }
 
@@ -294,7 +309,8 @@ void send_task_release(Application * app){
 		//puts(" in proc "); puts(itoh(p->header)); puts("\n----\n");
 	}
 
-	Puts("\nTASK_RELEASE sent, app is RUNNING!\n\n");
+	Puts("TASK_RELEASE sent, app is RUNNING!\n\n");
+
 	app->status = RUNNING;
 
 }
@@ -321,7 +337,7 @@ void send_app_allocated(Application * app_ptr){
 		//Puts("Task "); Puts(itoa(task_ptr->id)); Puts(" to cluster "); Puts(itoh(message[msg_size-1])); Puts("\n");
 	}
 	SendService(global_task_ID, message, msg_size);
-	Puts("APP_ALLOCATED sent\n\n");
+	Puts("APP_ALLOCATED sent\n");
 	/****************************************************/
 }
 
@@ -346,13 +362,13 @@ void handle_task_allocated(unsigned int task_id){
 			return;
 		}
 
-	//Otherwise the Manager can realease the app to run
+		//Otherwise the Manager can realease the app to run
 
-	send_app_allocated(app_ptr);
+		send_app_allocated(app_ptr);
 
-	//Puts("\nSEND TASK RELEASE\n\n");
-	/*Send the TASK RELEASE to all tasks begin its execution*/
-	send_task_release(app_ptr);
+		//Puts("\nSEND TASK RELEASE\n\n");
+		/*Send the TASK RELEASE to all tasks begin its execution*/
+		send_task_release(app_ptr);
 	}
 }
 
@@ -387,6 +403,10 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 
 			Puts("CS Releasing to "); Puts(itoa(task_ptr->id)); putsv(" -> ", ct->id);
 			request_SDN_path(task_ptr->allocated_proc, target_addr, ct->subnet);
+
+			//Every time that a path release happens the utilization becomes
+			//outdated
+			cs_utilization_updated = CS_UTIL_OUTDATED;
 		}
 	}
 
@@ -434,6 +454,11 @@ void handle_task_terminated(unsigned int task_id, unsigned int master_addr){
 		remove_application(app_ptr);
 
 		Puts("App terminated!\n\n");
+
+		//Request to SDN controller to update the cs utilization table
+		/*if (cs_utilization_updated == CS_UTIL_OUTDATED){
+			request_cs_util_update();
+		}*/
 	}
 }
 
@@ -461,8 +486,6 @@ void handle_message(unsigned int * data_msg){
 	switch (data_msg[0]) {
 		case INITIALIZE_MA_TASK:
 			initialize_local_mapper(data_msg);
-			Puts("Update request\n");
-			request_cs_utilization();//Used to test the cs utilization protocol
 			break;
 		case NEW_APP:
 			handle_new_app(data_msg);
@@ -523,14 +546,26 @@ void main(){
 
 	for(;;){
 
-		if (is_reclustering_NOT_active() && is_CS_not_active() && pending_app_to_map && !IncomingPacket() && NoCSendFree()){
-			handle_pending_application();
-			//Avoid to execute the lines after the IF
+		//Não gerar nova demanda se algo ainda nao foi consumido na NoC
+
+		if (IncomingPacket()){
+			ReceiveService(data_message);
+			handle_message(data_message);
 			continue;
 		}
 
-		ReceiveService(data_message);
-		handle_message(data_message);
+		//if (is_reclustering_NOT_active() && is_CS_not_active() && pending_app_control && !IncomingPacket() && NoCSendFree()){
+
+		//If there some app waiting, there is no incomming packet and the NI send is free then:
+		if (NoCSendFree() && is_reclustering_NOT_active() && is_CS_not_active() && cs_utilization_updated != CS_UTIL_REQUESTED && pending_app_control && !IncomingPacket() && NoCSendFree()){
+
+			handle_pending_application();
+
+		} else {
+
+			ReceiveService(data_message);
+			handle_message(data_message);
+		}
 
 	}
 

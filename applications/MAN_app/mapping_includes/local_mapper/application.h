@@ -15,11 +15,13 @@
 //Application status
 #define	 RUNNING					1	//!< Signals that the application have all its task mapped and the task already has been requested
 #define	 FREE						2	//!< Signals that all task of the application finishes
-#define	 WAITING_RECLUSTERING		3	//!< Signals that the application have at least one task waiting for reclustering
-#define	 WAITING_CIRCUIT_SWITCHING	4	//!< Signals that the application have at least one ctp waiting a circuit-switching connection
-#define	 READY_TO_LOAD				5	//!< Signals that the application have all its task mapped but the task not were requested yet
+#define  WAITING_MAPPING			3	//!< Signals that the application is waiting for the mapping
+#define	 WAITING_RECLUSTERING		4	//!< Signals that the application have at least one task waiting for reclustering
+#define	 WAITING_CIRCUIT_SWITCHING	5	//!< Signals that the application have at least one ctp waiting a circuit-switching connection
+#define	 READY_TO_LOAD				6	//!< Signals that the application have all its task mapped but the task not were requested yet
 
 //Task status
+#define	 TASK_FREE				-1
 #define	 REQUESTED				0	//!< Signals that the task has already requested to the global master
 #define	 ALLOCATED				1	//!< Signals that the task has successfully allocated into a processor
 #define	 TASK_RUNNING			2	//!< Signals that the task is running on the processor
@@ -93,7 +95,7 @@ void remove_application(Application *);
 
 void initialize_applications();
 
-void get_initial_pe_list(int *, int *);
+int get_initial_pe_list(int *);
 
 
 
@@ -148,7 +150,7 @@ Application * get_next_pending_app(){
 
 		app_status = applications[i].status;
 
-		if (app_status == READY_TO_LOAD || app_status == WAITING_RECLUSTERING || app_status == WAITING_CIRCUIT_SWITCHING){
+		if (app_status == WAITING_MAPPING || app_status == READY_TO_LOAD || app_status == WAITING_RECLUSTERING || app_status == WAITING_CIRCUIT_SWITCHING){
 
 			if (older_app == 0 || older_app->app_ID > applications[i].app_ID){
 				older_app = &applications[i];
@@ -300,21 +302,26 @@ Application * read_and_create_application(unsigned int app_id, unsigned int * re
 	return app;
 }
 
-void get_initial_pe_list(int * initial_list, int * size){
+int get_initial_pe_list(int * initial_list){
+	int list_size, alloc_proc;
 
-
-	*size = 0;
+	list_size = 0;
 
 	for(int i=0; i<MAX_CLUSTER_TASKS; i++){
 
 		if (applications[i].status == RUNNING){
-			initial_list[*size] = applications[i].tasks[0].allocated_proc;
-			//Puts("Task id 0 from app "); Puts(itoa(applications[i].app_ID)); Puts(" mapped at ");
+
+			alloc_proc = applications[i].tasks[0].allocated_proc;
+
+			initial_list[list_size] = alloc_proc;
+			//Puts("Initial PE "); Puts(itoh(alloc_proc)); Puts(" selected\n");
 			//Puts(itoh(initial_list[*size])); Puts("\n");
 
-			*size = *size + 1;
+			list_size++;
 		}
 	}
+
+	return list_size;
 }
 
 void remove_application(Application * app){
@@ -323,7 +330,7 @@ void remove_application(Application * app){
 
 	app->app_ID = -1;
 
-	app->status = FREE;
+	app->status = TASK_FREE;
 
 	app->tasks_number = 0;
 
@@ -338,7 +345,7 @@ void initialize_applications(){
 
 		applications[i].tasks_number = 0;
 
-		applications[i].status = FREE;
+		applications[i].status = TASK_FREE;
 
 		applications[i].terminated_tasks = 0;
 	}

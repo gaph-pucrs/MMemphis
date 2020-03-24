@@ -30,12 +30,6 @@
 #define SDN_Y_CLUSTER_NUM		(YDIMENSION/SDN_YCLUSTER)
 #define	MAX_SDN_TASKS			(SDN_X_CLUSTER_NUM*SDN_Y_CLUSTER_NUM)
 
-#define QOS_XCLUSTER			XDIMENSION//XCLUSTER
-#define	QOS_YCLUSTER			YDIMENSION//YCLUSTER
-#define QOS_X_CLUSTER_NUM		(XDIMENSION/QOS_XCLUSTER)
-#define QOS_Y_CLUSTER_NUM		(YDIMENSION/QOS_YCLUSTER)
-#define	MAX_QOS_TASKS			(QOS_X_CLUSTER_NUM*QOS_Y_CLUSTER_NUM)
-
 /* Create the macros for your MA task
 #define MY_XCLUSTER			XCLUSTER
 #define	MY_YCLUSTER			YCLUSTER
@@ -204,9 +198,11 @@ void request_SDN_path(int source_addr, int target_addr, int subnet){
 
 	SendService(coordinator_task_ID, send_message, 6);
 
-	//putsv("Proc_address = ", net_address);
+	while(!NoCSendFree());
 
-	//Puts("\nPath request "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr));  Puts("\n");
+
+
+	Puts("\nPath request "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr));  Puts("\n");
 	//putsv("Start time: ", GetTick());
 }
 

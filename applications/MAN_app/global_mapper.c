@@ -8,10 +8,9 @@
 #include "mapping_includes/global_mapper/cluster_controller.h"
 
 
-#define 		MAX_MA_TASKS			(MAX_SDN_TASKS+MAX_MAPPING_TASKS+MAX_QOS_TASKS+1) //+1 Due Global mapper
+#define 		MAX_MA_TASKS			(MAX_SDN_TASKS+MAX_MAPPING_TASKS+1) //+1 Due Global mapper
 #define			MAPPING_TASK_REPO_ID	1
 #define			SDN_TASK_REPO_ID		2
-#define			QOS_TASK_REPO_ID		3
 
 //SDN Initial Keys
 #define			K1						0xF0DA
@@ -19,7 +18,6 @@
 
 unsigned char	sdn_ID_offset;
 unsigned char	map_ID_offset;
-unsigned char	qos_ID_offset;
 
 
 int ma_tasks_location[MAX_MA_TASKS];
@@ -121,7 +119,8 @@ void map_management_tasks(){
 				for(int xi = x_aux; xi < (x_aux+MAPPING_XCLUSTER); xi++){
 					for(int yi = y_aux; yi < (y_aux+MAPPING_YCLUSTER); yi++){
 						//Puts("Trying PE "); Puts(itoh(xi<<8|yi)); Puts("\n");
-						if (PE_usage[xi][yi] > 0){
+						//if (PE_usage[xi][yi] > 0){ //Maps task to PEs
+						if (PE_usage[xi][yi] == MAX_LOCAL_TASKS){ //One task per PE
 							x_aux = xi;
 							y_aux = yi;
 							xi = (x_aux+MAPPING_XCLUSTER); //Breaks the first loop
@@ -174,7 +173,8 @@ void map_management_tasks(){
 				for(int xi = x_aux; xi < (x_aux+SDN_XCLUSTER); xi++){
 					for(int yi = y_aux; yi < (y_aux+SDN_YCLUSTER); yi++){
 						//Puts("Trying PE "); Puts(itoh(xi<<8|yi)); Puts("\n");
-						if (PE_usage[xi][yi] > 0){
+						//if (PE_usage[xi][yi] > 0){
+						if (PE_usage[xi][yi] == MAX_LOCAL_TASKS){ //One task per PE
 							x_aux = xi;
 							y_aux = yi;
 							xi = (x_aux+SDN_XCLUSTER); //Breaks the first loop
@@ -211,57 +211,6 @@ void map_management_tasks(){
 		}
 	}
 
-
-	Puts("\nStarting QoS Manager instantiation\n");
-	qos_ID_offset = task_id;
-	for(int y=0; y<QOS_Y_CLUSTER_NUM; y++){
-		for(int x=0; x<QOS_X_CLUSTER_NUM; x++){
-
-			x_aux = (x*QOS_XCLUSTER);
-			y_aux = (y*QOS_YCLUSTER);
-
-			//Heuristic that tries to find a PE to the MA task
-			//Puts("PE "); Puts(itoh(x_aux<<8|y_aux)); Puts(" has free resources of "); Puts(itoa(PE_usage[x_aux][y_aux])); Puts("\n");
-			while(PE_usage[x_aux][y_aux] < 1){
-				for(int xi = x_aux; xi < (x_aux+QOS_XCLUSTER); xi++){
-					for(int yi = y_aux; yi < (y_aux+QOS_YCLUSTER); yi++){
-						//Puts("Trying PE "); Puts(itoh(xi<<8|yi)); Puts("\n");
-						if (PE_usage[xi][yi] > 0){
-							x_aux = xi;
-							y_aux = yi;
-							xi = (x_aux+QOS_XCLUSTER); //Breaks the first loop
-							break;
-						}
-					}
-				}
-			}
-
-			task_loc_aux = (x_aux << 8) | y_aux;
-
-			//Request to the injector to load the local_mapper inside the PEs
-			send_task_allocation_message(QOS_TASK_REPO_ID, task_id, task_loc_aux, 0);
-
-			//Remove one resource from the selected PE
-			PE_usage[x_aux][y_aux]--;
-
-			//Allocate cluster resources
-			cluster_index = get_cluster_index_from_PE(task_loc_aux);
-			allocate_cluster_resource(cluster_index, 1);
-
-			Puts("Task QoS id "); Puts(itoa(task_id)); Puts(" allocated at proc ");
-			Puts(itoh(task_loc_aux)); Puts("\n");
-
-			//Compose the full information of task location and stores into the array
-			task_loc_aux = (task_id << 16) | task_loc_aux;
-			ma_tasks_location[ma_task_index++] = task_loc_aux;
-
-			//Increments the task ID
-			task_id++;
-
-			//Decrements the total number of available resources of the system
-			total_mpsoc_resources--;
-		}
-	}
 	/* Implement your new MA task here
 	Puts("\nStarting MY MA instantiation\n");
 	Please follow the patters of SDN tasks, you need to:
@@ -328,12 +277,6 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 		//Embeds the k1 and k2 into the initialization packet to SDN controller with the initial keys. These keys will be used by the SDN controllers to update its keys
 		message[msg_size++] = K1;
 		message[msg_size++] = K2;
-
-	} else if (task_id >= qos_ID_offset && task_id < (qos_ID_offset+MAX_QOS_TASKS)){
-
-		Puts("QoS task ID: "); Puts(itoa(task_id)); Puts("\tinitialized at proc "); Puts(itoh(source_addr)); Puts("\n");
-
-		*offset_id_aux = (unsigned int) qos_ID_offset;
 
 		/* Add the following code to setup the offset_id_aux according to your task
 	} else if (task_id >= my_ID_offset && task_id < (my_ID_offset+MAX_MY_MA_TASKS)){
