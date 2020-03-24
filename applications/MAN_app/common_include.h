@@ -202,7 +202,7 @@ void request_SDN_path(int source_addr, int target_addr, int subnet){
 
 
 
-	Puts("\nPath request "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr));  Puts("\n");
+	//Puts("\nPath request "); Puts(itoh(source_addr)); Puts(" -> "); Puts(itoh(target_addr));  Puts("\n");
 	//putsv("Start time: ", GetTick());
 }
 

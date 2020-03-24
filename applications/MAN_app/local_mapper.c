@@ -110,14 +110,14 @@ void send_app_allocation_request(Application * app_ptr){
 /** Requests a new application to the global master kernel
  *  \param app Application to be requested
  */
-void request_application(Application *app){
+int request_application(Application *app){
 
 	Task *t;
 	int index_counter;
+	unsigned int master_addr, msg_size;
+	unsigned int * message;
 
-	Puts("\nRequest APP\n");
-
-	pending_app_control--;
+	//Puts("\nRequest APP\n");
 
 	index_counter = 0;
 
@@ -125,17 +125,39 @@ void request_application(Application *app){
 
 		t = &app->tasks[i];
 
-		if (t->allocated_proc == -1){
+		while (t->allocated_proc == -1){
 			Puts("ERROR task id not allocated: "); Puts(itoa(t->id)); Puts("\n");
-			while(1);
 		}
 
-		t->status = REQUESTED;
+		if (t->status == TASK_FREE){
 
+			t->status = REQUESTED;
+
+			master_addr = (my_task_ID << 16) | net_address;
+
+			msg_size = 0;
+			message = get_message_slot();
+			message[msg_size++] = APP_INJECTOR; //Destination
+			message[msg_size++] = 5; //Packet size
+			message[msg_size++] = APP_ALLOCATION_REQUEST; //Service
+			message[msg_size++] = t->id; //Repository task ID
+			message[msg_size++] = master_addr; //Master address
+			message[msg_size++] = t->allocated_proc;
+			message[msg_size++] = 0; //Real task id, when zero means to injector to ignore this flit. Otherwise, force the task ID to assume the specified ID value
+			//Send message to Peripheral
+			SendRaw(message, msg_size);
+			//Waits the packet to be sent
+			while(!NoCSendFree());
+
+			Puts("\nRequesting task "); Puts(itoa(t->id)); Puts(" at proc "); Puts(itoh(t->allocated_proc));
+			putsv(" at time ", GetTick());
+
+			return 1;
+		}
 	}
 
-	//Sends app allocation to Injector
-	send_app_allocation_request(app);
+	Puts("All task requested!\n");
+	return 0;
 
 }
 
@@ -225,7 +247,13 @@ void handle_pending_application(){
 
 		case READY_TO_LOAD:
 
+			pending_app_control--;
+
+			putsv("pending_app_control: ", pending_app_control);
+
 			request_application(app);
+
+			app->status = RUNNING;
 
 			/*if (cs_utilization_updated == CS_UTIL_OUTDATED){
 				request_cs_util_update();
@@ -258,8 +286,6 @@ void handle_new_app(unsigned int * msg){
 
 	//This variable control the pending apps, i.e., apps that are already handled but are not in execution
 	pending_app_control++;
-
-	application->status = WAITING_MAPPING;
 
 	handle_pending_application();
 
@@ -353,6 +379,10 @@ void handle_task_allocated(unsigned int task_id){
 	app_ptr = get_application_ptr(app_id);
 
 	allocated_tasks = set_task_allocated(app_ptr, task_id);
+
+	if (request_application(app_ptr)){
+		return;
+	}
 
 	if (allocated_tasks == app_ptr->tasks_number){
 
@@ -557,7 +587,7 @@ void main(){
 		//if (is_reclustering_NOT_active() && is_CS_not_active() && pending_app_control && !IncomingPacket() && NoCSendFree()){
 
 		//If there some app waiting, there is no incomming packet and the NI send is free then:
-		if (NoCSendFree() && is_reclustering_NOT_active() && is_CS_not_active() && cs_utilization_updated != CS_UTIL_REQUESTED && pending_app_control && !IncomingPacket() && NoCSendFree()){
+		if (pending_app_control && NoCSendFree() && is_reclustering_NOT_active() && is_CS_not_active() && cs_utilization_updated != CS_UTIL_REQUESTED && !IncomingPacket() && NoCSendFree()){
 
 			handle_pending_application();
 

@@ -275,6 +275,7 @@ Application * read_and_create_application(unsigned int app_id, unsigned int * re
 		tp->id = app_id << 8 | task_id;
 		tp->borrowed_master = -1;
 
+		tp->status = TASK_FREE;
 
 		/*Puts("Creating task: 	"); Puts(itoa( tp->id )); Puts("\n");
 		Puts("	allocated_proc: "); Puts(itoh( tp->allocated_proc )); Puts("\n");
@@ -298,6 +299,8 @@ Application * read_and_create_application(unsigned int app_id, unsigned int * re
 
 		}
 	}
+
+	app->status = WAITING_MAPPING;
 
 	return app;
 }
