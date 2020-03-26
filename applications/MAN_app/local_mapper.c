@@ -229,7 +229,7 @@ void handle_pending_application(){
 	Application *app = 0;
 	int complete = 0;
 
-	Puts("Handle next application \n");
+	//Puts("Handle next application \n");
 
 	/*Selects an application pending to be mapped due reclustering*/
 	app = get_next_pending_app();
@@ -310,7 +310,7 @@ void handle_pending_application(){
 
 			pending_app_control--;
 
-			putsv("pending_app_control: ", pending_app_control);
+			//putsv("pending_app_control: ", pending_app_control);
 
 			request_application2(app);
 

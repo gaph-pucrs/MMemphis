@@ -239,7 +239,7 @@ void send_task_terminated(TCB * terminated_task){
 	master_addr = terminated_task->master_address & 0xFFFF;
 	master_id = terminated_task->master_address >> 16;
 
-	puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
+	//puts("Sent task TERMINATED to "); puts(itoh(master_addr)); puts("\n");
 
 	if (master_addr == net_address){
 
@@ -264,10 +264,10 @@ unsigned int Rnd[UINT_KEY_SIZE];
 char Ke[UINT_KEY_SIZE*4];
 unsigned int M[UINT_KEY_SIZE];
 uint64_t Km;
-int secure_task_id = -1;
+int secure_app_id = -1;
 
 
-void handle_rnd_message(unsigned int task_id, unsigned int msg_size){
+void handle_rnd_message(unsigned int app_id, unsigned int msg_size){
 
 	DMNI_read_data((unsigned int)Rnd, msg_size);
 
@@ -283,7 +283,7 @@ void handle_rnd_message(unsigned int task_id, unsigned int msg_size){
 		puts("ERROR: secure task ID used\n");
 	}*/
 
-	secure_task_id = task_id;
+	secure_app_id = app_id;
 
 	puts("Rnd received\n");
 
@@ -291,7 +291,7 @@ void handle_rnd_message(unsigned int task_id, unsigned int msg_size){
 
 }
 
-void handle_m_message(unsigned int task_id, unsigned int msg_size){
+void handle_m_message(unsigned int app_id, unsigned int msg_size){
 	unsigned int Km_hi, Km_lo;
 	unsigned int Km_array[UINT_KEY_SIZE];
 

@@ -432,6 +432,40 @@ void handle_app_mapping_complete(unsigned int * msg){
 
 	Puts("\n******************************\nReceive APP_MAPPING_COMPLETE for app "); Puts(itoa(app_id)); putsv(" task number ", app_task_number);
 
+	//Allocated resources and sent the
+	if (app_secure){
+		int initialized_secure_pe[app_task_number];
+		int sec_pe_size = 0;
+
+		for(int i=0; i<app_task_number; i++)
+			initialized_secure_pe[i] = -1;
+
+		index = 4;
+		for(int i=0; i<app_task_number; i++){
+			int send_pkt = 1;
+
+			alloc_proc = msg[index + 2];
+			index = index + 4;
+
+			for(int k=0; k<sec_pe_size; k++){
+				//Otherwise, if the pe to sent the packet was already initialized, avoid it, and break this for
+				if (initialized_secure_pe[k] == alloc_proc){
+					send_pkt = 0;
+					break;
+				}
+			}
+
+			if (send_pkt){
+				initialized_secure_pe[sec_pe_size] = alloc_proc;
+				sec_pe_size++;
+				manage_secure_allocation(app_id, alloc_proc);
+				Puts("Sending KE to PE "); Puts(itoh(alloc_proc)); Puts("\n");
+			}
+
+		}
+	}
+
+
 	index = 4;
 	for(int i=0; i<app_task_number; i++){
 
@@ -445,12 +479,6 @@ void handle_app_mapping_complete(unsigned int * msg){
 		allocate_cluster_resource(cluster_index, 1);
 
 		send_task_allocation_message(task_id, 0, alloc_proc, master_addr);
-
-
-		if (app_secure){
-			//Generate and sent the pseudo random number
-			//manage_secure_allocation(task_id, alloc_proc);
-		}
 
 	}
 

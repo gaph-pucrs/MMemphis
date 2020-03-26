@@ -115,7 +115,7 @@ uint64_t le64toh(uint64_t x){
 
 /************************************ csiphash **************************************/
 
-void send_key(unsigned int * key, unsigned int service, unsigned int target_slave, unsigned int task_id){
+void send_key(unsigned int * key, unsigned int service, unsigned int target_slave, unsigned int app_id){
 	unsigned int * message;
 	int msg_size = 0, key_int_size=0, value;
 
@@ -123,7 +123,7 @@ void send_key(unsigned int * key, unsigned int service, unsigned int target_slav
 	message[0] = target_slave; //flit 0 header
 	message[1] = 3; 		   //flit 1 payload size
 	message[2] = service;	   //flit 2 service
-	message[3] = task_id;	   //flit 3 task_ID
+	message[3] = app_id;	   //flit 3 task_ID
 
 	msg_size = 13; //CONSTANT_PKT_SIZE defined into packet.h
 	for(int i=0; i<UINT_KEY_SIZE; i++){
@@ -140,7 +140,7 @@ void send_key(unsigned int * key, unsigned int service, unsigned int target_slav
 
 
 
-void manage_secure_allocation(unsigned int task_id, unsigned int alloc_proc){
+void manage_secure_allocation(unsigned int app_id, unsigned int alloc_proc){
 	uint64_t Km_output;
 	unsigned int M[UINT_KEY_SIZE];
 	unsigned int Km[UINT_KEY_SIZE];
@@ -148,8 +148,8 @@ void manage_secure_allocation(unsigned int task_id, unsigned int alloc_proc){
 
 
 	//Send Rnd
-	send_key(Rnd, RND_MESSAGE, alloc_proc, task_id);
-	Puts("Sent RND to "); Puts(itoh(alloc_proc)); Puts("\n");
+	send_key(Rnd, RND_MESSAGE, alloc_proc, app_id);
+	//Puts("Sent RND to "); Puts(itoh(alloc_proc)); Puts("\n");
 
 
 	Km_output = siphash24((void *)Rnd, UINT_KEY_SIZE*4, Rnd);
@@ -193,8 +193,8 @@ void manage_secure_allocation(unsigned int task_id, unsigned int alloc_proc){
 	Puts("}\n");*/
 
 	//Send M
-	send_key(M, M_MESSAGE, alloc_proc, task_id);
-	Puts("Sent M to "); Puts(itoh(alloc_proc)); Puts("\n");
+	send_key(M, M_MESSAGE, alloc_proc, app_id);
+	//Puts("Sent M to "); Puts(itoh(alloc_proc)); Puts("\n");
 
 }
 
