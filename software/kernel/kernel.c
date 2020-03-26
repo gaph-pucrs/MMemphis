@@ -305,6 +305,7 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case APP_TERMINATED:
 	case TASK_TERMINATED_OTHER_CLUSTER:
 	case APP_ALLOCATED:
+	case APP_MAPPING_COMPLETE:
 	case NEW_APP_REQ:
 	case NEW_APP:
 	case INIT_I_AM_ALIVE:
@@ -354,6 +355,17 @@ int handle_packet(volatile ServiceHeader * p, unsigned int subnet) {
 	case NOC_SWITCHING_PRODUCER_ACK:
 
 		handle_dynamic_CS_setup(p);
+
+		break;
+
+	case RND_MESSAGE:
+
+		handle_rnd_message(p->task_ID, p->msg_lenght);
+
+		break;
+	case M_MESSAGE:
+
+		handle_m_message(p->task_ID, p->msg_lenght);
 
 		break;
 

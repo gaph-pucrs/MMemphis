@@ -20,7 +20,8 @@
 #define 	TASK_ALLOCATED     				0x00000050 //Mapping: 				   	Message sent from a slave PE to the LM (Local Mapper), reporting the it receives the TASK_ALLOCATION message and the task was loaded into the memory
 #define 	TASK_TERMINATED     			0x00000070 //Mapping: 				   	Message sent from a slave PE to the LM when a user's task finishes it execution
 #define 	LOAN_PROCESSOR_RELEASE			0x00000090 //Mapping (Reclustering): 	Message sent from an LM to other LM releasing a borrowed resource (a resource is a memory page in Memphis)
-#define 	APP_ALLOCATED					0x00000120 //Mapping:					Message sent from an LM to GM (Global Mapper) informing that the application was successfully mapped and loaded into the slave PEs
+#define		APP_MAPPING_COMPLETE			0x00000120 //Mapping:					Message sent from an LM to GM informing that the application was successfully mapped
+#define 	APP_ALLOCATED					0x00000130 //Mapping:					Message sent from an LM to GM (Global Mapper) informing that the application was successfully loaded into the slave PEs
 #define	 	APP_TERMINATED					0x00000140 //Mapping:					Message sent from an LM to GM informing that all tasks of a given application already finished its execution
 #define		NEW_APP							0x00000150 //Mapping:					Message sent from AppInjector to LM containing the application description, i.e, the information of all tasks of the new application requested to be allocated into the LM cluster
 #define		INITIALIZE_SLAVE				0x00000170 //TODO Boot:					Message sent from LM to slaves PEs informing that it is the LM of the current slave PE
@@ -54,7 +55,7 @@
 #define		SET_INITIAL_CS_CONSUMER			0x00000405 //QoS/Security (Circuit-Switching):	Message sent from the producer task configuring the CS of the consumer task
 #define		SET_INITIAL_CS_ACK				0x00000410 //QoS/Security (Circuit-Switching):  Message sent from the consumer task to the Manager, acknowledging the protocol of initial CS setup
 #define 	LEARNED_TASK_PROFILE			0x00000420 //DAPE(Dynamic App. Profiling Extraction): Message	sent from slave PE to the DATE manager updating the profiling of a given task
-#define		APP_MAPPING_COMPLETE			0x00000440 //Mapping:					Message sent from GM to AppInjector notifying that current application was mapped and AppInjector can send a new application request if it exists
+#define		APP_ALLOCATION_COMPLETE			0x00000440 //Mapping:					Message sent from GM to AppInjector notifying that current application was mapped and loaded and AppInjector can send a new application request if it exists
 
 /*Management Application Services*/
 #define		INIT_I_AM_ALIVE					0x00000450 //Management Task:			Message sent from an MA task to GM notifying that it was successfully loaded into a given PE
@@ -83,6 +84,12 @@
 
 #define 	SET_CS_ROUTER					0x00001025 //This service is never used, it only exist to allows the Deloream (Graphical Debugger) correctly represent the CS routers setup
 #define 	SET_CS_ROUTER_ACK				0x00001026 //Message sent by the source kernel of the path to the manager, notifying about the end of the physical path configuration
+
+
+/*Security Services*/
+#define		RND_MESSAGE						0x00001100 //Security: Message sent from GM to slave PE of the task informing the Rnd - a pseudo random number
+#define		M_MESSAGE						0x00001110 //Security: Message sent from GM to slave PE of the task informing the M key - a xor results between Rnd and Ke
+
 
 #define		SET_KEY							0 //Important to not cause error into graphical debugger
 #endif

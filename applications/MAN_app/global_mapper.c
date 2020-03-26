@@ -6,6 +6,7 @@
  */
 #include "common_include.h"
 #include "mapping_includes/global_mapper/cluster_controller.h"
+#include "mapping_includes/global_mapper/security.h"
 
 
 #define 		MAX_MA_TASKS			(MAX_SDN_TASKS+MAX_MAPPING_TASKS+1) //+1 Due Global mapper
@@ -18,6 +19,7 @@
 
 unsigned char	sdn_ID_offset;
 unsigned char	map_ID_offset;
+
 
 
 int ma_tasks_location[MAX_MA_TASKS];
@@ -304,7 +306,7 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 		message = get_message_slot();
 		message[0] = APP_INJECTOR;
 		message[1] = 2;//Payload should be 1, but is 2 in order to turn around a corner case in traffic monitor of Deloream for packets with payload 1
-		message[2] = APP_MAPPING_COMPLETE;
+		message[2] = APP_ALLOCATION_COMPLETE;
 		SendRaw(message, 4);
 
 		while(!NoCSendFree());
@@ -419,26 +421,59 @@ void handle_app_terminated(unsigned int *msg){
 	}
 }
 
-void handle_app_allocated(unsigned int * msg){
-	unsigned int cluster_index, index, app_task_number;
-	unsigned int * message;
 
-	putsv("\n******************************\nReceive APP_ALLOCATED for app ", msg[1]);
+void handle_app_mapping_complete(unsigned int * msg){
+	unsigned int cluster_index, index, app_task_number, app_id, app_secure;
+	unsigned int task_id, master_addr, alloc_proc, cluster_position;
+
+	app_id 			= msg[1];
 	app_task_number = msg[2];
+	app_secure 		= msg[3];
 
-	index = 3;
+	Puts("\n******************************\nReceive APP_MAPPING_COMPLETE for app "); Puts(itoa(app_id)); putsv(" task number ", app_task_number);
+
+	index = 4;
 	for(int i=0; i<app_task_number; i++){
-		cluster_index = get_local_mapper_index(msg[index++]);
-		Puts("Task "); Puts(itoa(msg[1] << 8 | i)); Puts(" to cluster "); Puts(itoh(msg[index-1])); Puts("\n");
+
+		task_id = msg[index++];
+		master_addr = msg[index++];
+		alloc_proc = msg[index++];
+		cluster_position = msg[index++];
+
+		cluster_index = get_local_mapper_index(cluster_position);
+		Puts("Task "); Puts(itoa(task_id)); Puts(" allocated to "); Puts(itoh(alloc_proc)); Puts(" to cluster "); Puts(itoh(cluster_position)); Puts("\n");
 		allocate_cluster_resource(cluster_index, 1);
+
+		send_task_allocation_message(task_id, 0, alloc_proc, master_addr);
+
+
+		if (app_secure){
+			//Generate and sent the pseudo random number
+			//manage_secure_allocation(task_id, alloc_proc);
+		}
+
 	}
+
+	Puts("Loading APP into PEs...\n");
+
+	//TODO: Pseudo Random NUmber e envia para os slaves
+		//E tambem faça o SIPHASH do PRN, obtendo o Km e envio e Ke para os slaves do CTP.
+		//Quando os slaves do CTP recebem o TASK_ALLOCATION eles devem comprarar esses valores com os gerados pelo codigo obj
+
+
+
+}
+
+
+void handle_app_allocated(){
+	unsigned int * message;
 
 	message = get_message_slot();
 	message[0] = APP_INJECTOR;
 	message[1] = 2; //Payload should be 1, but is 2 in order to turn around a corner case in traffic monitor of Deloream for packets with payload 1
-	message[2] = APP_MAPPING_COMPLETE; //Service
+	message[2] = APP_ALLOCATION_COMPLETE; //Service
 	SendRaw(message, 4);
-	Puts("Sent APP_MAPPING_COMPLETE\n");
+	Puts("App allocation completed!\n\n");
 
 }
 
@@ -450,6 +485,9 @@ void handle_message(unsigned int * data_msg){
 			break;
 		case NEW_APP_REQ:
 			handle_new_app_req(data_msg[1], data_msg[2]);
+			break;
+		case APP_MAPPING_COMPLETE:
+			handle_app_mapping_complete(data_msg);
 			break;
 		case APP_ALLOCATED:
 			handle_app_allocated(data_msg);

@@ -91,7 +91,7 @@ void request_connection(Application * app){
 		ct_index = 0;
 	}
 
-	Puts("CS complete - app READY_TO_LOAD\n\n");
+	Puts("SDN complete - app READY_TO_LOAD\n\n");
 	app->status = READY_TO_LOAD;
 
 	//If there is no more CTP usng PS_SUBNET

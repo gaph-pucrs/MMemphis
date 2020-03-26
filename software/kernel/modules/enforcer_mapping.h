@@ -43,7 +43,7 @@ void clear_app_tasks_locations(int);
 
 void set_task_release(unsigned int, char);
 
-void send_task_allocated(TCB *);
+void send_task_allocated(TCB *, int);
 
 void send_task_terminated(TCB *);
 

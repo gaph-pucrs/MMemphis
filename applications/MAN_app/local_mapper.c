@@ -67,45 +67,103 @@ void initialize_local_mapper(unsigned int * msg){
 	Puts("Local Mapper initialized!!!!!!\n\n");
 }
 
-/** Assembles and sends a APP_ALLOCATION_REQUEST packet to the global master
- *  \param app The Application instance
- *  \param task_info An array containing relevant task informations
- */
-void send_app_allocation_request(Application * app_ptr){
 
-	Task * task_ptr;
-	unsigned int master_addr, msg_size;
+void request_application2(Application *app){
+
+	Task *t;
+	int index_counter;
+	unsigned int master_allocation, msg_size;
 	unsigned int * message;
 
+	//Puts("\nRequest APP\n");
 
-	master_addr = (my_task_ID << 16) | net_address;
-
-	message = get_message_slot();
+	index_counter = 0;
 	msg_size = 0;
-	//Asembles the packet
-	for(int task = 0; task < app_ptr->tasks_number; task++){
 
-		task_ptr = &app_ptr->tasks[task];
+	//Master addr composition used by the APP_INJECTOR to send the task
+	master_allocation = (my_task_ID << 16) | GetNetAddress();
 
-		while(!NoCSendFree());
+	msg_size = 0;
+	message = get_message_slot();
+	message[msg_size++] = APP_MAPPING_COMPLETE;
+	message[msg_size++] = app->app_ID;
+	message[msg_size++] = app->tasks_number;
+	message[msg_size++] = app->is_secure;
+
+	//Next flits are a set: {task ID, master_allocation, alooc_proc, cluster_index
+	for (int i=0; i<app->tasks_number; i++){
+
+		t = &app->tasks[i];
+
+		while (t->allocated_proc == -1){
+			Puts("ERROR task id not allocated: "); Puts(itoa(t->id)); Puts("\n");
+		}
+
+		message[msg_size++] = t->id;
+		message[msg_size++] = master_allocation;
+		message[msg_size++] = t->allocated_proc;
+		if (t->borrowed_master == -1){
+			message[msg_size++] = cluster_position;
+		} else {
+			message[msg_size++] = t->borrowed_master;
+		}
+
+	}
+
+	SendService(global_task_ID, message, msg_size);
+
+	Puts("Send APP_MAPPING_COMPLETE\n");
+
+	//Waits the packet to be sent
+	//while(!NoCSendFree());
+
+/*
 
 		message[msg_size++] = APP_INJECTOR; //Destination
 		message[msg_size++] = 5; //Packet size
 		message[msg_size++] = APP_ALLOCATION_REQUEST; //Service
-		message[msg_size++] = task_ptr->id; //Repository task ID
-		message[msg_size++] = master_addr; //Master address
-		message[msg_size++] = task_ptr->allocated_proc;
+		message[msg_size++] = t->id; //Repository task ID
+		message[msg_size++] = master_allocation; //Master address
+		message[msg_size++] = t->allocated_proc;
 		message[msg_size++] = 0; //Real task id, when zero means to injector to ignore this flit. Otherwise, force the task ID to assume the specified ID value
+		//Send message to Peripheral
+		SendRaw(message, msg_size);
+		//Waits the packet to be sent
+		while(!NoCSendFree());
 
+		putsv("Master addr: ", master_allocation);
+
+		Puts("\nRequesting task "); Puts(itoa(t->id)); Puts(" at proc "); Puts(itoh(t->allocated_proc));
+		putsv(" at time ", GetTick());
+
+		return 1;
+
+
+
+		message[0] = APP_ALLOCATED;
+		message[1] = app_ptr->app_ID;
+		message[2] = app_ptr->tasks_number;
+		msg_size = 3;
+		for(int task = 0; task < app_ptr->tasks_number; task++){
+			task_ptr = &app_ptr->tasks[task];
+
+			if (task_ptr->borrowed_master == -1){
+				message[msg_size++] = cluster_position;
+			} else {
+				message[msg_size++] = task_ptr->borrowed_master;
+			}
+			putsv("Master addr2: ", message[msg_size-1]);
+			//Puts("Task "); Puts(itoa(task_ptr->id)); Puts(" to cluster "); Puts(itoh(message[msg_size-1])); Puts("\n");
+		}
 	}
-	//Send message to Peripheral
-	SendRaw(message, msg_size);
 
-	//TODO: aqui deveria enviar uma mensagem para o GM, para que ele gere o Pseudo Random NUmber e envia para os slaves do CTp
-	//E tambem faça o SIPHASH do PRN, obtendo o Km e envio e Ke para os slaves do CTP.
-	//Quando os slaves do CTP recebem o TASK_ALLOCATION eles devem comprarar esses valores com os gerados pelo codigo obj
+	Puts("All task requested!\n");
+
+	return 0;*/
 
 }
+
+
 
 /** Requests a new application to the global master kernel
  *  \param app Application to be requested
@@ -133,7 +191,7 @@ int request_application(Application *app){
 
 			t->status = REQUESTED;
 
-			master_addr = (my_task_ID << 16) | net_address;
+			master_addr = (my_task_ID << 16) | GetNetAddress();
 
 			msg_size = 0;
 			message = get_message_slot();
@@ -149,6 +207,8 @@ int request_application(Application *app){
 			//Waits the packet to be sent
 			while(!NoCSendFree());
 
+			putsv("Master addr: ", master_addr);
+
 			Puts("\nRequesting task "); Puts(itoa(t->id)); Puts(" at proc "); Puts(itoh(t->allocated_proc));
 			putsv(" at time ", GetTick());
 
@@ -157,6 +217,7 @@ int request_application(Application *app){
 	}
 
 	Puts("All task requested!\n");
+
 	return 0;
 
 }
@@ -240,7 +301,7 @@ void handle_pending_application(){
 
 		case WAITING_CIRCUIT_SWITCHING:
 
-			Puts("\nInit CS establishment protocol...\n\n");
+			Puts("\nInit SDN establishment protocol...\n");
 			request_connection(app);
 
 			break;
@@ -251,7 +312,7 @@ void handle_pending_application(){
 
 			putsv("pending_app_control: ", pending_app_control);
 
-			request_application(app);
+			request_application2(app);
 
 			app->status = RUNNING;
 
@@ -350,39 +411,28 @@ void send_app_allocated(Application * app_ptr){
 	message = get_message_slot();
 	message[0] = APP_ALLOCATED;
 	message[1] = app_ptr->app_ID;
-	message[2] = app_ptr->tasks_number;
-	msg_size = 3;
-	for(int task = 0; task < app_ptr->tasks_number; task++){
-		task_ptr = &app_ptr->tasks[task];
-
-		if (task_ptr->borrowed_master == -1){
-			message[msg_size++] = cluster_position;
-		} else {
-			message[msg_size++] = task_ptr->borrowed_master;
-		}
-		//Puts("Task "); Puts(itoa(task_ptr->id)); Puts(" to cluster "); Puts(itoh(message[msg_size-1])); Puts("\n");
-	}
-	SendService(global_task_ID, message, msg_size);
-	Puts("APP_ALLOCATED sent\n");
+	SendService(global_task_ID, message, 2);
+	putsv("APP_ALLOCATED sent ", app_ptr->app_ID);
 	/****************************************************/
 }
 
-void handle_task_allocated(unsigned int task_id){
+void handle_task_allocated(unsigned int task_id, unsigned int security_allocation){
 
 	unsigned int app_id, allocated_tasks;
 	Application * app_ptr;
 
 	putsv("-> TASK ALLOCATED from task ", task_id);
 
+	if (security_allocation)
+		Puts("\ttrusted task\n");
+	else
+		Puts("\tmalicious task - canceling the app allocation\n");
+
 	app_id = task_id >> 8;
 
 	app_ptr = get_application_ptr(app_id);
 
 	allocated_tasks = set_task_allocated(app_ptr, task_id);
-
-	if (request_application(app_ptr)){
-		return;
-	}
 
 	if (allocated_tasks == app_ptr->tasks_number){
 
@@ -521,7 +571,7 @@ void handle_message(unsigned int * data_msg){
 			handle_new_app(data_msg);
 			break;
 		case TASK_ALLOCATED:
-			handle_task_allocated(data_msg[1]);
+			handle_task_allocated(data_msg[1], data_msg[2]);
 			break;
 		case TASK_TERMINATED:
 			handle_task_terminated(data_msg[1], data_msg[2]);

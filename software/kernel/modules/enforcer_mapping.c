@@ -190,7 +190,7 @@ void set_task_release(unsigned int source_addr, char from_noc){
 /** Assembles and sends a TASK_ALLOCATED packet to the master kernel
  *  \param allocated_task Allocated task TCB pointer
  */
-void send_task_allocated(TCB * allocated_task){
+void send_task_allocated(TCB * allocated_task, int secure_allocation){
 
 	unsigned int master_addr, master_task_id;
 	unsigned int message[2];
@@ -202,20 +202,23 @@ void send_task_allocated(TCB * allocated_task){
 
 	message[0] = TASK_ALLOCATED;
 	message[1] = allocated_task->id;
+	message[2] = secure_allocation;
 
 	if (master_addr == net_address){
 
 		//puts("Escrita local: send_task_allocated\n");
-		write_local_service_to_MA(master_task_id, message, 2);
+		write_local_service_to_MA(master_task_id, message, 3);
 
 	} else {
 
-		send_service_to_MA(master_task_id, master_addr, message, 2);
+		send_service_to_MA(master_task_id, master_addr, message, 3);
 
 		while(HAL_is_send_active(PS_SUBNET));
 
 		//puts("Sending task allocated\n");
 	}
+
+	putsv("Sending TASK_ALLOCATED for task ", allocated_task->id);
 
 }
 
@@ -255,11 +258,98 @@ void send_task_terminated(TCB * terminated_task){
 
 }
 
+#define UINT_KEY_SIZE	4
+
+unsigned int Rnd[UINT_KEY_SIZE];
+char Ke[UINT_KEY_SIZE*4];
+unsigned int M[UINT_KEY_SIZE];
+uint64_t Km;
+int secure_task_id = -1;
+
+
+void handle_rnd_message(unsigned int task_id, unsigned int msg_size){
+
+	DMNI_read_data((unsigned int)Rnd, msg_size);
+
+	/*puts("RND = {");
+	for(int i=0; i<UINT_KEY_SIZE; i++){
+		puts(itoh(Rnd[i])); puts(", ");
+	}
+	puts("}\n");*/
+
+	Km = siphash24((void *) Rnd , UINT_KEY_SIZE*4, Rnd);
+
+	/*while (secure_task_id != -1){
+		puts("ERROR: secure task ID used\n");
+	}*/
+
+	secure_task_id = task_id;
+
+	puts("Rnd received\n");
+
+	//puts("end\n");
+
+}
+
+void handle_m_message(unsigned int task_id, unsigned int msg_size){
+	unsigned int Km_hi, Km_lo;
+	unsigned int Km_array[UINT_KEY_SIZE];
+
+	DMNI_read_data((unsigned int)M, msg_size);
+
+	/*while (task_id != secure_task_id){
+		puts("ERROR: secure task ID diferent, M message\n");
+	}*/
+
+	/*puts("M = {");
+	for(int i=0; i<UINT_KEY_SIZE; i++){
+		puts(itoh(M[i])); puts(", ");
+	}
+	puts("}\n");*/
+
+	Km_hi = Km >> 32;
+	Km_lo = Km & 0xFFFFFFFF;
+
+	//puts("Received Km hi:"); puts(itoh(Km_hi)); puts("\n");
+	//puts("Received Km lo:"); puts(itoh(Km_lo)); puts("\n");
+
+	Km_array[0] = Km_hi;
+	Km_array[1] = Km_lo;
+	Km_array[2] = Km_hi;
+	Km_array[3] = Km_lo;
+
+	int i_ke = 0;
+	for(int i=0; i<UINT_KEY_SIZE; i++){
+		const unsigned int word = Km_array[i] ^ M[i];
+		//puts(itoh(word)); puts("\n");
+
+		Ke[i_ke++] = (char) (word >> 24);
+		Ke[i_ke++] = (char) ((word & 0xFF0000) >> 16);
+		Ke[i_ke++] = (char) ((word & 0xFF00) >> 8);
+		Ke[i_ke++] = (char) (word & 0xFF);
+	}
+
+	/*puts("KE = {");
+	for(int i=0; i<UINT_KEY_SIZE*4; i++){
+		puts(itoh((int)Ke[i])); puts(", ");
+	}
+	puts("}\n");*/
+
+	puts("M received\n\n");
+
+}
+
+
+void autheticate_task(unsigned int task_id){
+	searchTCB(task_id);
+}
+
 void handle_task_allocation(volatile ServiceHeader * pkt){
 
 	TCB * tcb_ptr;
 	unsigned int code_lenght;
 	volatile unsigned int * bss_ptr;
+	int security_check;
 
 	tcb_ptr = search_free_TCB();
 
@@ -300,46 +390,53 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 		tcb_ptr->scheduling_ptr->status = READY;
 	} else { //For others task
 		tcb_ptr->scheduling_ptr->status = BLOCKED;
-		send_task_allocated(tcb_ptr);
-	}
 
-	if (pkt->is_secure_task){
+		security_check = 0;
 
-		//Secure context variables
-		uint64_t calculated_hash, received_hash, *ptr_rcv, Km;
-		unsigned int  lo, hi;
-		char Rnd[16] = {0,1,2,3,4,5,6,7,8,9,0xa,0xb,0xc,0xd,0xe,0xf};
+		if (pkt->is_secure_task){
 
-		//Remove the size of code lenght size the last two words are keys and not useful code
-		code_lenght = code_lenght - 2;
-		tcb_ptr->text_lenght = code_lenght;
+			//Secure context variables
+			uint64_t calculated_hash, received_hash, *ptr_rcv, Km;
+			unsigned int  lo, hi;
 
-		puts("The App. is SECURE\n");
+			//Remove the size of code lenght size the last two words are keys and not useful code
+			code_lenght = code_lenght - 2;
+			tcb_ptr->text_lenght = code_lenght;
 
-		//putsv("Init MAC - ", HAL_get_tick());
-		calculated_hash = siphash24((void *)tcb_ptr->offset, code_lenght*4, Rnd);
+			puts("The App. is SECURE\n");
 
-		ptr_rcv = (uint64_t *)(tcb_ptr->offset + (code_lenght*4));
-		received_hash =  *ptr_rcv;
+			//putsv("Init MAC - ", HAL_get_tick());
+			calculated_hash = siphash24((void *)tcb_ptr->offset, code_lenght*4, Ke);
 
-		hi = calculated_hash >> 32;
-		lo = calculated_hash & 0xFFFFFFFF;
+			ptr_rcv = (uint64_t *)(tcb_ptr->offset + (code_lenght*4));
+			received_hash =  *ptr_rcv;
 
-		puts("Calculated hash hi:"); puts(itoh(hi)); puts("\n");
-		puts("Calculated hash lo:"); puts(itoh(lo)); puts("\n");
+			hi = calculated_hash >> 32;
+			lo = calculated_hash & 0xFFFFFFFF;
 
-		hi = received_hash >> 32;
-		lo = received_hash & 0xFFFFFFFF;
+			puts("Calculated hash hi:"); puts(itoh(hi)); puts("\n");
+			puts("Calculated hash lo:"); puts(itoh(lo)); puts("\n");
 
-		puts("  Received hash hi:"); puts(itoh(hi)); puts("\n");
-		puts("  Received hash lo:"); puts(itoh(lo)); puts("\n");
-		puts("Address MAC: "); puts(itoh(ptr_rcv)); puts("\n");
+			hi = received_hash >> 32;
+			lo = received_hash & 0xFFFFFFFF;
 
-		//This line is not more necessary because the for below that clean the BSS regions alread do that
-		//*ptr_rcv = 0; //Set zero in the fields of ciphash since it belongs to BSS region
+			puts("  Received hash hi:"); puts(itoh(hi)); puts("\n");
+			puts("  Received hash lo:"); puts(itoh(lo)); puts("\n");
+			//puts("Address MAC: "); puts(itoh(ptr_rcv)); puts("\n");
 
-	} else {
-		puts("The App. is NOT SECURE\n");
+			if (calculated_hash == received_hash){
+				security_check = 1;
+			}
+
+			//This line is not more necessary because the for below that clean the BSS regions alread do that
+			//*ptr_rcv = 0; //Set zero in the fields of ciphash since it belongs to BSS region
+
+		} else {
+			puts("The App. is NOT SECURE\n");
+		}
+
+		send_task_allocated(tcb_ptr, security_check);
+
 	}
 
 	//Clean the BSS memory region in order to avoid task to use trash from other tasks

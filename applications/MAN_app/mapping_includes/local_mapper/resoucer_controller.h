@@ -58,7 +58,8 @@ void page_released(int proc_address, int task_ID){
 
 #if 1
 
-int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_list, int secure_app){
+//VERSAO ANTES DA CONVERSA COM O CAIMI
+/*int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_list, int secure_app){
 	int max_manhatam, initial_app_pe, intial_pe_index;
 	int man_sum, man_curr;
 	int xi, yi, xj, yj;
@@ -107,7 +108,6 @@ int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_li
 					//Computes the manhatam distance
 					man_curr = (abs(xi - xj) + abs(yi - yj));
 
-
 					//Puts("Distance to initial: "); Puts(itoh(initial_pe_list[j])); putsv(" = ",man_curr);
 					man_sum = man_sum + man_curr;
 				}
@@ -116,6 +116,90 @@ int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_li
 
 				if (man_sum > max_manhatam){
 					max_manhatam = man_sum;
+					initial_app_pe = proc_addr;
+					intial_pe_index = i;
+					//Puts("PE selected\n");
+				}
+			}
+
+		}
+
+	} else {
+		//The first initial PE is manually sected at the top left corner
+		initial_app_pe = (cluster_x_offset + MAPPING_XCLUSTER - 1) << 8 | (cluster_y_offset + MAPPING_YCLUSTER -1);
+		Puts("Very first time\n");
+	}
+
+	if (intial_pe_index != -1){
+		valid_pe_list[intial_pe_index] = 0;
+		//putsv("Excluded PE index: ", intial_pe_index);
+		//putsv("Excluded addr: ", get_proc_address(intial_pe_index));
+	}
+
+	Puts("SELECTED initial addr: "); Puts(itoh(initial_app_pe)); Puts("\n");
+
+	return initial_app_pe;
+}*/
+
+
+int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_list, int secure_app){
+	int max_manhatam, initial_app_pe, intial_pe_index;
+	int man_curr, lest_man;
+	int xi, yi, xj, yj;
+	int proc_addr;
+
+	//Puts("\nselect_initial_PE\n");
+
+	max_manhatam = -1;
+	initial_app_pe = -1;
+	intial_pe_index = -1;
+
+	Puts("\n----------------------------\n");
+
+	if (initial_size){
+
+		//For each free PE of the cluster
+		for(int i=0; i<MAX_PROCESSORS; i++){
+
+			//putsv("Testing index = ", i);
+
+			//Tests if the selected PE is a excluded PE
+			if (valid_pe_list[i] == 0){
+				//Puts("Address excluded: "); Puts(itoh(get_proc_address(i))); Puts("\n");
+				continue;
+			}
+
+			proc_addr = get_proc_address(i);
+
+			//Puts("\nCandidato address: "); Puts(itoh(proc_addr)); Puts("\n");
+
+			//So considera um PE que esta vazio em caso de app. segura, ou qualquer PE que possui um espaco vazio, caso de app nao segura
+			if( (secure_app && get_proc_free_pages(proc_addr) == MAX_LOCAL_TASKS) || ( !secure_app && get_proc_free_pages(proc_addr) > 0) ){
+
+				//Puts("Proc entrou\n");
+
+				lest_man = -1;
+
+				xi = proc_addr >> 8;
+				yi = proc_addr & 0xFF;
+				//For each initial_PE compute  the avg manhatam from the proc_addr
+				for(int j=0; j<initial_size; j++){
+
+					xj = initial_pe_list[j] >> 8;
+					yj = initial_pe_list[j] & 0xFF;
+
+					//Computes the manhatam distance
+					man_curr = (abs(xi - xj) + abs(yi - yj));
+
+					if (lest_man == -1 || lest_man > man_curr){
+						lest_man = man_curr;
+						//Puts("Least to initial: "); Puts(itoh(initial_pe_list[j])); putsv(" = ", lest_man);
+					}
+
+				}
+
+				if (lest_man > max_manhatam){
+					max_manhatam = lest_man;
 					initial_app_pe = proc_addr;
 					intial_pe_index = i;
 					//Puts("PE selected\n");
@@ -204,7 +288,7 @@ int application_mapping(Application * app){
 
 	if (app->is_secure){
 
-		Puts("\nApp is secure, starting heuristics...\n");
+		//Puts("\nApp is secure, starting heuristics...\n");
 
 		//Computes the utilization threshold based on the bounding box
 		bb_utilization_TH = PORT_NUMBER * CS_NETS;
@@ -236,12 +320,12 @@ int application_mapping(Application * app){
 
 				//Case the diamind search cannot find any free PE to the secure task, the mapping return zero
 				if (mapped_addr == -1){
-					Puts("Returning zero, not resource available\n");
+					Puts("Returning zero, none resource available\n");
 					return 0;
 
 				} else {
 
-					Puts("Task "); Puts(itoa(t->id)); Puts(" mapped to "); Puts(itoh(mapped_addr)); Puts("\n");
+					//Puts("Task "); Puts(itoa(t->id)); Puts(" mapped to "); Puts(itoh(mapped_addr)); Puts("\n");
 					t->allocated_proc = mapped_addr;
 					page_used(mapped_addr, t->id);
 
@@ -281,7 +365,7 @@ int application_mapping(Application * app){
 
 			/*################## STEP 3 - TEST IF THE UTILIZATION FILLS THE THRESHOLD OR IS BETTER THAN REFERENCE ####################### */
 
-			putsv("\nRef BB util: ", ref_bb_utilization);
+			//putsv("\nRef BB util: ", ref_bb_utilization);
 			putsv("Computed BB util: ", current_bb_utilization);
 
 
@@ -315,7 +399,7 @@ int application_mapping(Application * app){
 			if (current_bb_utilization > ref_bb_utilization){
 				ref_bb_utilization = current_bb_utilization;
 				ref_initial_address = initial_app_pe;
-				Puts("Better util\n");
+				Puts("BETTER util\n");
 
 			}
 

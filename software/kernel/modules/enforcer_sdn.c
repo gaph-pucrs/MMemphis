@@ -382,6 +382,9 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 
 		tcb_ptr = searchTCB(p->producer_task);
 
+		while(tcb_ptr == 0)
+			putsv("ERROR: Task ID not found: ", p->producer_task);
+
 		//Gets the task ID
 		master_id = tcb_ptr->master_address >> 16;
 		//Gets the task localion
@@ -419,6 +422,9 @@ void handle_dynamic_CS_setup(volatile ServiceHeader * p){
 	case SET_INITIAL_CS_CONSUMER:
 
 		tcb_ptr = searchTCB(p->consumer_task);
+
+		while(tcb_ptr == 0)
+			putsv("ERROR: Task ID not found: ", p->consumer_task);
 
 		prod_task = p->producer_task;
 		prod_address = p->producer_processor;
