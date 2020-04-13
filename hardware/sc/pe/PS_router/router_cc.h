@@ -33,6 +33,8 @@ SC_MODULE(router_cc){
   sc_in<bool >			credit_i[NPORT];
   sc_in<regflit >		data_in[NPORT];
   
+  sc_in<bool >			malicious_sdn_cfg;
+
   sc_signal<bool >		sgn_h[NPORT];
   sc_signal<bool >		sgn_ack_h[NPORT];
   sc_signal<bool >		sgn_data_av[NPORT];
@@ -117,6 +119,8 @@ SC_MODULE(router_cc){
 			myQueue[i]->data(data[i]);
 			myQueue[i]->data_ack(sgn_data_ack[i]);
 			myQueue[i]->sender(sgn_sender[i]);
+
+			myQueue[i]->malicious_set(malicious_sdn_cfg);
 		}
 
 		mySwitchControl = new switch_control("novoswitchcontrol",address);

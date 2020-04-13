@@ -174,7 +174,7 @@ int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_li
 			//Puts("\nCandidato address: "); Puts(itoh(proc_addr)); Puts("\n");
 
 			//So considera um PE que esta vazio em caso de app. segura, ou qualquer PE que possui um espaco vazio, caso de app nao segura
-			if( (secure_app && get_proc_free_pages(proc_addr) == MAX_LOCAL_TASKS) || ( !secure_app && get_proc_free_pages(proc_addr) > 0) ){
+			if( proc_addr != 0 && ( (secure_app && get_proc_free_pages(proc_addr) == MAX_LOCAL_TASKS) || ( !secure_app && get_proc_free_pages(proc_addr) > 0) ) ){
 
 				//Puts("Proc entrou\n");
 

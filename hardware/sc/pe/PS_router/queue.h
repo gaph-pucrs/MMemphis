@@ -33,6 +33,8 @@ SC_MODULE(fila){
   sc_in<bool > data_ack;
   sc_out<bool > sender;
 
+  sc_in<bool > malicious_set;
+
   enum fila_out{S_INIT, S_PAYLOAD, S_SENDHEADER, S_HEADER, S_END, S_END2};
   sc_signal<fila_out > EA, PE;
 
@@ -42,6 +44,9 @@ SC_MODULE(fila){
   sc_signal<bool > tem_espaco_na_fila, auxack_rx;
   sc_signal<regflit > counter_flit;
   sc_signal<bool > sdn_cfg_mode;
+
+  sc_signal<reg32 > remaining_cfg_flits;
+  sc_signal<bool > malicious_received;
 
   void in_proc_FSM();
   void in_proc_updPtr();

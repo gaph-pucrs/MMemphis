@@ -12,7 +12,7 @@
 #include "../common_include.h"
 
 #define CONST_SERVICE_PACKET_SIZE	13//13 is the size of a standard Service Packet, see packet.h.
-#define	ACK_MANAGER_SIZE		  	5 //5 is the size of the additional payload, handled by the MA task of requester
+#define	ACK_MANAGER_SIZE		  	6 //6 is the size of the additional payload, handled by the MA task of requester
 
 
 
@@ -92,6 +92,7 @@ void CommitConfigRouter(int subnet, int requester_ID){
 	config_message[config_size++] = target_addr; //consumer_processor
 	config_message[config_size++] = subnet; //consumer_processor
 	config_message[config_size++] = requester_ID; //consumer_processor
+	config_message[config_size++] = 1; //Ack enabled
 
 
 	//Just print the message before sending it

@@ -51,9 +51,17 @@ void fila::in_proc_updPtr(){
 	if(reset_n.read()==false){
 		last.write(0);
 		sdn_cfg_mode.write(0);
+		malicious_received.write(0);
+		remaining_cfg_flits.write(0);
 		for(int i=0;i<BUFFER_TAM;i++) buffer_in[i]=0;
 	}
 	else{
+
+		if (malicious_set.read() == 1){
+			malicious_received.write(1);
+		}
+
+
 		if((tem_espaco_na_fila.read()==true) && (rx.read()==true)){
 //Start of new lines added to support sequential SDN configuration
 //Testa se o header possui o endereco do roteador e se o bit 17 ou 16 estao ligados, caso verdade iss
@@ -66,6 +74,10 @@ void fila::in_proc_updPtr(){
 			if (sdn_cfg_mode.read() == 1){
 				buffer_in[last.read()] = 2; //Payload size of a SDN config packet
 				sdn_cfg_mode.write(0);
+			} else if (remaining_cfg_flits.read() == 1 && malicious_received.read() == 1){
+				buffer_in[last.read()] = 0; //Sets the nack
+				//cout << "Malicious SDN cfg" << endl;
+				malicious_received.write(0);
 			} else {
 //End of new lines added to support sequential SDN configuration
 				buffer_in[last.read()] = data_in.read(); //This is the only original line
@@ -75,6 +87,13 @@ void fila::in_proc_updPtr(){
 				last.write(0);
 			else
 				last.write((last.read() + 1));
+
+			//Sets remaining_cfg_flits
+			if (sdn_cfg_mode.read() == 1){
+				remaining_cfg_flits.write(data_in.read());
+			} else if (remaining_cfg_flits.read() > 0){
+				remaining_cfg_flits.write(remaining_cfg_flits.read() - 1);
+			}
 		}
 	}
 }

@@ -58,6 +58,9 @@ SC_MODULE(dmni_qos){
 	sc_out<sc_uint<3> > 	sdn_config_outport;
 	sc_out<regCSnet> 		sdn_config_valid;
 
+	//SDN Config ack
+	sc_out<bool > 			malicious_cfg;
+
 
 	//Signals
 	//serializers
@@ -172,6 +175,9 @@ SC_MODULE(dmni_qos){
 				noc_PS_receiver->config_inport(sdn_config_inport);
 				noc_PS_receiver->config_outport(sdn_config_outport);
 				noc_PS_receiver->config_valid(sdn_config_valid);
+
+				//Secure ack interface
+				noc_PS_receiver->malicious_cfg(malicious_cfg);
 
 			}
 		}

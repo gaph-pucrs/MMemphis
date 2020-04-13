@@ -118,6 +118,9 @@ SC_MODULE(pe) {
 	sc_signal < sc_uint <32 > > slack_update_timer;
 	sc_signal < bool > 			pending_service;
 
+	//Secure DMNI ack
+	sc_signal < bool > 			dmni_malicious_sdn_cfg;
+
 	unsigned char shift_mem_page;
 
 	mlite_cpu	*	cpu;
@@ -229,6 +232,7 @@ SC_MODULE(pe) {
 		dmni->sdn_config_inport(config_inport_subconfig);
 		dmni->sdn_config_outport(config_outport_subconfig);
 		dmni->sdn_config_valid(config_valid_subconfig);
+		dmni->malicious_cfg(dmni_malicious_sdn_cfg);
 
 
 		//CS routers wiring
@@ -289,6 +293,7 @@ SC_MODULE(pe) {
 		ps_router->rx[LOCAL]		(tx_dmni_ps);
 		ps_router->credit_i[LOCAL]	(credit_o_dmni_ps);
 		ps_router->data_in[LOCAL]	(data_out_dmni_ps);
+		ps_router->malicious_sdn_cfg(dmni_malicious_sdn_cfg);
 
 		/*
 		cs_config = new CS_config("cs_config");

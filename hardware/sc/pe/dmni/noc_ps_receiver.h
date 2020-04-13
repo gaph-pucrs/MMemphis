@@ -30,6 +30,7 @@ SC_MODULE(noc_ps_receiver){
 	sc_out<sc_uint<3> > 	config_outport;
 	sc_out<regCSnet> 		config_valid;
 
+	sc_out<bool>		malicious_cfg;
 
 
 	//Signals

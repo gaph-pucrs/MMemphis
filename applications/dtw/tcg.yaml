@@ -1,5 +1,5 @@
 real-time: 1
-secure: 1
+secure: 0
 recognizer:
  - p1
  - p2
