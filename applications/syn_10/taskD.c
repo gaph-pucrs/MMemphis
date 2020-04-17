@@ -1,7 +1,7 @@
 #include <api.h>
 #include <stdlib.h>
 
-#include "syn_std.h"
+#include "../syn_4/syn_std.h"
 
 //Message structure of MEMPHIS, provided by api.h
 Message msg;
@@ -13,21 +13,11 @@ void main()
 
 	for(int i=0;i<SYNTHETIC_ITERATIONS;i++)
 	{
-		Echo("New round");
-		Receive(&msg, taskB);
-		Echo("B");
-		Echo(itoa(msg.msg[0]));
-		Receive(&msg, taskC);
-		Echo("C");
-		Echo(itoa(msg.msg[0]));
+		Receive(&msg, taskB4);
+		Receive(&msg, taskC2);
 
+		Echo(itoa(GetTick()));
 	}
-/*
-	Echo("Final message");
-	for(int j=0; j<msg.length; j++){
-		Echo(itoa(msg.msg[j]));
-	}*/
-
 
     Echo("Task D finished at time");
     Echo(itoa(GetTick()));

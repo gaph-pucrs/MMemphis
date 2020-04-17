@@ -1,7 +1,7 @@
 #include <api.h>
 #include <stdlib.h>
 
-#include "syn_std.h"
+#include "../syn_4/syn_std.h"
 
 //MEMPHIS message structure
 Message msg;
@@ -13,14 +13,11 @@ void main()
 
 	for(int i=0;i<SYNTHETIC_ITERATIONS;i++)
 	{
-		Echo("New round");
 		Receive(&msg, taskA);
-		Echo("A");
-		Echo(itoa(msg.msg[0]));
 
 		compute(&msg.msg);
 
-		Send(&msg,taskD);
+		Send(&msg,taskC2);
 	}
 
     Echo("Task C finished at time");

@@ -154,7 +154,9 @@ int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_li
 	initial_app_pe = -1;
 	intial_pe_index = -1;
 
+#if LM_DEBUG
 	Puts("\n----------------------------\n");
+#endif
 
 	if (initial_size){
 
@@ -211,7 +213,9 @@ int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_li
 	} else {
 		//The first initial PE is manually sected at the top left corner
 		initial_app_pe = (cluster_x_offset + MAPPING_XCLUSTER - 1) << 8 | (cluster_y_offset + MAPPING_YCLUSTER -1);
+#if LM_DEBUG
 		Puts("Very first time\n");
+#endif
 	}
 
 	if (intial_pe_index != -1){
@@ -220,7 +224,9 @@ int select_initial_PE(int * initial_pe_list, int initial_size, int * valid_pe_li
 		//putsv("Excluded addr: ", get_proc_address(intial_pe_index));
 	}
 
+#if LM_DEBUG
 	Puts("SELECTED initial addr: "); Puts(itoh(initial_app_pe)); Puts("\n");
+#endif
 
 	return initial_app_pe;
 }
@@ -272,10 +278,11 @@ int application_mapping(Application * app){
 	//Set mapping completed as false
 	mapping_completed = 0;
 
-
+#if LM_DEBUG
 	Puts("\n################# Starting APP MAPPING. ID: "); Puts(itoa(app->app_ID)); putsv(" task number: ", app->tasks_number);
 	putsv("time: ", GetTick());
 	Puts("\n");
+#endif
 	//Algorithm that selects the initial PE
 	initial_app_pe = select_initial_PE(initial_pe_list, initial_size, valid_initial_PE, app->is_secure);
 
@@ -357,8 +364,10 @@ int application_mapping(Application * app){
 			//Reuses x_proc to store the number of PE of the bounding box
 			x_proc = (bb_max_x-bb_min_x+1)*(bb_max_y-bb_min_y+1);
 
+#if LM_DEBUG
 			Puts("Final BB: "); Puts(itoh(bb_min_x << 8 | bb_min_y)); Puts(" - ");
 			Puts(itoh(bb_max_x << 8 | bb_max_y)); Puts("\n");
+#endif
 
 			current_bb_utilization = compute_bounding_box_cs_utilization(bb_min_x, bb_min_y, bb_max_x, bb_max_y);
 
@@ -366,24 +375,32 @@ int application_mapping(Application * app){
 			/*################## STEP 3 - TEST IF THE UTILIZATION FILLS THE THRESHOLD OR IS BETTER THAN REFERENCE ####################### */
 
 			//putsv("\nRef BB util: ", ref_bb_utilization);
+#if LM_DEBUG
 			putsv("Computed BB util: ", current_bb_utilization);
+#endif
 
 
 			//From this moment the total utilization is converted to a utilization rate, dividing the accumulated utilization
 			//by the number of PE of the bounding box
 			current_bb_utilization = current_bb_utilization / x_proc;
 
+#if LM_DEBUG
 			putsv("Computed BB ratio: ", current_bb_utilization);
+#endif
 
 			//If YES then the current utilization is good enough to stop the mapping
 			if (current_bb_utilization >= bb_utilization_TH){
+#if LM_DEBUG
 				Puts("BEST util\n");
+#endif
 				mapping_completed = 1;
 				break; //while(N > 0)
 
 			} else {
 
+#if LM_DEBUG
 				Puts("Mapping not completed, releasing pages\n");
+#endif
 				mapping_completed = 0;
 				//Reverts all page used
 				for(int i=0; i<app->tasks_number; i++){
@@ -399,7 +416,9 @@ int application_mapping(Application * app){
 			if (current_bb_utilization > ref_bb_utilization){
 				ref_bb_utilization = current_bb_utilization;
 				ref_initial_address = initial_app_pe;
+#if LM_DEBUG
 				Puts("BETTER util\n");
+#endif
 
 			}
 
@@ -409,7 +428,9 @@ int application_mapping(Application * app){
 			//Case there is no more initial proc available, then get the one that has the best cs utilization
 			if (initial_app_pe == -1){
 				initial_app_pe = ref_initial_address;
+#if LM_DEBUG
 				Puts("No more initial PEs, exiting heuristic, Selected Initial PE: "); Puts(itoh(initial_app_pe)); Puts("\n");
+#endif
 				break; //while(N > 0)
 			}
 
@@ -431,7 +452,9 @@ int application_mapping(Application * app){
 			if (t->allocated_proc != -1){
 				mapped_addr = t->allocated_proc;
 				page_used(mapped_addr, t->id);
+#if LM_DEBUG
 				Puts("Task id "); Puts(itoa(t->id)); Puts(" statically mapped at processor "); Puts(itoh(mapped_addr)); Puts("\n");
+#endif
 			} else {
 				//Diamon retorna com o offset
 				if(app->is_secure)
@@ -449,15 +472,18 @@ int application_mapping(Application * app){
 
 					page_used(mapped_addr, t->id);
 
+#if LM_DEBUG
 					Puts("Task id "); Puts(itoa(t->id)); Puts(" dynamically mapped at processor "); Puts(itoh(mapped_addr)); Puts("\n");
+#endif
 
 				}
 			}
 		}
 	}
 
-
+#if LM_DEBUG
 	Puts("\nApp have all its task mapped\n\n");
+#endif
 
 	return 1;
 }

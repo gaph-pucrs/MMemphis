@@ -1515,15 +1515,14 @@ void initialize_noc_manager(unsigned int * msg){
 
 
 void handle_cs_config_ack(unsigned int source_addr, unsigned int target_addr, unsigned int subnet, unsigned int master_to_reply_addr, unsigned int ack){
-//#if SDN_DEBUG
+#if SDN_DEBUG
 	Puts("Receiving SET_CS_ROUTER_ACK\n");
 	Puts("Source: "); Puts(itoh(source_addr)); Puts("\n");
 	Puts("Target: "); Puts(itoh(target_addr)); Puts("\n");
 	Puts("Subnet: "); Puts(itoh(subnet)); Puts("\n");
 	Puts("Master to reply: "); Puts(itoh(master_to_reply_addr)); Puts("\n");
 	Puts("ACK: "); Puts(itoh(ack)); Puts("\n");
-
-	//#endif
+#endif
 
 	if (controller_status == GLOBAL_SLAVE){
 
@@ -1552,7 +1551,7 @@ int handle_packet(unsigned int * recv_message){
 		case PATH_CONNECTION_REQUEST:
 			//Only serves for authorized managers
 
-			Puts("Path received\n");
+			//Puts("Path received\n");
 			//configuration_round(0);
 			if (check_path_requester_authenticity(recv_message[3], recv_message[5])){
 				handle_component_request(recv_message[1], recv_message[2], recv_message[3], -1);
@@ -1838,6 +1837,11 @@ void handle_component_request(int sourcePE, int targetPE, int requester_address,
 
 	target_x = targetPE >> 8;
 	target_y = targetPE & 0xFF;
+
+	while ( !(target_x >= 0 && target_x < XDIMENSION && target_y >=0 && target_y < YDIMENSION && source_x >= 0 && source_x < XDIMENSION && source_y >= 0 && source_y < YDIMENSION) ){
+		Puts("ERROR: Wrong request addresses at "); Puts(", source "); Puts(itoa(source_x)); Puts("x"); Puts(itoa(source_y)); Puts(", target "); Puts(itoa(target_x)); Puts("x"); Puts(itoa(target_y)); Puts("\n");
+	}
+
 
 #if SDN_DEBUG
 	Puts("\n****** New request received at "); Puts(itoa(x_cluster_addr)); Puts("x"); Puts(itoa(y_cluster_addr)); Puts(", source "); Puts(itoa(source_x)); Puts("x"); Puts(itoa(source_y)); Puts(", target "); Puts(itoa(target_x)); Puts("x"); Puts(itoa(target_y));

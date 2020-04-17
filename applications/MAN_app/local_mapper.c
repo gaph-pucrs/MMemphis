@@ -11,6 +11,9 @@
 #include "mapping_includes/local_mapper/circuit_switching.h"
 #include "mapping_includes/local_mapper/resoucer_controller.h"
 
+//SO USADO PARA RESULTADOS
+unsigned int admission_time = 0;
+
 void initialize_local_mapper(unsigned int * msg){
 
 	unsigned int max_ma_tasks;
@@ -110,56 +113,19 @@ void request_application2(Application *app){
 
 	}
 
+	admission_time = GetTick() - admission_time;
+	putsv("SDN PATHs complete - phase (d): ", admission_time);
+
+#if LM_DEBUG
+	Puts("SDN path completed! Send APP_MAPPING_COMPLETE\n");
+#endif
+	admission_time = GetTick();
+
 	SendService(global_task_ID, message, msg_size);
 
-	Puts("Send APP_MAPPING_COMPLETE\n");
 
 	//Waits the packet to be sent
 	//while(!NoCSendFree());
-
-/*
-
-		message[msg_size++] = APP_INJECTOR; //Destination
-		message[msg_size++] = 5; //Packet size
-		message[msg_size++] = APP_ALLOCATION_REQUEST; //Service
-		message[msg_size++] = t->id; //Repository task ID
-		message[msg_size++] = master_allocation; //Master address
-		message[msg_size++] = t->allocated_proc;
-		message[msg_size++] = 0; //Real task id, when zero means to injector to ignore this flit. Otherwise, force the task ID to assume the specified ID value
-		//Send message to Peripheral
-		SendRaw(message, msg_size);
-		//Waits the packet to be sent
-		while(!NoCSendFree());
-
-		putsv("Master addr: ", master_allocation);
-
-		Puts("\nRequesting task "); Puts(itoa(t->id)); Puts(" at proc "); Puts(itoh(t->allocated_proc));
-		putsv(" at time ", GetTick());
-
-		return 1;
-
-
-
-		message[0] = APP_ALLOCATED;
-		message[1] = app_ptr->app_ID;
-		message[2] = app_ptr->tasks_number;
-		msg_size = 3;
-		for(int task = 0; task < app_ptr->tasks_number; task++){
-			task_ptr = &app_ptr->tasks[task];
-
-			if (task_ptr->borrowed_master == -1){
-				message[msg_size++] = cluster_position;
-			} else {
-				message[msg_size++] = task_ptr->borrowed_master;
-			}
-			putsv("Master addr2: ", message[msg_size-1]);
-			//Puts("Task "); Puts(itoa(task_ptr->id)); Puts(" to cluster "); Puts(itoh(message[msg_size-1])); Puts("\n");
-		}
-	}
-
-	Puts("All task requested!\n");
-
-	return 0;*/
 
 }
 
@@ -253,20 +219,26 @@ void handle_pending_application(){
 
 				if (app->is_secure){
 
+#if LM_DEBUG
 					Puts("App WAITING_CIRCUIT_SWITCHING\n");
+#endif
 
 					app->status = WAITING_CIRCUIT_SWITCHING;
 
 				} else {
 
+#if LM_DEBUG
 					Puts("App READY_TO_LOAD\n");
+#endif
 
 					app->status = READY_TO_LOAD;
 				}
 
 			} else {
 
+#if LM_DEBUG
 				Puts("Application WAITING_RECLUSTERING\n");
+#endif
 
 				app->status = WAITING_RECLUSTERING;
 
@@ -301,7 +273,13 @@ void handle_pending_application(){
 
 		case WAITING_CIRCUIT_SWITCHING:
 
-			Puts("\nInit SDN establishment protocol...\n");
+//#if LM_DEBUG
+			admission_time = GetTick() - admission_time;
+			putsv("End MAPPING - phase (c): ", admission_time);
+			Puts("Init SDN establishment protocol...\n");
+//#endif
+			admission_time = GetTick();
+
 			request_connection(app);
 
 			break;
@@ -331,9 +309,10 @@ void handle_new_app(unsigned int * msg){
 	unsigned int * ref_address;
 	unsigned int app_ID;
 
-
-	Puts("Handle new APP DESCRIPTOR from APP INJECTOR\n");
-	Puts("App ID: "); Puts(itoa(msg[1])); Puts("\n");
+//#if LM_DEBUG
+	Puts("\nHandle new APP DESCRIPTOR, app ID "); Puts(itoa(msg[1])); Puts("\n");
+//#endif
+	admission_time = GetTick();
 
 	app_ID = msg[1];
 	ref_address = &msg[3];
@@ -396,7 +375,7 @@ void send_task_release(Application * app){
 		//puts(" in proc "); puts(itoh(p->header)); puts("\n----\n");
 	}
 
-	Puts("TASK_RELEASE sent, app is RUNNING!\n\n");
+	Puts("TASK_RELEASE sent! APP_RUNNING!!\n");
 
 	app->status = RUNNING;
 
@@ -412,7 +391,13 @@ void send_app_allocated(Application * app_ptr){
 	message[0] = APP_ALLOCATED;
 	message[1] = app_ptr->app_ID;
 	SendService(global_task_ID, message, 2);
-	putsv("APP_ALLOCATED sent ", app_ptr->app_ID);
+
+//#if LM_DEBUG
+	admission_time = GetTick() - admission_time;
+	Puts("APP_ALLOCATED sent - phase (e): "); Puts(itoa(admission_time)); Puts("\n");
+	admission_time = GetTick();
+	//putsv("APP_ALLOCATED sent ", app_ptr->app_ID);
+//#endif
 	/****************************************************/
 }
 
@@ -421,12 +406,14 @@ void handle_task_allocated(unsigned int task_id, unsigned int security_allocatio
 	unsigned int app_id, allocated_tasks;
 	Application * app_ptr;
 
+#if LM_DEBUG
 	putsv("-> TASK ALLOCATED from task ", task_id);
 
 	if (security_allocation)
 		Puts("\ttrusted task\n");
 	else
 		Puts("\tmalicious task - canceling the app allocation\n");
+#endif
 
 	app_id = task_id >> 8;
 

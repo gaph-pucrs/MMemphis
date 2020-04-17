@@ -71,8 +71,9 @@ void request_connection(Application * app){
 					//Puts("CS not necessary\n");
 					continue;
 				}
-
+#if LM_DEBUG
 				Puts("Requesting CS for ctp: "); Puts(itoa(t->id)); putsv(" -> ", ct->id);
+#endif
 
 				app_ctp_ptr = app;
 				producer_task_ptr = t;
@@ -91,7 +92,9 @@ void request_connection(Application * app){
 		ct_index = 0;
 	}
 
-	Puts("SDN complete - app READY_TO_LOAD\n\n");
+#if LM_DEBUG
+	Puts("Controller SDN complete\n\n");
+#endif
 	app->status = READY_TO_LOAD;
 
 	//If there is no more CTP usng PS_SUBNET
@@ -147,12 +150,18 @@ void handle_SDN_ack(unsigned int * recv_message){
 	path_size 		= recv_message[8];
 
 
+	if (connection_ok)
+		Puts("#SDN ack\n");
+	else
+		Puts("#SDN Nack\n");
+#if LM_DEBUG
 	//Puts("PATH NR: "); Puts(itoa(++global_path_counter));
 	Puts(" - ACK received from ["); Puts(itoa(recv_message[1]));
 	Puts("] sucess ["); Puts(itoa(connection_ok));
 	Puts("] source [");  Puts(itoa(source >> 8)); Puts("x"); Puts(itoa(source & 0xFF));
 	Puts("] target ["); Puts(itoa(target >> 8)); Puts("x"); Puts(itoa(target & 0xFF));
 	Puts("] subnet ["); Puts(itoa(subnet)); Puts("]\n");
+#endif
 
 	handle_connection_response(source, target, subnet);
 
@@ -185,7 +194,9 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 		} while(ct->id != cons_task);
 		cons_index++;
 	} else{
-		Puts("\nInit CS protocol...\n");
+#if LM_DEBUG
+		Puts("\nInit CS CTP protocol...\n");
+#endif
 		prod_index = 0;
 		cons_index = 0;
 	}
@@ -208,7 +219,9 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 				prod_address = get_task_location(prod_task);
 				cons_address = get_task_location(cons_task);
 
+#if LM_DEBUG
 				Puts("Setting up to "); Puts(itoa(prod_task)); putsv(" -> ", cons_task);
+#endif
 
 				//Usefull info: prod_ID, prod_PE, cons_ID, cons_PE, master id, master addr
 				//Message is always sent to producer task
@@ -241,7 +254,9 @@ int initial_CS_setup_protocol(Application * app_ptr, int prod_task, int cons_tas
 	}
 
 	//There is no more CTP to setup CS at kernel, terminates the CS protocol
+#if LM_DEBUG
 	Puts("Initial CS protocol concluded!\n\n");
+#endif
 	return 0;
 
 }
@@ -251,7 +266,9 @@ void request_cs_util_update(){
 	int SDN_Controller_ID = 2; //TODO Please edit when you add a new MA task
 	unsigned int * send_message;
 
+#if LM_DEBUG
 	Puts("\nSend CS_UTILIZATION_REQUEST\n");
+#endif
 
 	cs_utilization_updated = CS_UTIL_REQUESTED;
 
@@ -268,7 +285,9 @@ void request_cs_util_update(){
 void handle_cs_utilization_response(unsigned int * data_msg){
 	int index;//, conn_in, conn_out;
 
+#if LM_DEBUG
 	Puts("CS_UTILIZATION_RESPONSE received\n\n");
+#endif
 
 	cs_utilization_updated = CS_UTIL_UPDATED;
 

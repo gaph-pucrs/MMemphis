@@ -135,6 +135,7 @@ void noc_ps_receiver::sdn_config_sequential(){
 					if ( key_valid.read() ){
 						PS.write(config);
 					} else {
+						cout << "Warning: Malicious config. detected (key does not match)" << endl;
 						PS.write(ppayload);
 						payload.write(payload.read() - 1);
 					}
@@ -176,7 +177,6 @@ void noc_ps_receiver::sdn_config_sequential(){
 			malicious_cfg.write(!key_valid.read());
 			cout << "Valid SDN cfg" << endl;
 		} else {
-			cout << "Warning: Malicious config. detected (key does not match)" << endl;
 			malicious_cfg.write(0);
 		}
 

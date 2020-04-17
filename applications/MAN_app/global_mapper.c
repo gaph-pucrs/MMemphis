@@ -101,6 +101,7 @@ void map_management_tasks(){
 		}
 	}
 	PE_usage[0][0] = 0;//Decrements because GM is allocated in this position
+	//PE_usage[0][0]--;//Decrements because GM is allocated in this position
 
 	ma_tasks_location[ma_task_index++] = 0;//The location of global mapper
 
@@ -121,8 +122,8 @@ void map_management_tasks(){
 				for(int xi = x_aux; xi < (x_aux+MAPPING_XCLUSTER); xi++){
 					for(int yi = y_aux; yi < (y_aux+MAPPING_YCLUSTER); yi++){
 						//Puts("Trying PE "); Puts(itoh(xi<<8|yi)); Puts("\n");
-						//if (PE_usage[xi][yi] > 0){ //Maps task to PEs
-						if (PE_usage[xi][yi] == MAX_LOCAL_TASKS){ //One task per PE
+						if (PE_usage[xi][yi] > 0){ //Maps task to PEs
+						//if (PE_usage[xi][yi] == MAX_LOCAL_TASKS){ //One task per PE
 							x_aux = xi;
 							y_aux = yi;
 							xi = (x_aux+MAPPING_XCLUSTER); //Breaks the first loop
@@ -175,8 +176,8 @@ void map_management_tasks(){
 				for(int xi = x_aux; xi < (x_aux+SDN_XCLUSTER); xi++){
 					for(int yi = y_aux; yi < (y_aux+SDN_YCLUSTER); yi++){
 						//Puts("Trying PE "); Puts(itoh(xi<<8|yi)); Puts("\n");
-						//if (PE_usage[xi][yi] > 0){
-						if (PE_usage[xi][yi] == MAX_LOCAL_TASKS){ //One task per PE
+						if (PE_usage[xi][yi] > 0){
+						//if (PE_usage[xi][yi] == MAX_LOCAL_TASKS){ //One task per PE
 							x_aux = xi;
 							y_aux = yi;
 							xi = (x_aux+SDN_XCLUSTER); //Breaks the first loop
@@ -314,6 +315,9 @@ void handle_i_am_alive(unsigned int source_addr, unsigned int task_id){
 
 }
 
+//APAGAR variavel usada somente nos experimentos para pegar o tempo de admissia
+unsigned int admission_time;
+
 void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_number){
 
 	static unsigned int app_id_counter = 1;
@@ -331,26 +335,37 @@ void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_numbe
 
 	pending_app_req = 0;
 
+//#if GM_DEBUG
 	Puts("\n\n******** NEW_APP_REQ **********\n");
 	//Puts(itoa(app_cluster_id));
 	putsv("Task number: ", app_task_number);
+	Puts(" ID "); Puts(itoa(app_id_counter)); putsv(" stamp ", (app_id_counter << 8));
+//#endif
 
 	if (app_cluster_id == CLUSTER_NUMBER){
-		Puts("dynamic\n");
+		//Puts("dynamic\n");
 		app_cluster_id = search_cluster(app_task_number);
 	} else {
-		Puts("static\n");
+		//Puts("static\n");
 	}
 
-	Puts("App mapped at cluster "); Puts(itoh(  clusters[app_cluster_id].x_pos << 8 | clusters[app_cluster_id].y_pos )); Puts("\n");
+#if GM_DEBUG
+	//Puts("App mapped at cluster "); Puts(itoh(  clusters[app_cluster_id].x_pos << 8 | clusters[app_cluster_id].y_pos )); Puts("\n");
 	Puts("Application ID: "); Puts(itoa(app_id_counter)); Puts("\n");
+#endif
 
 	//putsv("Global Master reserve application: ", num_app_tasks);
 	//putsv("total_mpsoc_resources ", total_mpsoc_resources);
 
+#if GM_DEBUG
 	putsv("\nCURRENT - total_mpsoc_resources: ", total_mpsoc_resources);
+#endif
+
 	total_mpsoc_resources -= app_task_number;
+
+#if GM_DEBUG
 	putsv("AFTER - total_mpsoc_resources: ", total_mpsoc_resources);
+#endif
 
 	cluster_loc = (map_ID_offset+app_cluster_id) << 16 | GetTaskLocation(map_ID_offset+app_cluster_id);
 
@@ -366,6 +381,8 @@ void handle_new_app_req(unsigned int app_cluster_id, unsigned int app_task_numbe
 	SendRaw(message, 5);
 
 	app_id_counter++;
+
+	admission_time = GetTick();
 }
 
 void handle_app_terminated(unsigned int *msg){
@@ -430,7 +447,9 @@ void handle_app_mapping_complete(unsigned int * msg){
 	app_task_number = msg[2];
 	app_secure 		= msg[3];
 
-	Puts("\n******************************\nReceive APP_MAPPING_COMPLETE for app "); Puts(itoa(app_id)); putsv(" task number ", app_task_number);
+	admission_time = GetTick() - admission_time;
+
+	Puts("\nReceive APP_MAPPING_COMPLETE for app "); Puts(itoa(app_id)); putsv(" overhead ", admission_time);
 
 	//Allocated resources and sent the
 	if (app_secure){
@@ -459,7 +478,7 @@ void handle_app_mapping_complete(unsigned int * msg){
 				initialized_secure_pe[sec_pe_size] = alloc_proc;
 				sec_pe_size++;
 				manage_secure_allocation(app_id, alloc_proc);
-				Puts("Sending KE to PE "); Puts(itoh(alloc_proc)); Puts("\n");
+				//Puts("Sending KE to PE "); Puts(itoh(alloc_proc)); Puts("\n");
 			}
 
 		}
@@ -475,20 +494,17 @@ void handle_app_mapping_complete(unsigned int * msg){
 		cluster_position = msg[index++];
 
 		cluster_index = get_local_mapper_index(cluster_position);
+#if GM_DEBUG
 		Puts("Task "); Puts(itoa(task_id)); Puts(" allocated to "); Puts(itoh(alloc_proc)); Puts(" to cluster "); Puts(itoh(cluster_position)); Puts("\n");
+#endif
 		allocate_cluster_resource(cluster_index, 1);
 
 		send_task_allocation_message(task_id, 0, alloc_proc, master_addr);
 
 	}
-
+#if GM_DEBUG
 	Puts("Loading APP into PEs...\n");
-
-	//TODO: Pseudo Random NUmber e envia para os slaves
-		//E tambem faça o SIPHASH do PRN, obtendo o Km e envio e Ke para os slaves do CTP.
-		//Quando os slaves do CTP recebem o TASK_ALLOCATION eles devem comprarar esses valores com os gerados pelo codigo obj
-
-
+#endif
 
 }
 
@@ -501,7 +517,9 @@ void handle_app_allocated(){
 	message[1] = 2; //Payload should be 1, but is 2 in order to turn around a corner case in traffic monitor of Deloream for packets with payload 1
 	message[2] = APP_ALLOCATION_COMPLETE; //Service
 	SendRaw(message, 4);
+//#if GM_DEBUG
 	Puts("App allocation completed!\n\n");
+//#endif
 
 }
 

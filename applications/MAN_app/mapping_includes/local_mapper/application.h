@@ -251,9 +251,6 @@ Application * read_and_create_application(unsigned int app_id, unsigned int * re
 
 	app->tasks_number = *(ref_address++);
 
-	Puts("Task Number "); Puts(itoa( app->tasks_number )); Puts("\n");
-
-
 	/*for(int i=0; i<app->tasks_number*TASK_DESCRIPTOR_SIZE; i++){
 		Puts(itoh( *(ref_address++) )); Puts("\n");
 	}*/

@@ -15,6 +15,9 @@
 #include <management_api.h>
 
 
+#define LM_DEBUG 0
+#define GM_DEBUG 0
+
 //CAUTION: the size of XCLUSTER and YCLUSTER must be always divisible (remaining 0) with XDIMENSION and YDIMENSION
 
 #define MAPPING_XCLUSTER		XCLUSTER
@@ -24,8 +27,8 @@
 #define MAX_MAPPING_TASKS		(MAPPING_X_CLUSTER_NUM*MAPPING_Y_CLUSTER_NUM)
 
 
-#define SDN_XCLUSTER			XCLUSTER//XDIMENSION
-#define	SDN_YCLUSTER			XCLUSTER//YDIMENSION
+#define SDN_XCLUSTER			XDIMENSION//XCLUSTER
+#define	SDN_YCLUSTER			YDIMENSION//XCLUSTER
 #define SDN_X_CLUSTER_NUM		(XDIMENSION/SDN_XCLUSTER)
 #define SDN_Y_CLUSTER_NUM		(YDIMENSION/SDN_YCLUSTER)
 #define	MAX_SDN_TASKS			(SDN_X_CLUSTER_NUM*SDN_Y_CLUSTER_NUM)
@@ -178,7 +181,7 @@ void request_SDN_path(int source_addr, int target_addr, int subnet){
 	nc_x = src_x / SDN_XCLUSTER;
 	nc_y = src_y / SDN_YCLUSTER;
 
-	sdn_offset = 2;//TODO Please edit when you add a new MA task
+	sdn_offset = 2;//TODO Please edit when you add a new MA task 2
 
 	coordinator_task_ID = nc_x + (nc_y*SDN_X_CLUSTER_NUM) + sdn_offset;
 
