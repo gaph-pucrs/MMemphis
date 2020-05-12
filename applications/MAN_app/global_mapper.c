@@ -451,6 +451,7 @@ void handle_app_mapping_complete(unsigned int * msg){
 
 	Puts("\nReceive APP_MAPPING_COMPLETE for app "); Puts(itoa(app_id)); putsv(" overhead ", admission_time);
 
+#if GM_SIPHASH_ACTIVE
 	//Allocated resources and sent the
 	if (app_secure){
 		int initialized_secure_pe[app_task_number];
@@ -483,7 +484,7 @@ void handle_app_mapping_complete(unsigned int * msg){
 
 		}
 	}
-
+#endif
 
 	index = 4;
 	for(int i=0; i<app_task_number; i++){

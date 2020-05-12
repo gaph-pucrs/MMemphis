@@ -1,7 +1,7 @@
 #include <api.h>
 #include <stdlib.h>
 
-#include "../syn_4/syn_std.h"
+#include "syn_std.h"
 
 //MEMPHIS message structure
 Message msg1;

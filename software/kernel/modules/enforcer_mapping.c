@@ -344,6 +344,8 @@ void autheticate_task(unsigned int task_id){
 	searchTCB(task_id);
 }
 
+#define KERNEL_SIPHASH_VALID	0
+
 void handle_task_allocation(volatile ServiceHeader * pkt){
 
 	TCB * tcb_ptr;
@@ -391,8 +393,8 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 	} else { //For others task
 		tcb_ptr->scheduling_ptr->status = BLOCKED;
 
-		security_check = 0;
-
+		security_check = 1;
+#if KERNEL_SIPHASH_VALID
 		if (pkt->is_secure_task){
 
 			//Secure context variables
@@ -424,8 +426,8 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 			puts("  Received hash lo:"); puts(itoh(lo)); puts("\n");
 			//puts("Address MAC: "); puts(itoh(ptr_rcv)); puts("\n");
 
-			if (calculated_hash == received_hash){
-				security_check = 1;
+			if (calculated_hash != received_hash){
+				security_check = 0;
 			}
 
 			//This line is not more necessary because the for below that clean the BSS regions alread do that
@@ -434,18 +436,19 @@ void handle_task_allocation(volatile ServiceHeader * pkt){
 		} else {
 			puts("The App. is NOT SECURE\n");
 		}
-
+#endif
 		send_task_allocated(tcb_ptr, security_check);
 
 	}
-
+	//Comentei isso abaixo pois estou comparando com uma plataform que nao possui essa limpeza
+	/*
 	//Clean the BSS memory region in order to avoid task to use trash from other tasks
 	bss_ptr = (unsigned int *)(tcb_ptr->offset + (tcb_ptr->text_lenght * 4));
 	for(int i=0; i < (tcb_ptr->bss_lenght+1); i++){
 		//puts(itoh(bss_ptr[i])); puts("\n");
 		bss_ptr[i] = 0;
 	}
-
+	 */
 }
 
 

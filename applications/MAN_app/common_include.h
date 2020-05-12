@@ -18,6 +18,7 @@
 #define LM_DEBUG 0
 #define GM_DEBUG 0
 
+#define GM_SIPHASH_ACTIVE	0
 //CAUTION: the size of XCLUSTER and YCLUSTER must be always divisible (remaining 0) with XDIMENSION and YDIMENSION
 
 #define MAPPING_XCLUSTER		XCLUSTER
