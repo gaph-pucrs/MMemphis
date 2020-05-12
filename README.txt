@@ -7,6 +7,13 @@ Authors: Marcelo Ruaro and Fernando Moraes      *
 *************************************************
 Branch: secure-sdn
 
+This Memphis version implements the Systemic and Secure SDN protocol.
+To a complete tutorial for download and install Memphis in your PC, please visit our project website at https://www.inf.pucrs.br/hemps/memphis.html
+
+Any additional question, please contact the Authors at marcelo.ruaro@acad.pucrs.br or fernando.moraes@pucrs.br
+
+Next is presented a summarized overview of how to download, install, and execute Memphis.
+
 Prerequisites:
  - Ubuntu 16 +
  - Java
@@ -18,7 +25,7 @@ Prerequisites:
 
 To run MEMPHIS:
   
-1. Download MEMPHIS
+1. Download MEMPHIS (git clone)
 
 2. Set a MEMPHIS_PATH environment variable, pointing to the MEMPHIS root directory
 
