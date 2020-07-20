@@ -1,3 +1,5 @@
+Memphis version that implements the concept of management tasks.
+
 *************************************************
 MEMPHIS - Many-core Modeling Platform in SoC	*	
 												*
