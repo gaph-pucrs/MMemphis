@@ -95,7 +95,7 @@ typedef struct {
 	//flit 11
 	union {								//!<Generic union
 		unsigned int bss_size;
-		unsigned int cpu_slack_time;
+		// unsigned int cpu_slack_time;
 		unsigned int request_size;
 		unsigned int dmni_op;
 		unsigned int cs_mode; 	//1 - stablish, 0 release
@@ -128,7 +128,7 @@ ServiceHeader* get_service_header_slot();
 
 void init_packet();
 
-inline unsigned int DMNI_read_data_CS(unsigned int, unsigned int);
+extern inline unsigned int DMNI_read_data_CS(unsigned int, unsigned int);
 
 void DMNI_read_data(unsigned int, unsigned int);
 
