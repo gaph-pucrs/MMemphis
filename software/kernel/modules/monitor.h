@@ -18,12 +18,12 @@ void send_latency_miss(TCB *, int, int);
 
 void init_profiling_window();
 
-inline void check_profiling_need();
+extern inline void check_profiling_need();
 
 void send_slack_time_report();
 
-inline void reset_last_idle_time();
+extern inline void reset_last_idle_time();
 
-inline void compute_idle_time();
+extern inline void compute_idle_time();
 
 #endif /* SOFTWARE_KERNEL_MODULES_MONITOR_H_ */

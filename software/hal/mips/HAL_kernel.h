@@ -134,11 +134,11 @@ extern void HAL_set_interrupt_enabled(unsigned int);
 void init_HAL();
 
 /*Low level task management abstraction*/
-inline void HAL_release_waiting_task(TCB *);
+extern inline void HAL_release_waiting_task(TCB *);
 
-inline void HAL_enable_scheduler_after_syscall();
+extern inline void HAL_enable_scheduler_after_syscall();
 
-inline void HAL_disable_scheduler_after_syscall();
+extern inline void HAL_disable_scheduler_after_syscall();
 
 /*IRQ abstraction*/
 unsigned int HAL_interrupt_mask_clear(unsigned int);
@@ -146,7 +146,7 @@ unsigned int HAL_interrupt_mask_clear(unsigned int);
 unsigned int HAL_interrupt_mask_set(unsigned int);
 
 /*DMNI Abstraction*/
-inline unsigned int DMNI_read_data_CS(unsigned int, unsigned int);
+extern inline unsigned int DMNI_read_data_CS(unsigned int, unsigned int);
 
 void DMNI_read_data(unsigned int, unsigned int);
 
