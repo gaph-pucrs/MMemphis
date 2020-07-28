@@ -25,7 +25,7 @@ def main():
         
     print "\n***************** kernel page size report ***********************"
     
-    check_mem_size("software/kernel.bin", get_page_size_KB(yaml_r) )
+    check_mem_size("software/kernel.elf", get_page_size_KB(yaml_r) )
     
     print "***************** end kernel page size report *********************\n"
     

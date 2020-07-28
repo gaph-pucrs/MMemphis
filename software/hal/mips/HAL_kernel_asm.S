@@ -18,12 +18,12 @@
 ##      - $14: program counter
 ##------------------------------------------------------------------------------------------------
 
-        .text      
+        .section .init
         .align  2
         .set noat		#Disable warning when $at register is used by user
-        .globl  entry
-        .ent    entry
-entry:
+        .globl  _start
+        .ent    _start
+_start:
         .set noreorder
         
         li      $sp,sp_addr
@@ -34,6 +34,8 @@ entry:
 $L1:
         j $L1
         nop
+
+        .end    _start
 
         .org 0x3c		#Forces the next instruction to start at address 0x3c
 #address 0x3c - This address is mapped inside reg_back of MIPS
@@ -46,6 +48,7 @@ system_service_routine:
         j       HAL_syscall
         nop
 
+.section .text
 
 HAL_interruption:
 
@@ -170,7 +173,7 @@ restore_partial_task_context:
         mtc0    $1,$12          # Enables interrupts
 
         .set    reorder 
-        .end    entry
+
         
 ###################################################
         

@@ -10,11 +10,11 @@
 
 
 
-        .text
+        .section .init
         .align  2
-        .globl  entry
-        .ent    entry
-entry:
+        .globl  _start
+        .ent    _start
+_start:
    .set noreorder
 
    li $sp,sp_addr # Initializes the Stack Pointer at upper part of task page
@@ -30,10 +30,11 @@ $L1:
    j $L1
    nop
 
-        .end entry
+        .end _start
   
 ###################################################
 
+	.section .text
    .globl SystemCall
    .ent SystemCall
 SystemCall:

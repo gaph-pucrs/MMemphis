@@ -46,11 +46,11 @@ $(KERNEL).txt: $(HAL_KERNEL_TGT) $(MODULES_TGT) $(KERNEL_SRC) $(BOOT_SRC)
 	@printf "${RED}Compiling Kernel: %s ...${NC}\n" "$(KERNEL).c"
 	$(AS_MIPS) --defsym sp_addr=$(PAGE_SP_INIT) -o $(BOOT).o $(BOOT_SRC)
 	$(GCC_MIPS) -o $(KERNEL).o $(KERNEL_SRC)
-	$(LD_MIPS) -Ttext 0 -eentry -Map $(KERNEL).map -s -N -o $(KERNEL).bin $(BOOT).o $(KERNEL).o $(KERNEL_TGT) 
-	$(LD_MIPS) -Ttext 0 -eentry -Map $(KERNEL)_debug.map -o $(KERNEL)_debug.bin $(BOOT).o $(KERNEL).o $(KERNEL_TGT)
-	$(DUMP_MIPS) -S $(KERNEL)_debug.bin > $(KERNEL).lst
-	$(COPY_MIPS) $(KERNEL).bin $(KERNEL).dump
-	hexdump -v -e '1/1 "%02x" 1/1 "%02x" 1/1 "%02x" 1/1 "%02x" "\n"' $(KERNEL).dump > $(KERNEL).txt
+	$(LD_MIPS) --section-start=".init"=0 -Map $(KERNEL).map -s -N -o $(KERNEL).elf $(BOOT).o $(KERNEL).o $(KERNEL_TGT) 
+	$(LD_MIPS) --section-start=".init"=0 -Map $(KERNEL)_debug.map -o $(KERNEL)_debug.elf $(BOOT).o $(KERNEL).o $(KERNEL_TGT)
+	$(DUMP_MIPS) -S $(KERNEL)_debug.elf > $(KERNEL).lst
+	$(COPY_MIPS) -R .MIPS.abiflags -R .reginfo $(KERNEL).elf $(KERNEL).bin
+	hexdump -v -e '1/1 "%02x" 1/1 "%02x" 1/1 "%02x" 1/1 "%02x" "\n"' $(KERNEL).bin > $(KERNEL).txt
 
 clean:
 	@printf "Cleaning up\n"
@@ -60,7 +60,7 @@ clean:
 	@rm -rf *.map
 	@rm -rf *.lst
 	@rm -rf *.txt
-	@rm -rf *.dump
+	@rm -rf *.elf
 
 
 
