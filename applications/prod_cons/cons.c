@@ -21,7 +21,7 @@ int main()
 
 	Echo("Inicio da aplicacao cons");
 
-	SetMaxReceiveLatency(10000);
+	// SetMaxReceiveLatency(10000);
 
 	for(i=0; i<PROD_CONS_ITERATIONS; i++){
 
