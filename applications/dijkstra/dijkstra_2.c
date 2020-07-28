@@ -68,7 +68,7 @@ int main()
 	for (i=0;i<NUM_NODES;i++)
 		msg.msg[i+NUM_NODES] = prev[i];
 
-	Send(&msg, print_dij);
+	// Send(&msg, print_dij);
 
 	Echo(itoa(GetTick()));
 	Echo("Dijkstra_2 finished.");
